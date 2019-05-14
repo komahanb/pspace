@@ -826,5 +826,3 @@ class ParameterContainer:
             ##     vdd[np.abs(vdd) < eps] = 0
                 
         return
-    
-if __name__ == "__main__":
