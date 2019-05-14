@@ -61,4 +61,4 @@ if __name__ == '__main__':
             for q in pc.quadrature_map.keys():
                 A[i,j] += w(q)*psiz(i,q)*psiz(j,q)
                 
-    assert(np.allclose(A, np.eye(A.shape[0])) == True)
+    assert(np.allclose(A, np.eye(A.shape[0])) == True) 
