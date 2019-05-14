@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 # External modules
 import numpy as np
@@ -826,93 +827,4 @@ class ParameterContainer:
                 
         return
     
-if __name__ == "__main__":    
-    """
-    """
-    # Create "Parameter" using "Parameter Factory" object
-    pfactory = ParameterFactory()
-    ## m = pfactory.createExponentialParameter('m', dict(mu=5.0, beta=0.50), 15)
-    ## m = pfactory.createUniformParameter('c', dict(a=1.0, b=2.5) , 7)
-
-    c = pfactory.createNormalParameter('c', dict(mu=4.0, sigma=0.50), 3)
-    #k = pfactory.createNormalParameter('k', dict(mu=4.0, sigma=2.50),5 10)
-
-    #m = pfactory.createExponentialParameter('m', dict(mu=4.0, beta=2.50), 10)
-    k = pfactory.createExponentialParameter('k', dict(mu=4.0, beta=0.50), 3)
-
-    m = pfactory.createUniformParameter('m', dict(a=-5.0, b=4.0), 3)
-    #k = pfactory.createUniformParameter('k', dict(a=4.0, b=5.0), 10)
-    
-    # Add "Parameter" into "ParameterContainer"
-    pc = ParameterContainer()
-    pc.addParameter(c)
-    pc.addParameter(k)
-    pc.addParameter(m)
-    #pc.addParameter(d)
-    #pc.addParameter(e)
-    
-    pc.initialize()
-
-    # Test getting ND quadrature points
-    N = pc.getNumStochasticBasisTerms()
-    
-    A = np.zeros((N, N, pc.getNumParameters()))    
-    nzctr = 0
-    for i in range(N):
-        
-        dmapi = pc.termwise_parameter_degrees[i]
-        param_nqpts_mapi = pc.getNumQuadraturePointsFromDegree(dmapi)
-        
-        for j in range(N):
-            
-            dmapj = pc.termwise_parameter_degrees[j]
-            param_nqpts_mapj = pc.getNumQuadraturePointsFromDegree(dmapj)
-
-            # add up the degree of both participating functions psizi
-            # and psizj to determine the total degree of integrand
-
-            pc.initializeQuadrature(param_nqpts_mapi + param_nqpts_mapj)
-
-            # rename for readability
-            w    = lambda q    : pc.W(q)
-            psiz = lambda i, q : pc.evalOrthoNormalBasis(i,q)
-
-            def fy(q):
-                ymap = pc.Y(q)
-                paramids = ymap.keys()
-                ans = 1.0
-                for paramid in paramids:
-                    ans = ans*ymap[paramid]
-                return ans
-
-            def gy(q,pid):
-                ymap = pc.Y(q)
-                return ymap[pid]
-
-            # Constant function
-            ## pids = pc.getParameters().keys()
-            ## for q in pc.quadrature_map.keys():
-            ##     A[i,j] += w(q)*psiz(i,q)*psiz(j,q)
-
-            # linear function
-            for q in pc.quadrature_map.keys():
-                for p in range(pc.getNumParameters()):
-                    A[i,j,p] += w(q)*psiz(i,q)*psiz(j,q)*gy(q,p)
-                    
-            # quadratic function
-            
-            # cubic function
-
-            # sin
-
-            # cos
-
-            # exp
-
-            # rational
-            
-    for p in range(pc.getNumParameters()):
-        print p, A[:,:,p]
-        plot_jacobian(A[:,:,p], 'matrix-sparse-p' + str(p) + '.pdf')
-        
-    plot_jacobian(np.sum(A, axis=2), 'matrix-sparse-global.pdf')
+if __name__ == "__main__":
