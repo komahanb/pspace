@@ -1,41 +1,18 @@
 #!/usr/bin/env python
-from stochastic_utils import tensor_indices, nqpts
+
+# External modules
 import numpy as np
 np.set_printoptions(precision=3,suppress=True)
+import math
+from collections import Counter
 from enum import Enum
 
+# Local modules
+from stochastic_utils import tensor_indices, nqpts
 from orthogonal_polynomials import unit_hermite as Hhat
 from orthogonal_polynomials import unit_legendre as Phat
 from orthogonal_polynomials import unit_laguerre as Lhat
-
-import math
-from collections import Counter
-from tacs import TACS, elements
 from plotter import plot_jacobian
-
-# Define an adaptor element for converting deterministic elements to
-# stochastic element
-## class StochasticAdaptor(elements.pyStochasticElement):
-##     def __init__(self, delem, pc):
-##         super(TACS.Element, self).__init__(delem, pc.getNumStochasticBasisTerms())
-##         return
-    
-##     def getInitConditions(self, v, dv, ddv, xpts):
-##         '''Define the initial conditions'''
-##         self.pc.projectInitCond(self.delem, v, dv, ddv, xpts)
-##         return
-
-##     def addJacobian(self, time, J, alpha, beta, gamma, X, v, dv, ddv):
-##         '''Add the Jacobian of the governing equations'''
-##         self.pc.projectJacobian(self.delem,
-##                                 time, J, alpha, beta, gamma,
-##                                 X, v, dv, ddv)
-##         return
-
-##     def addResidual(self, time, res, X, v, dv, ddv):
-##         '''Add the residual of the governing equations'''
-##         self.pc.projectResidual(self.delem, time, res, X, v, dv, ddv)
-##         return
     
 ## TODO
 # Parameters are Monomials
