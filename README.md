@@ -1,5 +1,4 @@
-.. image:: https://travis-ci.org/komahanb/pchaos.svg?branch=master
-    :target: https://travis-ci.org/komahanb/pchaos
+[![Build Status](https://travis-ci.org/komahanb/pchaos.svg?branch=master)](https://travis-ci.org/komahanb/pchaos)
 
 ![alt text](https://github.com/komahanb/pchaos/blob/master/doc/sgm.png)
 
