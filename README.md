@@ -1,6 +1,8 @@
-[![Build Status](https://travis-ci.org/komahanb/pchaos.svg?branch=master)](https://travis-ci.org/komahanb/pchaos)
+![Build Status](https://travis-ci.org/komahanb/pchaos.svg?branch=master)](https://travis-ci.org/komahanb/pchaos)
 
-![alt text](https://github.com/komahanb/pchaos/blob/master/doc/sgm.png)
+<object data="https://github.com/komahanb/pchaos/blob/master/docs/sgm.pdf" type="application/pdf" width="700px" height="700px">
+    <embed src="https://github.com/komahanb/pchaos/blob/master/docs/sgm.pdf"> </embed>
+</object>
 
 # Polynomial Chaos
 
