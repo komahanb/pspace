@@ -24,7 +24,7 @@ def nqpts(deg):
     Return the number of quadrature points necessary to integrate the
     monomial of degree deg.
     """
-    return max(deg/2+1,6)
+    return 1 + deg/2 #max(deg/2+1,1)
 
 def tensor_indices(phdmap):
     """
