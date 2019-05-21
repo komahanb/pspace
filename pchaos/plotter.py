@@ -87,6 +87,12 @@ def plot_jacobian(A, name, cmap= plt.cm.coolwarm, normalize=True, precision=1e-6
     ax.xaxis.set_ticks_position('top')
     ax.yaxis.set_ticks_position('left')
 
+    xlabels = np.linspace(0, A.shape[0], 5, True, dtype=int)
+    ylabels = np.linspace(0, A.shape[1], 5, True, dtype=int)
+
+    plt.xticks(xlabels)
+    plt.yticks(ylabels)
+
     plt.savefig(name, bbox_inches='tight', pad_inches=0.05)
     
     plt.close()
