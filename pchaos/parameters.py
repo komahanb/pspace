@@ -352,7 +352,7 @@ class ParameterContainer:
     """
     def __init__(self):
         self.parameter_map = {}        
-        self.termwise_parameter_degrees = {} # For each parameter and basis entry what
+        self.basistermwise_parameter_degrees = {} # For each parameter and basis entry what
                                              # is the degree according to tensor
                                              # product
         #pc.getBasisObject()
@@ -372,7 +372,7 @@ class ParameterContainer:
         """
         # Create degree map
         sp_hd_map = self.getParameterHighestDegreeMap(exclude=ParameterType.DETERMINISTIC)
-        self.termwise_parameter_degrees = tensor_indices(sp_hd_map)      
+        self.basistermwise_parameter_degrees = tensor_indices(sp_hd_map)      
         return
 
     def getNumQuadraturePointsFromDegree(self,dmap):
@@ -396,7 +396,7 @@ class ParameterContainer:
         tensor product or other rules used to construct the
         multivariate basis set.
         """
-        return self.termwise_parameter_degrees[kthterm][paramid]
+        return self.basistermwise_parameter_degrees[kthterm][paramid]
     
     def getParameters(self):
         return self.parameter_map
@@ -686,7 +686,7 @@ class ParameterContainer:
             # necessary for i-th basis entry
             self.initializeQuadrature(
                 self.getNumQuadraturePointsFromDegree(
-                    self.termwise_parameter_degrees[i]
+                    self.basistermwise_parameter_degrees[i]
                     )
                 )
 
@@ -734,10 +734,10 @@ class ParameterContainer:
         n = elem.numDisplacements()
         
         for i in range(self.getNumStochasticBasisTerms()):
-            imap = self.termwise_parameter_degrees[i]
+            imap = self.basistermwise_parameter_degrees[i]
             
             for j in range(self.getNumStochasticBasisTerms()):                
-                jmap = self.termwise_parameter_degrees[j]
+                jmap = self.basistermwise_parameter_degrees[j]
                 
                 # Initialize quadrature with number of gauss points
                 # necessary for i,j-th jacobian entry
@@ -791,7 +791,7 @@ class ParameterContainer:
             # necessary for k-th basis entry
             self.initializeQuadrature(
                 self.getNumQuadraturePointsFromDegree(
-                    self.termwise_parameter_degrees[k]
+                    self.basistermwise_parameter_degrees[k]
                     )
                 )
             
