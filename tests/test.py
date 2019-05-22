@@ -1,3 +1,5 @@
+
+
 import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
@@ -27,12 +29,12 @@ if __name__ == '__main__':
 
     for i in range(N):
         
-        dmapi = pc.termwise_parameter_degrees[i]
+        dmapi = pc.basistermwise_parameter_degrees[i]
         param_nqpts_mapi = pc.getNumQuadraturePointsFromDegree(dmapi)
         
         for j in range(N):
             
-            dmapj = pc.termwise_parameter_degrees[j]
+            dmapj = pc.basistermwise_parameter_degrees[j]
             param_nqpts_mapj = pc.getNumQuadraturePointsFromDegree(dmapj)
 
             # add up the degree of both participating functions psizi
