@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import print_function
+#from __future__ import print_function
 
 # External modules
 import numpy as np
@@ -274,7 +274,11 @@ class UniformParameter(Parameter):
             val = Phat(z,d)
             self.basis_map[(d,z)] = val
             return val
-        
+
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(tuple(sorted(self.iteritems())))
+    
 class ParameterFactory:
     """
     This class takes in primitives and makes data strucuture required
@@ -452,8 +456,23 @@ class ParameterContainer:
     def Y(self, q):
         return self.quadrature_map[q]['Y']
     
+    ## def evalOrthoNormalBasis(self, k, q):
+    ##     print self.Z(q)
+    ##     return self.psi(k, self.Z(q))
+        
     def evalOrthoNormalBasis(self, k, q):
-        return self.psi(k, self.Z(q))
+        #val = self.psi(k, self.Z(q))
+        #self.psi_map[(k,HashableDict(self.Z(q)))] = val
+        #return val
+
+        try:
+            #print 'retrieving at', k, 'for', self.Z(q)
+            return self.psi_map[(k,HashableDict(self.Z(q)))]
+        except:
+            #print 'evaluation at', k, 'for', self.Z(q)
+            val = self.psi(k, self.Z(q))
+            self.psi_map[(k,HashableDict(self.Z(q)))] = val
+            return val
 
     def getQuadraturePointsWeights(self, param_nqpts_map):
         """
