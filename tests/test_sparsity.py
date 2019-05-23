@@ -107,9 +107,9 @@ if __name__ == '__main__':
     
     # Create "Parameter" using "Parameter Factory" object
     pfactory = ParameterFactory()
-    c = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 3)
-    k = pfactory.createExponentialParameter('k', dict(mu=6.0, beta=1.0), 3)
-    m = pfactory.createUniformParameter('m', dict(a=-5.0, b=4.0), 3)
+    c = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 4)
+    k = pfactory.createExponentialParameter('k', dict(mu=6.0, beta=1.0), 5)
+    m = pfactory.createUniformParameter('m', dict(a=-5.0, b=4.0), 6)
     d = pfactory.createUniformParameter('d', dict(a=-5.0, b=4.0), 3)
 
     # Add "Parameter" into "ParameterContainer"
@@ -236,6 +236,8 @@ if __name__ == '__main__':
     # y_1 * y_2 * y_3*y_4
     func = lambda q : gy(q,0) * gy(q,1) * gy(q,2) * gy(q,3)
     dmap[0] = 1; dmap[1] = 1; dmap[2] = 1; dmap[3] = 1
+    A = getSparseJacobian(pc, func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
     A = getSparseJacobian(pc, func, dmap)
     #A = getJacobian(func, dmap)
     plot_jacobian(A, 'sparsity-y1y2y3y4-' + suffix + '.pdf')
