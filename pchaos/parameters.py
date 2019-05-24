@@ -359,13 +359,20 @@ class ParameterContainer:
     Author: Komahan Boopathy
     """
     def __init__(self):
-        self.parameter_map = {}        
+        self.num_terms = 1
+
+        # container for storing all parameters
+        self.parameter_map = {}
+
+        # replace with DegreeSet class
         self.basistermwise_parameter_degrees = {} # For each parameter and basis entry what
                                              # is the degree according to tensor
                                              # product
-        #pc.getBasisObject()
-        self.num_terms = 1
+
+
+        # Replace with basis class
         self.psi_map = {}
+        
         return
 
     def __str__(self):
@@ -465,16 +472,11 @@ class ParameterContainer:
     ##     return self.psi(k, self.Z(q))
         
     def evalOrthoNormalBasis(self, k, q):
-        #val = self.psi(k, self.Z(q))
-        #self.psi_map[(k,HashableDict(self.Z(q)))] = val
-        #return val
         zq = self.Z(q)
-        zkey = HashableDict(k, zq)
+        zkey = HashableDict(zq)
         try:
-            #print 'retrieve at', k, self.Z(q)
             return self.psi_map[(k, zkey)]
         except:
-            #print 'retrieve failed but evaluating', k, self.Z(q)
             val = self.psi(k, zq)
             self.psi_map[(k,zkey)] = val
             return val
