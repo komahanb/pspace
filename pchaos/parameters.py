@@ -115,11 +115,12 @@ class DeterministicParameter(Parameter):
         evaluate the orthonormal polynomial and return.
 
         Note: For the deterministic case, the value is always one.
-        """        
+        """
+        zkey = hash(z)
         try:
-            return self.basis_map[(d,hash(z))]
+            return self.basis_map[(d,zkey)]
         except:
-            self.basis_map[(d,hash(z))] = 1.0
+            self.basis_map[(d,zkey)] = 1.0
             return val
     
 class ProbabilisticParameter(Parameter):
@@ -176,11 +177,12 @@ class ExponentialParameter(Parameter):
         exists in the map already, return the value from map. If not
         evaluate the orthonormal polynomial and return.
         """
+        zkey = hash((z,d))
         try:
-            return self.basis_map[(d,hash(z))]
+            return self.basis_map[zkey]
         except:
             val = Lhat(z,d)
-            self.basis_map[(d,hash(z))] = val
+            self.basis_map[zkey] = val
             return val
     
 class NormalParameter(Parameter):
@@ -221,12 +223,13 @@ class NormalParameter(Parameter):
         Evaluate the orthonormal basis at supplied coordinate. If it
         exists in the map already, return the value from map. If not
         evaluate the orthonormal polynomial and return.
-        """
+        """        
+        zkey = hash((z,d))
         try:
-            return self.basis_map[(d,hash(z))]
+            return self.basis_map[zkey]
         except:
             val = Hhat(z,d)
-            self.basis_map[(d,hash(z))] = val
+            self.basis_map[zkey] = val
             return val        
         
 class UniformParameter(Parameter):
@@ -268,11 +271,12 @@ class UniformParameter(Parameter):
         exists in the map already, return the value from map. If not
         evaluate the orthonormal polynomial and return.
         """
+        zkey = hash((z,d))
         try:
-            return self.basis_map[(d,hash(z))]
+            return self.basis_map[zkey]
         except:
             val = Phat(z,d)
-            self.basis_map[(d,hash(z))] = val
+            self.basis_map[zkey] = val
             return val
 
 class HashableDict(dict):
@@ -464,14 +468,15 @@ class ParameterContainer:
         #val = self.psi(k, self.Z(q))
         #self.psi_map[(k,HashableDict(self.Z(q)))] = val
         #return val
-
+        zq = self.Z(q)
+        zkey = HashableDict(k, zq)
         try:
-            #print 'retrieving at', k, 'for', self.Z(q)
-            return self.psi_map[(k,HashableDict(self.Z(q)))]
+            #print 'retrieve at', k, self.Z(q)
+            return self.psi_map[(k, zkey)]
         except:
-            #print 'evaluation at', k, 'for', self.Z(q)
-            val = self.psi(k, self.Z(q))
-            self.psi_map[(k,HashableDict(self.Z(q)))] = val
+            #print 'retrieve failed but evaluating', k, self.Z(q)
+            val = self.psi(k, zq)
+            self.psi_map[(k,zkey)] = val
             return val
 
     def getQuadraturePointsWeights(self, param_nqpts_map):
