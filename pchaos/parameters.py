@@ -117,9 +117,9 @@ class DeterministicParameter(Parameter):
         Note: For the deterministic case, the value is always one.
         """        
         try:
-            return self.basis_map[(d,z)]
+            return self.basis_map[(d,hash(z))]
         except:
-            self.basis_map[(d,z)] = 1.0
+            self.basis_map[(d,hash(z))] = 1.0
             return val
     
 class ProbabilisticParameter(Parameter):
@@ -177,10 +177,10 @@ class ExponentialParameter(Parameter):
         evaluate the orthonormal polynomial and return.
         """
         try:
-            return self.basis_map[(d,z)]
+            return self.basis_map[(d,hash(z))]
         except:
             val = Lhat(z,d)
-            self.basis_map[(d,z)] = val
+            self.basis_map[(d,hash(z))] = val
             return val
     
 class NormalParameter(Parameter):
@@ -223,10 +223,10 @@ class NormalParameter(Parameter):
         evaluate the orthonormal polynomial and return.
         """
         try:
-            return self.basis_map[(d,z)]
+            return self.basis_map[(d,hash(z))]
         except:
             val = Hhat(z,d)
-            self.basis_map[(d,z)] = val
+            self.basis_map[(d,hash(z))] = val
             return val        
         
 class UniformParameter(Parameter):
@@ -269,10 +269,10 @@ class UniformParameter(Parameter):
         evaluate the orthonormal polynomial and return.
         """
         try:
-            return self.basis_map[(d,z)]
+            return self.basis_map[(d,hash(z))]
         except:
             val = Phat(z,d)
-            self.basis_map[(d,z)] = val
+            self.basis_map[(d,hash(z))] = val
             return val
 
 class HashableDict(dict):
