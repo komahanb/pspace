@@ -95,7 +95,7 @@ class Parameter(object):
 class DeterministicParameter(Parameter):
     def __init__(self, pdata):
         super(DeterministicParameter, self).__init__(pdata)
-        self.param_value     = pdata['param_value']
+        self.param_value = pdata['param_value']
         return
         
     def getQuadraturePointsWeights(self, npoints):
@@ -451,7 +451,7 @@ class ParameterContainer:
         wmap = self.quadrature_map[q]['W']
         return wmap
 
-    def psi(self, k, zmap):
+    def psi(self, k, zmap):        
         paramids = zmap.keys()
         ans = 1.0
         for paramid in paramids:
@@ -461,11 +461,29 @@ class ParameterContainer:
             ans = ans*val
         return ans
 
-    def Z(self, q):
-        return self.quadrature_map[q]['Z']
+    def Z(self, q, key='pid'):
+        if key == 'pid':
+            # use pid as key
+            return self.quadrature_map[q]['Z']
+        else:
+            # use name as key
+            qmap = self.quadrature_map[q]['Z']
+            nmap = {}
+            for pid in qmap.keys():
+                nmap[self.getParameter(pid).param_name] = qmap[pid]                
+            return nmap
 
-    def Y(self, q):
-        return self.quadrature_map[q]['Y']
+    def Y(self, q, key='pid'):
+        if key == 'pid':
+            # use pid as key
+            return self.quadrature_map[q]['Y']
+        else:
+            # use name as key
+            qmap = self.quadrature_map[q]['Y']
+            nmap = {}
+            for pid in qmap.keys():
+                nmap[self.getParameter(pid).param_name] = qmap[pid]                
+            return nmap
     
     ## def evalOrthoNormalBasis(self, k, q):
     ##     print self.Z(q)
@@ -499,7 +517,6 @@ class ParameterContainer:
         qmap = {}
         for key in range(total_quadrature_points):
             qmap[key] = []
-
 
         if num_vars == 1:
             
@@ -704,7 +721,7 @@ class ParameterContainer:
         """
         
         # size of deterministic element state vector
-        n = elem.numDisplacements()
+        n = elem.numDisplacements()*elem.numNodes()
         
         for i in range(self.getNumStochasticBasisTerms()):
                 
@@ -720,8 +737,8 @@ class ParameterContainer:
             for q in self.quadrature_map.keys():
 
                 # Set the parameter values into the element
-                elem.setParameters(self.Y(q))
-
+                elem.setParameters(self.Y(q,'name'))
+                
                 # Create space for fetching deterministic residual
                 # vector
                 resq = np.zeros((n))
@@ -735,7 +752,7 @@ class ParameterContainer:
                     uq[:] += v[k*n:(k+1)*n]*psiky
                     udq[:] += dv[k*n:(k+1)*n]*psiky
                     uddq[:] += ddv[k*n:(k+1)*n]*psiky
-    
+
                 # Fetch the deterministic element residual
                 elem.addResidual(time, resq, X, uq, udq, uddq)
                 
@@ -757,7 +774,7 @@ class ParameterContainer:
         """
         
         # size of deterministic element state vector
-        n = elem.numDisplacements()
+        n = elem.numDisplacements()*elem.numNodes()
         
         for i in range(self.getNumStochasticBasisTerms()):
             imap = self.basistermwise_parameter_degrees[i]
@@ -777,7 +794,7 @@ class ParameterContainer:
                 for q in self.quadrature_map.keys():
                     
                     # Set the paramter values into the element
-                    elem.setParameters(self.Y(q))
+                    elem.setParameters(self.Y(q,'name'))
 
                     # Create space for fetching deterministic
                     # jacobian, and state vectors that go as input
@@ -809,7 +826,7 @@ class ParameterContainer:
         """
 
         # size of deterministic element state vector
-        n = elem.numDisplacements()
+        n = elem.numDisplacements()*elem.numNodes()
         
         for k in range(self.getNumStochasticBasisTerms()):
 
@@ -825,7 +842,7 @@ class ParameterContainer:
             for q in self.quadrature_map.keys():
 
                 # Set the paramter values into the element
-                elem.setParameters(self.Y(q))
+                elem.setParameters(self.Y(q,'name'))
 
                 # Create space for fetching deterministic initial
                 # conditions
@@ -838,7 +855,7 @@ class ParameterContainer:
 
                 # Project the determinic initial conditions onto the
                 # stochastic basis
-                psizkw = self.W(q)*self.evalOrthoNormalBasis(k,q)                
+                psizkw = self.W(q)*self.evalOrthoNormalBasis(k,q)
                 v[k*n:(k+1)*n] += uq*psizkw
                 vd[k*n:(k+1)*n] += udq*psizkw
                 vdd[k*n:(k+1)*n] += uddq*psizkw

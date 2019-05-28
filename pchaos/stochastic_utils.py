@@ -30,12 +30,12 @@ def tensor_indices(phdmap):
     """
     Get basis functions indices based on tensor product
     """
-    pids  = phdmap.keys()    # parameter IDs
-    pdegs = phdmap.values()  # parameter degrees
+    pids  = phdmap.keys() # parameter IDs
+    pdegs = phdmap.values() # parameter degrees
 
-    # exclude deterministic terms
+    # Exclude deterministic terms
     total_tensor_basis_terms = np.prod(pdegs)
-    num_vars  = len(pdegs)
+    num_vars = len(pdegs)
 
     # Initialize map with empty values corresponding to each key
     idx = {}
@@ -100,5 +100,3 @@ def tensor_indices(phdmap):
     for k in range(total_tensor_basis_terms):
         term_polynomial_degree[k] = flat_list[k]
     return term_polynomial_degree
-
-
