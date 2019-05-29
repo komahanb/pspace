@@ -19,6 +19,15 @@ from collections import Counter
         
 ##     return 
 
+def sparse(dmapi, dmapj, dmapf):
+    smap = {}
+    for key in dmapi.keys():
+        if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
+            smap[key] = True
+        else:
+            smap[key] = False    
+    return smap
+
 def nqpts(pdeg):
     """
     Return the number of quadrature points necessary to integrate the

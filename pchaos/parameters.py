@@ -9,7 +9,7 @@ from collections import Counter
 from enum import Enum
 
 # Local modules
-from stochastic_utils import tensor_indices, nqpts
+from stochastic_utils import tensor_indices, nqpts, sparse
 from orthogonal_polynomials import unit_hermite as Hhat
 from orthogonal_polynomials import unit_legendre as Phat
 from orthogonal_polynomials import unit_laguerre as Lhat
@@ -390,6 +390,15 @@ class ParameterContainer:
         self.basistermwise_parameter_degrees = tensor_indices(sp_hd_map)      
         return
 
+    def getNumQuadraturePoints(self):
+        """        
+        """
+        param_nqpts_map = Counter()
+        pkeys = self.parameter_map.keys()
+        for pid in pkeys:
+            param_nqpts_map[pid] = self.getParameter(pid).monomial_degree
+        return param_nqpts_map
+    
     def getNumQuadraturePointsFromDegree(self,dmap):
         """
         Supply a map whose keys are parameterids and values are
@@ -399,8 +408,8 @@ class ParameterContainer:
         """
         pids = dmap.keys()
         param_nqpts_map = Counter()
-        for pid in pids:
-            param_nqpts_map[pid] = nqpts(dmap[pid])
+        for pid in self.parameter_map.keys(): #pids:
+            param_nqpts_map[pid] = self.parameter_map[pid].monomial_degree #nqpts(dmap[pid])
         return param_nqpts_map
     
     def getParameterDegreeForBasisTerm(self, paramid, kthterm):
@@ -764,7 +773,7 @@ class ParameterContainer:
     
         return
     
-    def projectJacobian(self,
+    def projectJacobianFull(self,
                         elem,
                         time, J, alpha, beta, gamma,
                         X, v, dv, ddv):
@@ -827,6 +836,80 @@ class ParameterContainer:
                     
         return
     
+    def projectJacobian(self,
+                        elem,
+                        time, J, alpha, beta, gamma,
+                        X, v, dv, ddv):
+        """
+        Project the elements deterministic jacobian matrix onto
+        stochastic basis and place in global stochastic jacobian matrix
+        """
+
+        # All stochastic parameters are assumed to be of degree 1
+        # (constant terms)
+        dmapf = Counter()
+        for pid in self.parameter_map.keys():
+            dmapf[pid] = 1
+        
+        # size of deterministic element state vector
+        n = elem.numDisplacements()*elem.numNodes()
+        
+        for i in range(self.getNumStochasticBasisTerms()):
+            imap = self.basistermwise_parameter_degrees[i]
+            
+            for j in range(i,self.getNumStochasticBasisTerms()):                
+                jmap = self.basistermwise_parameter_degrees[j]
+                
+                smap = sparse(imap, jmap, dmapf)
+                if False not in smap.values():
+                    dmap = Counter()
+                    dmap.update(imap)
+                    dmap.update(jmap)
+                    dmap.update(dmapf)
+                    nqpts_map = self.getNumQuadraturePointsFromDegree(dmap)
+
+                    # print i,j, nqpts_map
+                    # Initialize quadrature with number of gauss points
+                    # necessary for i,j-th jacobian entry
+                    self.initializeQuadrature(nqpts_map)
+            
+                    # Quadrature Loop
+                    jtmp = np.zeros((n,n))
+                    for q in self.quadrature_map.keys():
+                        
+                        # Set the paramter values into the element
+                        elem.setParameters(self.Y(q,'name'))
+    
+                        # Create space for fetching deterministic
+                        # jacobian, and state vectors that go as input
+                        Aq   = np.zeros((n,n))
+                        uq   = np.zeros((n))
+                        udq  = np.zeros((n))
+                        uddq = np.zeros((n))
+                        for k in range(self.num_terms):
+                            psiky = self.evalOrthoNormalBasis(k,q)
+                            uq[:] += v[k*n:(k+1)*n]*psiky
+                            udq[:] += dv[k*n:(k+1)*n]*psiky
+                            uddq[:] += ddv[k*n:(k+1)*n]*psiky
+                            
+                        # Fetch the deterministic element jacobian matrix
+                        elem.addJacobian(time, Aq, alpha, beta, gamma, X, uq, udq, uddq)
+                                    
+                        # Project the determinic element jacobian onto the
+                        # stochastic basis and place in the global matrix
+                        psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
+                        psizjw = self.evalOrthoNormalBasis(j,q)
+                        jtmp[:,:] +=  Aq*psiziw*psizjw
+    
+                    # Add the scaled deterministic block to element jacobian
+                    J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
+                    
+                    # If off diagonal add the symmetric counter part
+                    if i != j:
+                        J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
+                        
+        return
+
     def projectInitCond(self, elem, v, vd, vdd, xpts):
         """
         Project the elements deterministic initial condition onto
