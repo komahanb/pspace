@@ -779,7 +779,7 @@ class ParameterContainer:
         for i in range(self.getNumStochasticBasisTerms()):
             imap = self.basistermwise_parameter_degrees[i]
             
-            for j in range(self.getNumStochasticBasisTerms()):                
+            for j in range(i,self.getNumStochasticBasisTerms()):                
                 jmap = self.basistermwise_parameter_degrees[j]
                 
                 # Initialize quadrature with number of gauss points
@@ -791,6 +791,7 @@ class ParameterContainer:
                     )
         
                 # Quadrature Loop
+                jtmp = np.zeros((n,n))
                 for q in self.quadrature_map.keys():
                     
                     # Set the paramter values into the element
@@ -814,8 +815,16 @@ class ParameterContainer:
                     # Project the determinic element jacobian onto the
                     # stochastic basis and place in the global matrix
                     psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
-                    psizjw = self.evalOrthoNormalBasis(j,q)                    
-                    J[i*n:(i+1)*n,j*n:(j+1)*n] += Aq*psiziw*psizjw
+                    psizjw = self.evalOrthoNormalBasis(j,q)
+                    jtmp[:,:] +=  Aq*psiziw*psizjw
+
+                # Add the scaled deterministic block to element jacobian
+                J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
+                
+                # If off diagonal add the symmetric counter part
+                if i != j:
+                    J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
+                    
         return
     
     def projectInitCond(self, elem, v, vd, vdd, xpts):
