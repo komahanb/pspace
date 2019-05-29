@@ -1,11 +1,13 @@
 import sys
 from os import path
-sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
 import numpy as np
-from pchaos.parameters import ParameterFactory, ParameterContainer
-from pchaos.plotter import plot_jacobian
 from collections import Counter
 from timeit import default_timer as timer
+
+from pchaos.parameters import ParameterFactory, ParameterContainer
+from pchaos.plotter import plot_jacobian
 
 ## def sparsity(a, b):
 ##     """
