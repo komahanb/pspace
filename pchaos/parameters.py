@@ -800,7 +800,6 @@ class ParameterContainer:
                     )
         
                 # Quadrature Loop
-                jtmp = np.zeros((n,n))
                 for q in self.quadrature_map.keys():
                     
                     # Set the paramter values into the element
@@ -825,7 +824,7 @@ class ParameterContainer:
                     # stochastic basis and place in the global matrix
                     psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
                     psizjw = self.evalOrthoNormalBasis(j,q)
-                    jtmp[:,:] +=  Aq*psiziw*psizjw
+                    jtmp =  Aq*psiziw*psizjw
 
                 # Add the scaled deterministic block to element jacobian
                 J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
@@ -874,9 +873,8 @@ class ParameterContainer:
                     self.initializeQuadrature(nqpts_map)
             
                     # Quadrature Loop
-                    jtmp = np.zeros((n,n))
                     for q in self.quadrature_map.keys():
-                        
+
                         # Set the paramter values into the element
                         elem.setParameters(self.Y(q,'name'))
     
@@ -899,7 +897,7 @@ class ParameterContainer:
                         # stochastic basis and place in the global matrix
                         psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
                         psizjw = self.evalOrthoNormalBasis(j,q)
-                        jtmp[:,:] +=  Aq*psiziw*psizjw
+                        jtmp = Aq*psiziw*psizjw
     
                     # Add the scaled deterministic block to element jacobian
                     J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
@@ -908,6 +906,8 @@ class ParameterContainer:
                     if i != j:
                         J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
                         
+        # plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-8)
+        
         return
 
     def projectInitCond(self, elem, v, vd, vdd, xpts):
