@@ -773,77 +773,15 @@ class ParameterContainer:
     
         return
     
-    def projectJacobianFull(self,
-                        elem,
-                        time, J, alpha, beta, gamma,
-                        X, v, dv, ddv):
-        """
-        Project the elements deterministic jacobian matrix onto
-        stochastic basis and place in global stochastic jacobian matrix
-        """
-        
-        # size of deterministic element state vector
-        n = elem.numDisplacements()*elem.numNodes()
-        
-        for i in range(self.getNumStochasticBasisTerms()):
-            imap = self.basistermwise_parameter_degrees[i]
-            
-            for j in range(i,self.getNumStochasticBasisTerms()):                
-                jmap = self.basistermwise_parameter_degrees[j]
-                
-                # Initialize quadrature with number of gauss points
-                # necessary for i,j-th jacobian entry
-                self.initializeQuadrature(
-                    self.getNumQuadraturePointsFromDegree(imap)
-                    +
-                    self.getNumQuadraturePointsFromDegree(jmap)
-                    )
-        
-                # Quadrature Loop
-                for q in self.quadrature_map.keys():
-                    
-                    # Set the paramter values into the element
-                    elem.setParameters(self.Y(q,'name'))
-
-                    # Create space for fetching deterministic
-                    # jacobian, and state vectors that go as input
-                    Aq   = np.zeros((n,n))
-                    uq   = np.zeros((n))
-                    udq  = np.zeros((n))
-                    uddq = np.zeros((n))
-                    for k in range(self.num_terms):
-                        psiky = self.evalOrthoNormalBasis(k,q)
-                        uq[:] += v[k*n:(k+1)*n]*psiky
-                        udq[:] += dv[k*n:(k+1)*n]*psiky
-                        uddq[:] += ddv[k*n:(k+1)*n]*psiky
-                        
-                    # Fetch the deterministic element jacobian matrix
-                    elem.addJacobian(time, Aq, alpha, beta, gamma, X, uq, udq, uddq)
-                                
-                    # Project the determinic element jacobian onto the
-                    # stochastic basis and place in the global matrix
-                    psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
-                    psizjw = self.evalOrthoNormalBasis(j,q)
-                    jtmp =  Aq*psiziw*psizjw
-
-                # Add the scaled deterministic block to element jacobian
-                J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
-                
-                # If off diagonal add the symmetric counter part
-                if i != j:
-                    J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
-                    
-        return
-    
     def projectJacobian(self,
                         elem,
                         time, J, alpha, beta, gamma,
                         X, v, dv, ddv):
+        print("JEnter", J)
         """
         Project the elements deterministic jacobian matrix onto
         stochastic basis and place in global stochastic jacobian matrix
         """
-
         # All stochastic parameters are assumed to be of degree 1
         # (constant terms)
         dmapf = Counter()
@@ -871,12 +809,20 @@ class ParameterContainer:
                     # Initialize quadrature with number of gauss points
                     # necessary for i,j-th jacobian entry
                     self.initializeQuadrature(nqpts_map)
-            
+
+                    jtmp = np.zeros((n,n))
+                                    
                     # Quadrature Loop
                     for q in self.quadrature_map.keys():
 
-                        # Set the paramter values into the element
-                        elem.setParameters(self.Y(q,'name'))
+                        try:
+                            print('hey')
+                            pmap = self.Y(q,'name')
+                            print(type(pmap), type(elem), elem.__class__)
+                            # Set the paramter values into the element
+                            elem.setParameters(pmap)
+                        except:
+                            print('exception' )
     
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
@@ -897,17 +843,21 @@ class ParameterContainer:
                         # stochastic basis and place in the global matrix
                         psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
                         psizjw = self.evalOrthoNormalBasis(j,q)
-                        jtmp = Aq*psiziw*psizjw
+                        jtmp[:,:] += Aq*psiziw*psizjw
+                        #print("jtmp", i, j, jtmp[:,:])
     
                     # Add the scaled deterministic block to element jacobian
                     J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
                     
                     # If off diagonal add the symmetric counter part
                     if i != j:
+                        np.set_printoptions(formatter={'float': '{: 0.3e}'.format})        
+                        #print("jtmp", i, j, jtmp[:,:])
                         J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
-                        
-        # plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-8)
-        
+        print("J", J)
+                
+        #plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-6)
+
         return
 
     def projectInitCond(self, elem, v, vd, vdd, xpts):
