@@ -950,9 +950,9 @@ class ParameterContainer:
                 giend   = ii*nsdof + (k+1)*ndisps
 
                 # Place in initial condition array node after node
-                v[gistart:giend] += utmp[listart:liend]*psizkw
-                vd[gistart:giend] += udtmp[listart:liend]*psizkw
-                vdd[gistart:giend] += uddtmp[listart:liend]*psizkw
+                v[gistart:giend] += utmp[listart:liend]
+                vd[gistart:giend] += udtmp[listart:liend]
+                vdd[gistart:giend] += uddtmp[listart:liend]
     
             ## # Replace numbers less than machine precision with zero to
             ## # avoid numerical issues
