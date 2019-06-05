@@ -98,3 +98,42 @@ def plot_jacobian(A, name, cmap= plt.cm.coolwarm, normalize=True, precision=1e-6
     plt.close()
 
     return
+
+def plot_vector(x, name, cmap= plt.cm.coolwarm, normalize=True, precision=1e-6):
+
+    """
+    Customized visualization of jacobian matrices for observing
+    sparsity patterns
+    """
+    n = x.shape[0]
+    A = np.zeros((n,n))
+    A[:,0] = x[:]
+    
+    plt.figure()
+    fig, ax = plt.subplots()
+    
+    if normalize is True:
+        plt.imshow(A, interpolation='none', cmap=cmap,
+                   norm = mpl.colors.Normalize(vmin=-1.,vmax=1.))
+    else:
+        plt.imshow(A, interpolation='none', cmap=cmap)        
+    plt.colorbar(format=ticker.FuncFormatter(fmt))
+    
+    ax.spy(A, marker='.', markersize=0,  precision=precision)
+    
+    ax.spines['right'].set_visible(True)
+    ax.spines['bottom'].set_visible(True)
+    ax.xaxis.set_ticks_position('top')
+    ax.yaxis.set_ticks_position('left')
+
+    xlabels = np.linspace(0, A.shape[0], 5, True, dtype=int)
+    ylabels = np.linspace(0, A.shape[1], 5, True, dtype=int)
+
+    plt.xticks(xlabels)
+    plt.yticks(ylabels)
+
+    plt.savefig(name, bbox_inches='tight', pad_inches=0.05)
+    
+    plt.close()
+
+    return
