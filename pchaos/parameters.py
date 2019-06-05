@@ -406,6 +406,12 @@ class ParameterContainer:
         parameterids as keys and number of corresponding quadrature
         points along the monomial dimension.
         """
+        ## pids = dmap.keys()
+        ## param_nqpts_map = Counter()
+        ## for pid in pids:
+        ##     param_nqpts_map[pid] = nqpts(dmap[pid])
+        ## return param_nqpts_map
+    
         pids = dmap.keys()
         param_nqpts_map = Counter()
         for pid in self.parameter_map.keys(): #pids:
@@ -730,8 +736,11 @@ class ParameterContainer:
         """
         
         # size of deterministic element state vector
-        n = elem.numDisplacements()*elem.numNodes()
-        
+        ndisps = elem.numDisplacements()
+        nnodes = elem.numNodes()
+        nddof = ndisps*nnodes
+        nsdof = ndisps*self.getNumStochasticBasisTerms()
+
         for i in range(self.getNumStochasticBasisTerms()):
                 
             # Initialize quadrature with number of gauss points
@@ -743,6 +752,8 @@ class ParameterContainer:
                 )
 
             # Quadrature Loop
+            rtmp = np.zeros((nddof))
+            
             for q in self.quadrature_map.keys():
 
                 # Set the parameter values into the element
@@ -750,17 +761,17 @@ class ParameterContainer:
                 
                 # Create space for fetching deterministic residual
                 # vector
-                resq = np.zeros((n))
-                uq   = np.zeros((n))
-                udq  = np.zeros((n))
-                uddq = np.zeros((n))
+                resq = np.zeros((nddof))
+                uq   = np.zeros((nddof))
+                udq  = np.zeros((nddof))
+                uddq = np.zeros((nddof))
     
                 # Obtain states at quadrature nodes
                 for k in range(self.num_terms):
                     psiky = self.evalOrthoNormalBasis(k,q)
-                    uq[:] += v[k*n:(k+1)*n]*psiky
-                    udq[:] += dv[k*n:(k+1)*n]*psiky
-                    uddq[:] += ddv[k*n:(k+1)*n]*psiky
+                    uq[:] += v[k*nddof:(k+1)*nddof]*psiky
+                    udq[:] += dv[k*nddof:(k+1)*nddof]*psiky
+                    uddq[:] += ddv[k*nddof:(k+1)*nddof]*psiky
 
                 # Fetch the deterministic element residual
                 elem.addResidual(time, resq, X, uq, udq, uddq)
@@ -769,15 +780,26 @@ class ParameterContainer:
                 # stochastic basis and place in global residual array
                 psiq   = self.evalOrthoNormalBasis(i,q)
                 alphaq = self.W(q)        
-                res[i*n:(i+1)*n] += resq*psiq*alphaq
-    
+                rtmp[:] += resq*psiq*alphaq
+
+            # Distribute the residual
+            for ii in range(nnodes):
+                # Local indices
+                listart = ii*ndisps
+                liend   = (ii+1)*ndisps                                               
+                gistart = ii*nsdof + i*ndisps
+                giend   = ii*nsdof + (i+1)*ndisps
+
+                # Place in global residul array node by node
+                #print(gistart, giend, listart, liend)
+                res[gistart:giend] += rtmp[listart:liend]
+                
         return
     
     def projectJacobian(self,
                         elem,
                         time, J, alpha, beta, gamma,
                         X, v, dv, ddv):
-        print("JEnter", J)
         """
         Project the elements deterministic jacobian matrix onto
         stochastic basis and place in global stochastic jacobian matrix
@@ -789,52 +811,53 @@ class ParameterContainer:
             dmapf[pid] = 1
         
         # size of deterministic element state vector
-        n = elem.numDisplacements()*elem.numNodes()
+        ndisps = elem.numDisplacements()
+        nnodes = elem.numNodes()
+        nddof = ndisps*nnodes
+        nsdof = ndisps*self.getNumStochasticBasisTerms()
         
         for i in range(self.getNumStochasticBasisTerms()):
             imap = self.basistermwise_parameter_degrees[i]
             
-            for j in range(i,self.getNumStochasticBasisTerms()):                
+            for j in range(i,self.getNumStochasticBasisTerms()):    
                 jmap = self.basistermwise_parameter_degrees[j]
                 
                 smap = sparse(imap, jmap, dmapf)
+                
                 if False not in smap.values():
+                    
                     dmap = Counter()
                     dmap.update(imap)
                     dmap.update(jmap)
                     dmap.update(dmapf)
                     nqpts_map = self.getNumQuadraturePointsFromDegree(dmap)
 
-                    # print i,j, nqpts_map
                     # Initialize quadrature with number of gauss points
                     # necessary for i,j-th jacobian entry
                     self.initializeQuadrature(nqpts_map)
 
-                    jtmp = np.zeros((n,n))
+                    jtmp = np.zeros((nddof,nddof))
                                     
                     # Quadrature Loop
                     for q in self.quadrature_map.keys():
 
                         try:
-                            print('hey')
-                            pmap = self.Y(q,'name')
-                            print(type(pmap), type(elem), elem.__class__)
-                            # Set the paramter values into the element
-                            elem.setParameters(pmap)
-                        except:
-                            print('exception' )
+                            elem.setParameters(self.Y(q,'name'))
+                        except:                        
+                            print('exception')
+                            raise
     
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
-                        Aq   = np.zeros((n,n))
-                        uq   = np.zeros((n))
-                        udq  = np.zeros((n))
-                        uddq = np.zeros((n))
+                        Aq   = np.zeros((nddof,nddof))
+                        uq   = np.zeros((nddof))
+                        udq  = np.zeros((nddof))
+                        uddq = np.zeros((nddof))
                         for k in range(self.num_terms):
                             psiky = self.evalOrthoNormalBasis(k,q)
-                            uq[:] += v[k*n:(k+1)*n]*psiky
-                            udq[:] += dv[k*n:(k+1)*n]*psiky
-                            uddq[:] += ddv[k*n:(k+1)*n]*psiky
+                            uq[:] += v[k*nddof:(k+1)*nddof]*psiky
+                            udq[:] += dv[k*nddof:(k+1)*nddof]*psiky
+                            uddq[:] += ddv[k*nddof:(k+1)*nddof]*psiky
                             
                         # Fetch the deterministic element jacobian matrix
                         elem.addJacobian(time, Aq, alpha, beta, gamma, X, uq, udq, uddq)
@@ -843,21 +866,31 @@ class ParameterContainer:
                         # stochastic basis and place in the global matrix
                         psiziw = self.W(q)*self.evalOrthoNormalBasis(i,q)
                         psizjw = self.evalOrthoNormalBasis(j,q)
-                        jtmp[:,:] += Aq*psiziw*psizjw
-                        #print("jtmp", i, j, jtmp[:,:])
-    
-                    # Add the scaled deterministic block to element jacobian
-                    J[i*n:(i+1)*n,j*n:(j+1)*n] += jtmp[:,:]
-                    
-                    # If off diagonal add the symmetric counter part
-                    if i != j:
-                        np.set_printoptions(formatter={'float': '{: 0.3e}'.format})        
-                        #print("jtmp", i, j, jtmp[:,:])
-                        J[j*n:(j+1)*n,i*n:(i+1)*n] += jtmp[:,:]
-        print("J", J)
-                
-        #plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-6)
+                        jtmp[:,:] += Aq*psiziw*psizjw                        
 
+                    # Distribute blocks (16 times)
+                    for ii in range(nnodes):                        
+                        for jj in range(nnodes):
+
+                            # Local indices
+                            listart = ii*ndisps
+                            liend   = (ii+1)*ndisps                    
+                            ljstart = jj*ndisps
+                            ljend   = (jj+1)*ndisps
+                            
+                            gistart = ii*nsdof + i*ndisps
+                            giend   = ii*nsdof + (i+1)*ndisps
+                            gjstart = jj*nsdof + j*ndisps
+                            gjend   = jj*nsdof + (j+1)*ndisps
+                            
+                            if i == j:
+                                J[gistart:giend, gjstart:gjend] += jtmp[listart:liend, ljstart:ljend]
+                            else:
+                                J[gistart:giend, gjstart:gjend] += jtmp[listart:liend, ljstart:ljend]
+                                J[gjstart:gjend, gistart:giend] += jtmp[listart:liend, ljstart:ljend]
+
+        # plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-6)
+        
         return
 
     def projectInitCond(self, elem, v, vd, vdd, xpts):
@@ -868,7 +901,10 @@ class ParameterContainer:
         """
 
         # size of deterministic element state vector
-        n = elem.numDisplacements()*elem.numNodes()
+        ndisps = elem.numDisplacements()
+        nnodes = elem.numNodes()
+        nddof = ndisps*nnodes
+        nsdof = ndisps*self.getNumStochasticBasisTerms()
         
         for k in range(self.getNumStochasticBasisTerms()):
 
@@ -881,6 +917,9 @@ class ParameterContainer:
                 )
             
             # Quadrature Loop
+            utmp = np.zeros((nddof))
+            udtmp = np.zeros((nddof))
+            uddtmp = np.zeros((nddof))
             for q in self.quadrature_map.keys():
 
                 # Set the paramter values into the element
@@ -888,9 +927,9 @@ class ParameterContainer:
 
                 # Create space for fetching deterministic initial
                 # conditions
-                uq = np.zeros((n))
-                udq = np.zeros((n))
-                uddq = np.zeros((n))
+                uq = np.zeros((nddof))
+                udq = np.zeros((nddof))
+                uddq = np.zeros((nddof))
 
                 # Fetch the deterministic initial conditions
                 elem.getInitConditions(uq, udq, uddq, xpts)
@@ -898,9 +937,22 @@ class ParameterContainer:
                 # Project the determinic initial conditions onto the
                 # stochastic basis
                 psizkw = self.W(q)*self.evalOrthoNormalBasis(k,q)
-                v[k*n:(k+1)*n] += uq*psizkw
-                vd[k*n:(k+1)*n] += udq*psizkw
-                vdd[k*n:(k+1)*n] += uddq*psizkw
+                utmp += uq*psizkw
+                udtmp += udq*psizkw
+                uddtmp += uddq*psizkw
+
+            # Distribute values
+            for ii in range(nnodes):               
+                # Local indices
+                listart = ii*ndisps
+                liend   = (ii+1)*ndisps                                               
+                gistart = ii*nsdof + k*ndisps
+                giend   = ii*nsdof + (k+1)*ndisps
+
+                # Place in initial condition array node after node
+                v[gistart:giend] += utmp[listart:liend]*psizkw
+                vd[gistart:giend] += udtmp[listart:liend]*psizkw
+                vdd[gistart:giend] += uddtmp[listart:liend]*psizkw
     
             ## # Replace numbers less than machine precision with zero to
             ## # avoid numerical issues
