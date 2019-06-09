@@ -160,7 +160,7 @@ class ExponentialParameter(Parameter):
     
             # assert if weights don't add up to unity
             eps = np.finfo(np.float64).eps
-            #assert((1.0 - eps <= np.sum(w) <= 1.0 + eps) == True)
+            assert((1.0 - 2.0*eps <= np.sum(w) <= 1.0 + 2.0*eps) == True)
     
             # Return quadrature point in standard space as well
             z = xi # (y-mu)/beta
@@ -208,7 +208,7 @@ class NormalParameter(Parameter):
     
             # assert if weights don't add up to unity
             eps = np.finfo(np.float64).eps
-            assert((1.0 - eps <= np.sum(w) <= 1.0 + eps) == True)
+            assert((1.0 - 2.0*eps <= np.sum(w) <= 1.0 + 2.0*eps) == True)
     
             # Return quadrature point in standard space as well
             z = (y-mu)/sigma
@@ -255,7 +255,7 @@ class UniformParameter(Parameter):
     
             # assert if weights don't add up to unity
             eps = np.finfo(np.float64).eps
-            assert((1.0 - eps <= np.sum(w) <= 1.0 + eps) == True)
+            assert((1.0 - 2.0*eps <= np.sum(w) <= 1.0 + 2.0*eps) == True)
     
             # Return quadrature point in standard space as well
             z = (y-a)/(b-a)
@@ -889,7 +889,7 @@ class ParameterContainer:
                                 J[gistart:giend, gjstart:gjend] += jtmp[listart:liend, ljstart:ljend]
                                 J[gjstart:gjend, gistart:giend] += jtmp[listart:liend, ljstart:ljend]
 
-        # plot_jacobian(J, 'stochatic-element-block.pdf', normalize= True, precision=1.0e-6)
+        plot_jacobian(J, 'stochatic-element-block.pdf', normalize=False, precision=1.0e-6)
         
         return
 
