@@ -14,7 +14,19 @@ from orthogonal_polynomials import unit_hermite as Hhat
 from orthogonal_polynomials import unit_legendre as Phat
 from orthogonal_polynomials import unit_laguerre as Lhat
 from plotter import plot_jacobian
-    
+
+def index(ii):
+    return ii
+    if ii == 0:
+        return ii
+    if ii == 1:
+        return ii
+    if ii == 2:
+        return 3
+    if ii == 3:
+        return 2    
+    return ii
+
 ## TODO
 # Parameters are Monomials
 # Deterministic parameters are constant monomials (degree 0)
@@ -785,10 +797,10 @@ class ParameterContainer:
             # Distribute the residual
             for ii in range(nnodes):
                 # Local indices
-                listart = ii*ndisps
-                liend   = (ii+1)*ndisps                                               
-                gistart = ii*nsdof + i*ndisps
-                giend   = ii*nsdof + (i+1)*ndisps
+                listart = index(ii)*ndisps
+                liend   = (index(ii)+1)*ndisps                                               
+                gistart = index(ii)*nsdof + i*ndisps
+                giend   = index(ii)*nsdof + (i+1)*ndisps
 
                 # Place in global residul array node by node
                 #print(gistart, giend, listart, liend)
@@ -873,15 +885,15 @@ class ParameterContainer:
                         for jj in range(nnodes):
 
                             # Local indices
-                            listart = ii*ndisps
-                            liend   = (ii+1)*ndisps                    
-                            ljstart = jj*ndisps
-                            ljend   = (jj+1)*ndisps
+                            listart = index(ii)*ndisps
+                            liend   = (index(ii)+1)*ndisps                    
+                            ljstart = index(jj)*ndisps
+                            ljend   = (index(jj)+1)*ndisps
                             
-                            gistart = ii*nsdof + i*ndisps
-                            giend   = ii*nsdof + (i+1)*ndisps
-                            gjstart = jj*nsdof + j*ndisps
-                            gjend   = jj*nsdof + (j+1)*ndisps
+                            gistart = index(ii)*nsdof + i*ndisps
+                            giend   = index(ii)*nsdof + (i+1)*ndisps
+                            gjstart = index(jj)*nsdof + j*ndisps
+                            gjend   = index(jj)*nsdof + (j+1)*ndisps
                             
                             if i == j:
                                 J[gistart:giend, gjstart:gjend] += jtmp[listart:liend, ljstart:ljend]
@@ -944,10 +956,10 @@ class ParameterContainer:
             # Distribute values
             for ii in range(nnodes):               
                 # Local indices
-                listart = ii*ndisps
-                liend   = (ii+1)*ndisps                                               
-                gistart = ii*nsdof + k*ndisps
-                giend   = ii*nsdof + (k+1)*ndisps
+                listart = index(ii)*ndisps
+                liend   = (index(ii)+1)*ndisps                                               
+                gistart = index(ii)*nsdof + k*ndisps
+                giend   = index(ii)*nsdof + (k+1)*ndisps
 
                 # Place in initial condition array node after node
                 v[gistart:giend] += utmp[listart:liend]
