@@ -144,96 +144,96 @@ if __name__ == '__main__':
     # Default map for number of quadrature points
     dmap = Counter()
 
-    ## #  y_1^4
-    ## func = lambda q :  gy(q,1)*gy(q,1)*gy(q,1)*gy(q,1)
-    ## dmap[0] = 0; dmap[1] = 4; dmap[2] = 0
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
+    #  y_1^4
+    func = lambda q :  gy(q,1)*gy(q,1)*gy(q,1)*gy(q,1)
+    dmap[0] = 0; dmap[1] = 4; dmap[2] = 0
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
     
-    ## # Nonzero constant
-    ## func = lambda q : 1.0
-    ## dmap[0] = 0 ;  dmap[1] = 0; dmap[2] = 0
-    ## #A = getJacobian(func, dmap)
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## plot_jacobian(A, 'sparsity-identity-' + suffix + '.pdf')
+    # Nonzero constant
+    func = lambda q : 1.0
+    dmap[0] = 0 ;  dmap[1] = 0; dmap[2] = 0
+    #A = getJacobian(func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
+    plot_jacobian(A, 'sparsity-identity-' + suffix + '.pdf')
 
-    ## # Linear in y_1
-    ## func = lambda q : gy(q,0)
-    ## dmap[0] = 1; dmap[1] = 0; dmap[2] = 0
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y1-' + suffix + '.pdf')
+    # Linear in y_1
+    func = lambda q : gy(q,0)
+    dmap[0] = 1; dmap[1] = 0; dmap[2] = 0
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y1-' + suffix + '.pdf')
 
-    ## # Linear in y_2
-    ## func = lambda q : gy(q,1)
-    ## dmap[0] = 0; dmap[1] = 1; dmap[2] = 0
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y2-' + suffix + '.pdf')
+    # Linear in y_2
+    func = lambda q : gy(q,1)
+    dmap[0] = 0; dmap[1] = 1; dmap[2] = 0
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y2-' + suffix + '.pdf')
 
-    ## # Linear in y_3
-    ## func = lambda q : gy(q,2)
-    ## dmap[0] = 0; dmap[1] = 0; dmap[2] = 1
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y3-' + suffix + '.pdf')
+    # Linear in y_3
+    func = lambda q : gy(q,2)
+    dmap[0] = 0; dmap[1] = 0; dmap[2] = 1
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y3-' + suffix + '.pdf')
 
-    ## # y_1 +  y_2 + y_3
-    ## func = lambda q : gy(q,0) + gy(q,1) + gy(q,2)
-    ## dmap[0] = 1; dmap[1] = 1; dmap[2] = 1
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y1+y2+y3-' + suffix + '.pdf')
+    # y_1 +  y_2 + y_3
+    func = lambda q : gy(q,0) + gy(q,1) + gy(q,2)
+    dmap[0] = 1; dmap[1] = 1; dmap[2] = 1
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y1+y2+y3-' + suffix + '.pdf')
 
-    ## # y_1 *  y_2
-    ## func = lambda q : gy(q,0) * gy(q,1)
-    ## dmap[0] = 1; dmap[1] = 1; dmap[2] = 0
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y1y2-' + suffix + '.pdf')
+    # y_1 *  y_2
+    func = lambda q : gy(q,0) * gy(q,1)
+    dmap[0] = 1; dmap[1] = 1; dmap[2] = 0
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y1y2-' + suffix + '.pdf')
 
-    ## # y_2 *  y_3
-    ## func = lambda q : gy(q,1) * gy(q,2)
-    ## dmap[0] = 0; dmap[1] = 1; dmap[2] = 1
-    ## #A = getJacobian(func, dmap)
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## plot_jacobian(A, 'sparsity-y2y3-' + suffix + '.pdf')
+    # y_2 *  y_3
+    func = lambda q : gy(q,1) * gy(q,2)
+    dmap[0] = 0; dmap[1] = 1; dmap[2] = 1
+    #A = getJacobian(func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
+    plot_jacobian(A, 'sparsity-y2y3-' + suffix + '.pdf')
 
-    ## # y_1 *  y_3
-    ## func = lambda q : gy(q,0) * gy(q,2)
-    ## dmap[0] = 1; dmap[1] = 0; dmap[2] = 1
-    ## #A = getJacobian(func, dmap)
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## plot_jacobian(A, 'sparsity-y1y3-' + suffix + '.pdf')
+    # y_1 *  y_3
+    func = lambda q : gy(q,0) * gy(q,2)
+    dmap[0] = 1; dmap[1] = 0; dmap[2] = 1
+    #A = getJacobian(func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
+    plot_jacobian(A, 'sparsity-y1y3-' + suffix + '.pdf')
 
-    ## #  y_1^2
-    ## func = lambda q : gy(q,0)*gy(q,0)
-    ## dmap[0] = 2; dmap[1] = 0; dmap[2] = 0
-    ## #A = getJacobian(func, dmap)
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## plot_jacobian(A, 'sparsity-y1^2-' + suffix + '.pdf')
+    #  y_1^2
+    func = lambda q : gy(q,0)*gy(q,0)
+    dmap[0] = 2; dmap[1] = 0; dmap[2] = 0
+    #A = getJacobian(func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
+    plot_jacobian(A, 'sparsity-y1^2-' + suffix + '.pdf')
 
-    ## #  y_2^2
-    ## func = lambda q : gy(q,1)*gy(q,1)
-    ## dmap[0] = 0; dmap[1] = 2; dmap[2] = 0
-    ## #A = getJacobian(func, dmap)
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## plot_jacobian(A, 'sparsity-y2^2-' + suffix + '.pdf')
+    #  y_2^2
+    func = lambda q : gy(q,1)*gy(q,1)
+    dmap[0] = 0; dmap[1] = 2; dmap[2] = 0
+    #A = getJacobian(func, dmap)
+    A = getSparseJacobian(pc, func, dmap)
+    plot_jacobian(A, 'sparsity-y2^2-' + suffix + '.pdf')
 
-    ## #  y_3^2
-    ## func = lambda q : gy(q,2)*gy(q,2)
-    ## dmap[0] = 0; dmap[1] = 0; dmap[2] = 2
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y3^2-' + suffix + '.pdf')
+    #  y_3^2
+    func = lambda q : gy(q,2)*gy(q,2)
+    dmap[0] = 0; dmap[1] = 0; dmap[2] = 2
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y3^2-' + suffix + '.pdf')
 
-    ## #  y_3^4
-    ## func = lambda q : gy(q,2)*gy(q,2)*gy(q,2) + gy(q,2)*gy(q,2)*gy(q,2)*gy(q,2)
-    ## dmap[0] = 0; dmap[1] = 0; dmap[2] = 4
-    ## A = getSparseJacobian(pc, func, dmap)
-    ## #A = getJacobian(func, dmap)
-    ## plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
+    #  y_3^4
+    func = lambda q : gy(q,2)*gy(q,2)*gy(q,2) + gy(q,2)*gy(q,2)*gy(q,2)*gy(q,2)
+    dmap[0] = 0; dmap[1] = 0; dmap[2] = 4
+    A = getSparseJacobian(pc, func, dmap)
+    #A = getJacobian(func, dmap)
+    plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
         
     # y_1 * y_2 * y_3*y_4
     func = lambda q : gy(q,0) * gy(q,1) * gy(q,2) * gy(q,3)
