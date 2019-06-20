@@ -22,7 +22,7 @@ from two_bar_truss import TwoBarTruss
 # Optimization settings
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--logfile'  , type=str, default='detopt.log', help='log file for optimizer')
+parser.add_argument('--logfile'  , type=str, default='detopt', help='log file for optimizer')
 parser.add_argument('--algorithm', type=str, default='SLSQP', help='SLSQP/ALGENCAN')
 args = parser.parse_args()
 
@@ -118,16 +118,16 @@ if __name__ == "__main__":
     opt_prob.addCon('failure-bar2' , type='i')
     
     # Add variables
-    opt_prob.addVar('area-1', type='c', value= 1.0, lower= 1.0e-3, upper= 100.0)
-    opt_prob.addVar('area-2', type='c', value= 1.0, lower= 1.0e-3, upper= 100.0)
-    opt_prob.addVar('height', type='c', value= 1.0, lower= 1.0   , upper= 100.0)
+    opt_prob.addVar('area-1', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
+    opt_prob.addVar('area-2', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
+    opt_prob.addVar('height', type='c', value= 4.0, lower= 4.0   , upper= 10.0)
     
     # Optimization algorithm
     if args.algorithm == 'ALGENCAN':
         opt = ALGENCAN()
         opt.setOption('iprint',2)
-        opt.setOption('epsfeas',1e-4)
-        opt.setOption('epsopt',1e-3)
+        opt.setOption('epsfeas',1e-6)
+        opt.setOption('epsopt',1e-6)
     else:
         opt = SLSQP(pll_type='POA')
         opt.setOption('MAXIT',999)
