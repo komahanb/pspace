@@ -6,8 +6,8 @@ import numpy as np
 from collections import Counter
 from timeit import default_timer as timer
 
-from pchaos.parameters import ParameterFactory, ParameterContainer
-from pchaos.plotter import plot_jacobian
+from pspace.parameters import ParameterFactory, ParameterContainer
+from pspace.plotter import plot_jacobian
 
 ## def sparsity(a, b):
 ##     """
