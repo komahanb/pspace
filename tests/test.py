@@ -2,7 +2,7 @@ import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 import numpy as np
-from pspace.parameters import ParameterFactory, ParameterContainer
+from pspace.core import ParameterFactory, ParameterContainer
 
 if __name__ == '__main__':
     
