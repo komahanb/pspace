@@ -18,13 +18,12 @@ from pyOpt import SLSQP
 from pyOpt import ALGENCAN
 
 from two_bar_truss import TwoBarTruss
-
-from pchaos.parameters import ParameterFactory, ParameterContainer
+from stochastic_two_bar_truss import StochasticTwoBarTruss
 
 # Optimization settings
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--logfile'  , type=str, default='detopt.log', help='log file for optimizer')
+parser.add_argument('--logfile'  , type=str, default='robopt', help='log file for optimizer')
 parser.add_argument('--algorithm', type=str, default='SLSQP', help='SLSQP/ALGENCAN')
 args = parser.parse_args()
 
@@ -45,7 +44,7 @@ def getCollocationPoints(ymean):
 
     # Number of collocation points (quadrature points) along each
     # parameter dimension
-    qmap = pc.getQuadraturePointsWeights({0:10, 1:10, 2:10})
+    qmap = pc.getQuadraturePointsWeights({0:5, 1:5, 2:5})
         
     return qmap
 
@@ -56,7 +55,11 @@ class TwoBarTrussOpt:
         self.problem = truss
         self.nvars   = 3
         self.ncon    = 3
-        self.k       = k
+
+        # Control stochastic objective and constraints
+        self.k  = k
+        self.w1 = 1.0
+        self.w2 = 1.0
         
         # The design history file
         self.x_hist = []
@@ -85,34 +88,21 @@ class TwoBarTrussOpt:
         # Append the point to the solution history
         self.x_hist.append(np.array(x))
 
-        # Get the quadrature map for the current x
-        quadmap = getCollocationPoints(x)
-        
-        # Find mean
-        fmean = 0.0
-        fqlist = []
-        for q in quadmap.keys():
-            yq = quadmap[q]['Y']
-            wq = quadmap[q]['W']
-            fq = self.problem.getTrussWeight(a1=yq[0], a2=yq[1], h=yq[2])
-            fqlist.append(fq)
-            fmean += wq*fq
-
-        print fmean
-        stop
-
-        fobj = fmean + fvar
-        
         # Store the objective function value
-        # fobj = self.problem.getTrussWeight(a1=x[0], a2=x[1], h=x[2])
+        fexp , fvar , fstd  = self.problem.getTrussWeightMoments(a1=x[0], a2=x[1], h=x[2])
+        g1exp, g1bar, g1std = self.problem.getBucklingFirstBarMoments(a1=x[0], a2=x[1], h=x[2])
+        g2exp, g2bar, g2std = self.problem.getFailureFirstBarMoments(a1=x[0], a2=x[1], h=x[2])
+        g3exp, g3bar, g3std = self.problem.getFailureSecondBarMoments(a1=x[0], a2=x[1], h=x[2])
+
+        # Store function values
+        fobj = self.w1*fexp + self.w2*fvar
+        print "fmean, fvar", fexp, fvar
         
         # Store the constraint values
         con = [0.0]*self.ncon
-        con[0] = self.problem.getBucklingFirstBar(a1=x[0], a2=x[1], h=x[2])
-        con[1] = self.problem.getFailureFirstBar(a1=x[0], a2=x[1], h=x[2])
-        con[2] = self.problem.getFailureSecondBar(a1=x[0], a2=x[1], h=x[2])
-
-
+        con[0] = g1exp + self.k*g1std
+        con[1] = g2exp + self.k*g2std
+        con[2] = g3exp + self.k*g3std
         
         # Return the values
         return fobj, con, fail
@@ -125,22 +115,27 @@ class TwoBarTrussOpt:
         
         # Set the fail flag
         fail = 0
-
+                     
         # Set the objective gradient
+        dfexp , dfvar , dfstd  = self.problem.getTrussWeightMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
+        dg1exp, dg1bar, dg1std = self.problem.getBucklingFirstBarMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
+        dg2exp, dg2bar, dg2std = self.problem.getFailureFirstBarMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
+        dg3exp, dg3bar, dg3std = self.problem.getFailureSecondBarMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
+
         g = [0.0]*self.nvars
-        g[0:self.nvars] = self.problem.getTrussWeightDeriv(a1=x[0], a2=x[1], h=x[2])
-        
+        g[0:self.nvars] = self.w1*dfexp + self.w2*dfvar
+
         # Set the constraint gradient
         A = np.zeros([self.ncon, self.nvars])
-        A[0,0:self.nvars] = self.problem.getBucklingFirstBarDeriv(a1=x[0], a2=x[1], h=x[2])
-        A[1,0:self.nvars] = self.problem.getFailureFirstBarDeriv(a1=x[0], a2=x[1], h=x[2])
-        A[2,0:self.nvars] = self.problem.getFailureSecondBarDeriv(a1=x[0], a2=x[1], h=x[2])
+        A[0,0:self.nvars] = dg1exp + self.k*dg1std
+        A[1,0:self.nvars] = dg2exp + self.k*dg2std
+        A[2,0:self.nvars] = dg3exp + self.k*dg3std
         
         return g, A, fail
     
 if __name__ == "__main__":
 
-    print "running deterministic optimization "
+    print "running robust optimization "
 
     # Physical problem
     rho = 0.2836  # lb/in^3
@@ -150,9 +145,10 @@ if __name__ == "__main__":
     ys  = 36260.0 # psi
     fs  = 1.5
     dtruss = TwoBarTruss(rho, L, P, E, ys, fs)
+    struss = StochasticTwoBarTruss(dtruss)
 
     # Optimization Problem
-    optproblem = TwoBarTrussOpt(MPI.COMM_WORLD, dtruss)
+    optproblem = TwoBarTrussOpt(MPI.COMM_WORLD, struss, k = 4.0)
     opt_prob = Optimization(args.logfile, optproblem.evalObjCon)
     
     # Add functions
@@ -162,16 +158,16 @@ if __name__ == "__main__":
     opt_prob.addCon('failure-bar2' , type='i')
     
     # Add variables
-    opt_prob.addVar('area-1', type='c', value= 1.0, lower= 1.0e-3, upper= 100.0)
-    opt_prob.addVar('area-2', type='c', value= 1.0, lower= 1.0e-3, upper= 100.0)
-    opt_prob.addVar('height', type='c', value= 1.0, lower= 1.0   , upper= 100.0)
+    opt_prob.addVar('area-1', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
+    opt_prob.addVar('area-2', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
+    opt_prob.addVar('height', type='c', value= 4.0, lower= 4.0   , upper= 10.0)
     
     # Optimization algorithm
     if args.algorithm == 'ALGENCAN':
         opt = ALGENCAN()
         opt.setOption('iprint',2)
-        opt.setOption('epsfeas',1e-4)
-        opt.setOption('epsopt',1e-3)
+        opt.setOption('epsfeas',1e-6)
+        opt.setOption('epsopt',1e-6)
     else:
         opt = SLSQP(pll_type='POA')
         opt.setOption('MAXIT',999)

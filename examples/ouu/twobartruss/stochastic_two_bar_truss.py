@@ -94,8 +94,7 @@ class StochasticTwoBarTruss:
         # d/dx(V[f(x)]) = E[2*f(x)*d/dx(f(x))] - 2*E[f(x)]*d/dx(E[f(x)])
         #               = E[2*f(x)*d/dx(f(x))] - 2*E[f(x)]*E[d/dx(f(x))]
         #-------------------------------------------------------------#        
-        """
-        
+        """        
         quadmap = self.getCollocationPoints([a1,a2,h])        
         ymean = yymean = yprimemean = yyprimemean = 0.0
         for q in quadmap.keys():
