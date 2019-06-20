@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/komahanb/pchaos.svg?branch=master)](https://travis-ci.org/komahanb/pchaos)
+[![Build Status](https://travis-ci.org/komahanb/pspace.svg?branch=master)](https://travis-ci.org/komahanb/pspace)
 
-<object data="https://github.com/komahanb/pchaos/tree/master/docs/sgm.png" type="application/pdf" width="700px" height="700px">
-    <embed src="https://github.com/komahanb/pchaos/tree/master/docs/sgm.png"> </embed>
+<object data="https://github.com/komahanb/pspace/tree/master/docs/sgm.png" type="application/pdf" width="700px" height="700px">
+    <embed src="https://github.com/komahanb/pspace/tree/master/docs/sgm.png"> </embed>
 </object>
 
 # Probabilistic Space
