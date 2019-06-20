@@ -4,7 +4,7 @@
     <embed src="https://github.com/komahanb/pchaos/tree/master/docs/sgm.png"> </embed>
 </object>
 
-# Polynomial Chaos
+# Probabilistic Space
 
 Module for uncertainty quantification applications
 
