@@ -14,20 +14,6 @@ Author: Komahan Boopathy
 
 from __future__ import print_function
 import numpy as np
-from pspace.core import ParameterFactory, ParameterContainer
-
-# Create random parameters
-pfactory = ParameterFactory()
-K = pfactory.createNormalParameter('k', dict(mu=5.0, sigma=0.5), 2)
-
-# Add random parameters into a container and initialize
-pc = ParameterContainer()
-pc.addParameter(K)
-pc.initialize()
-
-# Number of collocation points (quadrature points) along each
-# parameter dimension
-qmap = pc.getQuadraturePointsWeights({0:5})
 
 class Spring:
     def __init__(self, k):
@@ -58,30 +44,31 @@ class Spring:
     def adjoint_solve(self, q):        
         return -self.dFdq(q)/self.dRdq(q)
     
-# Test the system
-f = np.pi
-spr = Spring(k = np.pi/2.)
-u = spr.solve(0, f)
-E = spr.F(u)
-print("force   :", f)
-print("disp    :", u)
-print("energy  :", E)
-
-print("\nk-derivatives... ")
-dRdk = spr.dRdk(u)
-dFdk = spr.dFdk(u)
-print("dRdk  :", dRdk)
-print("dFdk  :", dFdk)
-
-print("\nq-derivatives...")
-dRdq = spr.dRdq(u)
-dFdq = spr.dFdq(u)
-print("dRdq  :", dRdq)
-print("dFdq  :", dFdq)
-
-print("\nadjoint derivative...")
-lam = spr.adjoint_solve(u)
-print("lambda:", lam)
-DFDx = dFdk + lam*dRdk
-print("Adjoint DFDx  :", DFDx)
-print("Exact   DFDx  :", -0.5*u*u)
+if __name__ == "__main__":
+    # Test the system
+    f = np.pi
+    spr = Spring(k = np.pi/2.)
+    u = spr.solve(0, f)
+    E = spr.F(u)
+    print("force   :", f)
+    print("disp    :", u)
+    print("energy  :", E)
+    
+    print("\nk-derivatives... ")
+    dRdk = spr.dRdk(u)
+    dFdk = spr.dFdk(u)
+    print("dRdk  :", dRdk)
+    print("dFdk  :", dFdk)
+    
+    print("\nq-derivatives...")
+    dRdq = spr.dRdq(u)
+    dFdq = spr.dFdq(u)
+    print("dRdq  :", dRdq)
+    print("dFdq  :", dFdq)
+    
+    print("\nadjoint derivative...")
+    lam = spr.adjoint_solve(u)
+    print("lambda:", lam)
+    DFDx = dFdk + lam*dRdk
+    print("Adjoint DFDx  :", DFDx)
+    print("Exact   DFDx  :", -0.5*u*u)
