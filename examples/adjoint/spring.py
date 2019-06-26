@@ -43,8 +43,9 @@ class Spring:
     def dRdk(self, q):
         return q        
     def solve(self, q, f):
-        # Fake the linear solve like newton solve with intial zero
-        # guess
+        """
+        Fake the linear solve like newton solve with zero initial guess
+        """
         for k in range(1):
             q = q - self.R(q,f)/self.dRdq(q)
         return q    
@@ -54,6 +55,8 @@ class Spring:
         return self.k*q
     def dFdk(self, q):
         return 0.5*q*q
+    def adjoint_solve(self, q):        
+        return -self.dFdq(q)/self.dRdq(q)
     
 # Test the system
 f = np.pi
@@ -64,7 +67,7 @@ print("force   :", f)
 print("disp    :", u)
 print("energy  :", E)
 
-print("\nk-derivatives...")
+print("\nk-derivatives... ")
 dRdk = spr.dRdk(u)
 dFdk = spr.dFdk(u)
 print("dRdk  :", dRdk)
@@ -76,5 +79,9 @@ dFdq = spr.dFdq(u)
 print("dRdq  :", dRdq)
 print("dFdq  :", dFdq)
 
-
-
+print("\nadjoint derivative...")
+lam = spr.adjoint_solve(u)
+print("lambda:", lam)
+DFDx = dFdk + lam*dRdk
+print("Adjoint DFDx  :", DFDx)
+print("Exact   DFDx  :", -0.5*u*u)

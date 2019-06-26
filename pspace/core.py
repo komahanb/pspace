@@ -417,17 +417,17 @@ class ParameterContainer:
         parameterids as keys and number of corresponding quadrature
         points along the monomial dimension.
         """
-        pids = dmap.keys()
-        param_nqpts_map = Counter()
-        for pid in pids:
-            param_nqpts_map[pid] = nqpts(dmap[pid])
-        return param_nqpts_map
-    
         ## pids = dmap.keys()
         ## param_nqpts_map = Counter()
-        ## for pid in self.parameter_map.keys(): #pids:
-        ##     param_nqpts_map[pid] = self.parameter_map[pid].monomial_degree #nqpts(dmap[pid])
+        ## for pid in pids:
+        ##     param_nqpts_map[pid] = nqpts(dmap[pid])
         ## return param_nqpts_map
+    
+        pids = dmap.keys()
+        param_nqpts_map = Counter()
+        for pid in self.parameter_map.keys(): #pids:
+            param_nqpts_map[pid] = self.parameter_map[pid].monomial_degree #nqpts(dmap[pid])
+        return param_nqpts_map
     
     def getParameterDegreeForBasisTerm(self, paramid, kthterm):
         """
@@ -903,8 +903,8 @@ class ParameterContainer:
                                 J[gistart:giend, gjstart:gjend] += jtmp[listart:liend, ljstart:ljend]
                                 #J[gjstart:gjend, gistart:giend] += jtmp[listart:liend, ljstart:ljend]
 
-        print("J=", J)
-        plot_jacobian(J, 'stochatic-element-block.pdf', normalize=True, precision=1.0e-6)
+        #print("J=", J)
+        #plot_jacobian(J, 'stochatic-element-block.pdf', normalize=True, precision=1.0e-6)
         
         return
 
