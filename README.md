@@ -6,7 +6,7 @@
 
 # Probabilistic Space
 
-Module for uncertainty quantification applications
+Module for uncertainty quantification and optimization under uncertainty applications
 
 ## Modes
 1. Stochastic Projection (Galerkin)
