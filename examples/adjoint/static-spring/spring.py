@@ -19,22 +19,26 @@ class Spring:
     def __init__(self, k):
         self.k = k
         return
-    def setStiffness(self,ymap):
-        self.k = ymap['k']
+    def setStiffness(self,k):
+        self.k = k
         return
     def R(self, q, f):
         return self.k*q - f
     def dRdq(self, q):
-        return self.k
+        A = np.zeros((1,1))
+        A[0][0] = self.k
+        return A
     def dRdk(self, q):
         return q        
-    def solve(self, q, f):
+    def solve(self, u, f):
         """
         Fake the linear solve like newton solve with zero initial guess
         """
         for k in range(1):
-            q = q - self.R(q,f)/self.dRdq(q)
-        return q    
+            A = self.dRdq(u)
+            b = np.array([self.R(u,f)])
+            u = u - np.linalg.solve(A,b)
+        return u    
     def F(self, q):
         return 0.5*self.k*q*q
     def dFdq(self, q):

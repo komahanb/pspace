@@ -34,7 +34,7 @@ def get_func_deriv(k):
 
 # Create random parameters
 pfactory = ParameterFactory()
-K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 2)
+K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 1)
 
 # Add random parameters into a container and initialize
 pc = ParameterContainer()
