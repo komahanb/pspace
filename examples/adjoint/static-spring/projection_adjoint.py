@@ -149,7 +149,7 @@ def get_func_deriv(k):
 
 # Create random parameters
 pfactory = ParameterFactory()
-K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 5)
+K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 3)
 
 # Add random parameters into a container and initialize
 pc = ParameterContainer()
@@ -166,16 +166,57 @@ sspr = StochasticSpring(dspr, pc)
 
 # Assemble stochastic force vector from deterministic vector
 f = np.pi
-uhat = sspr.solve(0, f)
-E = dspr.F(uhat)
+U = sspr.solve(0, f)
+# E = dspr.F(uhat)
 print("force   :", f)
-print("disp    :", uhat)
-print("energy  :", E)
+print("disp    :", U)
 
-stop
+E = np.zeros((sspr.nsdof))
+for i in range(sspr.nterms):
+    # Determine num quadrature point required for k-th
+    # projection
+    pc.initializeQuadrature(
+        pc.getNumQuadraturePointsFromDegree(
+            pc.basistermwise_parameter_degrees[i]
+            )
+        )    
+    # Quadrature Loop
+    ftmp = 0
+    for q in pc.quadrature_map.keys():                        
+        # Quadrature node and weight
+        yq = pc.Y(q,'name')
+        wq = pc.W(q)
+    
+        # Set the paramter values into the element
+        dspr.setStiffness(yq['K'])
+      
+        # Create space for fetching deterministic
+        # jacobian, and state vectors that go as input
+        uq = np.zeros((1))# dspr.nddof
+        for k in range(sspr.nterms):
+            psiky = pc.evalOrthoNormalBasis(k,q)
+            uq[:] += U[k*1:(k+1)*1]*psiky
+
+        fq = dspr.F(uq)
+        
+        # Form u for this quadrature point 'y'    
+        # Project the determinic element jacobian onto the
+        # stochastic basis and place in the global matrix
+        psiziw = wq*pc.evalOrthoNormalBasis(i,q)
+        
+        # F(q,q(y))*psi(y)*rho(y)
+        E[i] += fq*psiziw
+
+fmean = E[0]
+fvar  = np.sum(E[1:]**2)
+fstd  = np.sqrt(fvar)
+print("fmean :", E[0], "fvar :", fvar, "fstd :", fstd) 
+
 print("\nk-derivatives... ")
-dRdk = spr.dRdk(uhat)
-dFdk = spr.dFdk(uhat)
+
+dRdkq = spr.dRdk(uq)
+dFdkq = spr.dFdk(uq)
+
 print("dRdk  :", dRdk)
 print("dFdk  :", dFdk)
 
