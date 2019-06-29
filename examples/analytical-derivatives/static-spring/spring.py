@@ -45,10 +45,14 @@ class Spring:
         return self.k*q
     def dFdk(self, q):
         return 0.5*q*q
-    def adjoint_solve(self, q):        
-        return -self.dFdq(q)/self.dRdq(q)
-    def direct_solve(self, q):        
-        return -self.dRdk(q)/self.dRdq(q)
+    def adjoint_solve(self, q):
+        A = self.dRdq(q)
+        b = np.array([self.dFdq(q)])
+        return - np.linalg.solve(A,b)
+    def direct_solve(self, q):
+        A = self.dRdq(q)
+        b = np.array([self.dRdk(q)])
+        return - np.linalg.solve(A,b)
     
 if __name__ == "__main__":
     # Test the system
