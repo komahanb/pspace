@@ -53,7 +53,12 @@ class Spring:
         A = self.dRdq(q)
         b = np.array([self.dRdk(q)])
         return - np.linalg.solve(A,b)
-    
+    def getAdjointDeriv(self, u, lam):
+        DFDx = self.dFdk(u) + lam*self.dRdk(u)
+        return DFDx
+    def getDirectDeriv(self, u, psi):
+        DFDx = self.dFdk(u) + psi*self.dFdq(u)
+        return DFDx
 if __name__ == "__main__":
     # Test the system
     f = np.pi
@@ -79,13 +84,13 @@ if __name__ == "__main__":
     print("\nadjoint derivative...")
     lam = spr.adjoint_solve(u)
     print("lambda:", lam)
-    DFDx = dFdk + lam*dRdk
+    DFDx = spr.getAdjointDeriv(u, lam)
     print("Adjoint DFDx  :", DFDx)
     print("Exact   DFDx  :", -0.5*u*u)
 
     print("\ndirect derivative...")
     lam = spr.direct_solve(u)
     print("lambda:", lam)
-    DFDx = dFdk + lam*dFdq
+    DFDx = spr.getDirectDeriv(u, lam)
     print("Direct  DFDx  :", DFDx)
     print("Exact   DFDx  :", -0.5*u*u)
