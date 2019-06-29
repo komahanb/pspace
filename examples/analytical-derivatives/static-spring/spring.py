@@ -47,6 +47,8 @@ class Spring:
         return 0.5*q*q
     def adjoint_solve(self, q):        
         return -self.dFdq(q)/self.dRdq(q)
+    def direct_solve(self, q):        
+        return -self.dRdk(q)/self.dRdq(q)
     
 if __name__ == "__main__":
     # Test the system
@@ -75,4 +77,11 @@ if __name__ == "__main__":
     print("lambda:", lam)
     DFDx = dFdk + lam*dRdk
     print("Adjoint DFDx  :", DFDx)
+    print("Exact   DFDx  :", -0.5*u*u)
+
+    print("\ndirect derivative...")
+    lam = spr.direct_solve(u)
+    print("lambda:", lam)
+    DFDx = dFdk + lam*dFdq
+    print("Direct  DFDx  :", DFDx)
     print("Exact   DFDx  :", -0.5*u*u)
