@@ -47,7 +47,7 @@ print('fvalue :', f, 'dfdx   :', dfdx)
 
 # Number of collocation points (quadrature points) along each
 # parameter dimension
-quadmap = pc.getQuadraturePointsWeights({0:5})
+quadmap = pc.getQuadraturePointsWeights({0:15})
 ymean = yymean = yprimemean = yyprimemean = 0.0
 for q in quadmap.keys():
     yq = quadmap[q]['Y']
@@ -65,7 +65,7 @@ fstd = np.sqrt(fvar)
 fmeanprime = yprimemean
 fvarprime = yyprimemean - 2.0*fmean*fmeanprime
 fstdprime = fvarprime/(2.0*np.sqrt(fvar))
-print('stochastic')
-print("fmean :", fmean, "fmeanprime", fmeanprime)
-print("fvar  :", fvar , "fvar prime", fvarprime)
-print("fstd  :", fstd , "fstd prime", fstdprime)
+print('stochastic sampling adjoint')
+print("fmean : %15.14f" % fmean, "fmeanprime : %15.14f" % fmeanprime)
+print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f" % fvarprime)
+print("fstd  : %15.14f" % fstd , "fstd prime : %15.14f" % fstdprime)
