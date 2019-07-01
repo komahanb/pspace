@@ -247,7 +247,7 @@ def get_func_deriv(k):
 
 # Create random parameters
 pfactory = ParameterFactory()
-K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 8)
+K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 7)
 
 # Add random parameters into a container and initialize
 pc = ParameterContainer()
@@ -266,8 +266,8 @@ sspr = StochasticSpring(dspr, pc)
 f = np.pi
 U = sspr.solve(0, f)
 # E = dspr.F(uhat)
-print("force   :", f)
-print("disp    :", U)
+# print("force   :", f)
+# print("disp    :", U)
 
 # Decompose f(y) and dfdx(y) in stochastic basis
 E = np.zeros((sspr.nsdof))
@@ -315,86 +315,71 @@ for i in range(sspr.nterms):
 fmean = E[0]
 fvar  = np.sum(E[1:]**2)
 fstd  = np.sqrt(fvar)
-print("E[f]    :", E[0], "V[f]     :", fvar, "S[f] :", fstd) 
+# print("E[f]    :", E[0], "V[f]     :", fvar, "S[f] :", fstd) 
 
 EdRdX = dRdX[0]
 VdRdX = np.sum(dRdX[1:]**2)
 SdRdX = np.sqrt(VdRdX)
-print("E[dRdx] :", EdRdX, "V[dRdx] :", VdRdX, "S[dRdx] : :", SdRdX)
+# print("E[dRdx] :", EdRdX, "V[dRdx] :", VdRdX, "S[dRdx] : :", SdRdX)
 
 EdFdX = dFdX[0]
 VdFdX = np.sum(dFdX[1:]**2)
 SdFdX = np.sqrt(VdFdX)
-print("E[dFdx] :", EdFdX, "V[dFdx] :", VdFdX, "S[dFdx] : :", SdFdX)
+# print("E[dFdx] :", EdFdX, "V[dFdx] :", VdFdX, "S[dFdx] : :", SdFdX)
 
 lam = sspr.adjoint_solve(U)
-print(lam)
-print(dRdX)
-print(lam*dRdX)
-print(dFdX)
-DFDX = dFdX + lam*dRdX
-fmeanprime = DFDX[0]
-fvarprime  = np.sum(DFDX[1:]**2)
-fstdprime  = np.sqrt(fvarprime)
-print("fmean :", fmean, "fmeanprime", fmeanprime)
-print("fvar  :", fvar , "fvar prime", fvarprime)
-print("fstd  :", fstd , "fstd prime", fstdprime)
-stop
-print("Adjoint DFDx  :", DFDx)
-print("Exact   DFDx  :", -0.5*uhat*uhat)
 
-stop
+# Project f and create F
+nsdof = sspr.nsdof
+nddof = 1
+nterms = sspr.nterms
 
-print("\nk-derivatives... ")
-dRdkq = spr.dRdk(uq)
-dFdkq = spr.dFdk(uq)
+dFdX = np.zeros((nsdof))
+for i in range(nterms):
 
-## print("dRdk  :", dRdk)
-## print("dFdk  :", dFdk)
+    # Determine num quadrature point required for k-th
+    # projection
+    pc.initializeQuadrature(
+        pc.getNumQuadraturePointsFromDegree(
+            pc.basistermwise_parameter_degrees[i]
+            )
+        )
+    
+    # Loop through quadrature points
+    fitmp = 0.0
+    for q in pc.quadrature_map.keys():
+        # Quadrature node and weight
+        yq = pc.Y(q,'name')
+        wq = pc.W(q)
 
-## print("\nq-derivatives...")
-## dRdq = spr.dRdq(uhat)
-## dFdq = spr.dFdq(uhat)
-## print("dRdq  :", dRdq)
-## print("dFdq  :", dFdq)
+        # Set the paramter values into the element
+        dspr.setStiffness(yq['K'])
 
-print("\nadjoint derivative...")
-lam = spr.adjoint_solve(U)
-print("lambda:", lam)
+        # Create space for fetching deterministic
+        # jacobian, and state vectors that go as input
+        uq = np.zeros((nddof))
+        lamq = np.zeros((nddof))
+        for k in range(nterms):
+            psiky = pc.evalOrthoNormalBasis(k,q)
+            uq[:] += U[k*nddof:(k+1)*nddof]*psiky
+            lamq[:] += lam[k*nddof:(k+1)*nddof]*psiky
+                    
+        # Evaluate function
+        dfdxq = dspr.getAdjointDeriv(uq, lamq)
 
-stop
+        # Project the determinic initial conditions onto the
+        # stochastic basis
+        psiziw = wq*pc.evalOrthoNormalBasis(i,q)
+        fitmp += dfdxq*psiziw
 
-DFDx = dFdk + lam*dRdk
-print("Adjoint DFDx  :", DFDx)
-print("Exact   DFDx  :", -0.5*uhat*uhat)
+    # Set into the force vector
+    dFdX[i] = fitmp
 
-stop
-
-print('deterministic')
-f, dfdx = get_func_deriv(np.pi/2.)
-print('fvalue :', f, 'dfdx   :', dfdx)
-
-# Number of collocation points (quadrature points) along each
-# parameter dimension
-quadmap = pc.getQuadraturePointsWeights({0:5})
-ymean = yymean = yprimemean = yyprimemean = 0.0
-for q in quadmap.keys():
-    yq = quadmap[q]['Y']
-    wq = quadmap[q]['W']    
-    y, yprime = get_func_deriv(k=yq[0])
-    ymean += wq*y
-    yymean += wq*y**2
-    yprimemean += wq*yprime
-    yyprimemean += wq*(2*y*yprime)
-
-# Compute moments and their derivatives
-fmean = ymean
-fvar = yymean - fmean**2
-fstd = np.sqrt(fvar)
-fmeanprime = yprimemean
-fvarprime = yyprimemean - 2.0*fmean*fmeanprime
+fmeanprime = dFdX[0]
+fvarprime = np.sum(2*E[1:]*dFdX[1:])
 fstdprime = fvarprime/(2.0*np.sqrt(fvar))
-print('stochastic')
-print("fmean :", fmean, "fmeanprime", fmeanprime)
-print("fvar  :", fvar , "fvar prime", fvarprime)
-print("fstd  :", fstd , "fstd prime", fstdprime)
+
+print('stochastic galerkin adjoint')
+print("fmean : %15.14f" % fmean, "fmeanprime : %15.14f" % fmeanprime)
+print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f" % fvarprime)
+print("fstd  : %15.14f" % fstd , "fstd prime : %15.14f" % fstdprime)
