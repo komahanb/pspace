@@ -3,24 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pspace.core import ParameterFactory, ParameterContainer
 
-## # Create data
-## N = 10
-## x = np.random.rand(N)
-## y = np.random.rand(N)
-## colors = (0,0,0)
-## area = np.pi*3
-## print(x)
-## print(y)
-## # Plot
-## plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-## plt.title('Scatter plot pythonspot.com')
-## plt.xlabel('x')
-## plt.ylabel('y')
-## plt.show()
-## stop
-## 
-##
-
 N = 30
 
 # Create random parameters
@@ -40,19 +22,8 @@ quadmap = pc.getQuadraturePointsWeights({0:N,1:N})
 for q in quadmap.keys():
     yq = quadmap[q]['Y']
     wq = quadmap[q]['W']
-    print(yq[0], yq[1])
     Y[q,0] = yq[0]
     Y[q,1] = yq[1]
-    #Y[q,:] = yq[0]
-
-plt.scatter(Y[:,0], Y[:,1], s=np.pi*3, alpha=1.0)
-plt.xlabel('x')
-plt.ylabel('y')
-plt.axis('equal')
-plt.show()
-
-print(Y)
-stop
 
 ######################################################################
 # plot results
@@ -65,16 +36,15 @@ plt.rcParams['ytick.direction'] = 'out'
 # Optionally set font to Computer Modern to avoid common missing
 # font errors
 params = {
-  'axes.labelsize': 20,
-  'legend.fontsize': 14,
-  'xtick.labelsize': 20,
-  'ytick.labelsize': 20,
-  'text.usetex': True}
+  'axes.labelsize'  : 20,
+  'legend.fontsize' : 14,
+  'xtick.labelsize' : 20,
+  'ytick.labelsize' : 20,
+  'text.usetex'     : True}
 plt.rcParams.update(params)
 
 # Latex math
 plt.rcParams['text.latex.preamble'] = [r'\usepackage{sfmath}']
-#plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = 'courier'
 plt.rcParams['font.size'] = 18
 plt.rcParams['font.weight'] = 'bold'
@@ -85,7 +55,7 @@ plt.rcParams['lines.color'] = 'r'
 plt.rcParams.update({'figure.autolayout': True})
 
 # Set marker size
-markerSize = 7.0 #11.0
+markerSize = 7.0 
 mew = 2.0
 
 # bar chart settings
@@ -110,23 +80,24 @@ ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
 ax.xaxis.set_ticks_position('bottom')
 ax.yaxis.set_ticks_position('left')
-#plt.plot(time, umean    , '-', label='$u(t)$'       , mew=mew, ms=markerSize, color=tableau20[2], mec='black')
+plt.scatter(Y[:,0], Y[:,1], s=np.pi*3, alpha=1.0)
 plt.xlabel(r'$\xi_1$')
 plt.ylabel(r'$\xi_2$')
+plt.axis([0,1,0,1])
 plt.legend(loc='best', frameon=False)
-plt.savefig('latinrandom-samples.pdf',
-            bbox_inches='tight', pad_inches=0.05)
+plt.savefig('quadrature-samples.pdf', bbox_inches='tight', pad_inches=0.05)
 
-# Create data
-N = 500
-x = np.random.rand(N)
-y = np.random.rand(N)
-colors = (0,0,0)
-area = np.pi*3
-
-# Plot
-plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-plt.title('Scatter plot pythonspot.com')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.show()
+plt.figure()
+xx = np.random.rand(N*N)
+yy = np.random.rand(N*N)
+fig, ax = plt.subplots()
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.xaxis.set_ticks_position('bottom')
+ax.yaxis.set_ticks_position('left')
+plt.scatter(xx, yy, s=np.pi*3, alpha=1.0)
+plt.xlabel(r'$\xi_1$')
+plt.ylabel(r'$\xi_2$')
+plt.axis([0,1,0,1])
+plt.legend(loc='best', frameon=False)
+plt.savefig('random-samples.pdf', bbox_inches='tight', pad_inches=0.05)
