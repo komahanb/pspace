@@ -38,7 +38,7 @@ def laguerre(z,d):
     Polynomials such that <f(z), g(z)>_{exp(-z)}^{0,inf} = 0
     """
     if d == 0:
-        return 1.0
+        return 1.0 - 0*z
     elif d == 1:
         return 1.0 - z
     else:
@@ -60,7 +60,7 @@ def hermite(z, d):
     
     """
     if d == 0:
-        return 1
+        return 1.0 - 0*z
     elif d == 1:
         return z
     else:
