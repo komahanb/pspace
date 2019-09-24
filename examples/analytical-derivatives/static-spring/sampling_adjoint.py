@@ -34,7 +34,9 @@ def get_func_deriv(k):
 
 # Create random parameters
 pfactory = ParameterFactory()
+#K = pfactory.createExponentialParameter('K', dict(mu = np.pi/2., beta=0.1*(np.pi/2.)), 1)
 K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 1)
+#K = pfactory.createUniformParameter('K', dict(a=np.pi/2.-0.1, b=np.pi/2.+0.1), 1)
 
 # Add random parameters into a container and initialize
 pc = ParameterContainer()
@@ -69,3 +71,51 @@ print('stochastic sampling adjoint')
 print("fmean : %15.14f" % fmean, "fmeanprime : %15.14f" % fmeanprime)
 print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f" % fvarprime)
 print("fstd  : %15.14f" % fstd , "fstd prime : %15.14f" % fstdprime)
+
+
+
+###
+h = 1.0e-8
+pfactory = ParameterFactory()
+#K = pfactory.createExponentialParameter('K', dict(mu = np.pi/2., beta=h + 0.1*(np.pi/2.)), 1)
+K = pfactory.createNormalParameter('K', dict(mu= np.pi/2., sigma= h + 0.1*(np.pi/2.)), 1)
+#K = pfactory.createUniformParameter('K', dict(a= h+np.pi/2.-0.1, b=h+np.pi/2.+0.1), 1)
+
+# Add random parameters into a container and initialize
+pc = ParameterContainer()
+pc.addParameter(K)
+pc.initialize()
+
+print('deterministic')
+g, dgdx = get_func_deriv(h + np.pi/2.)
+print('gvalue :', g, 'dgdx   :', dgdx)
+
+# Number of collocation points (quadrature points) along each
+# parameter dimension
+quadmap = pc.getQuadraturePointsWeights({0:15})
+ymean = yymean = yprimemean = yyprimemean = 0.0
+for q in quadmap.keys():
+    yq = quadmap[q]['Y']
+    wq = quadmap[q]['W']    
+    y, yprime = get_func_deriv(k=yq[0])
+    ymean += wq*y
+    yymean += wq*y**2
+    yprimemean += wq*yprime
+    yyprimemean += wq*(2*y*yprime)
+
+# Compute moments and their derivatives
+gmean = ymean
+gvar = yymean - gmean**2
+gstd = np.sqrt(gvar)
+gmeanprime = yprimemean
+gvarprime = yyprimemean - 2.0*gmean*gmeanprime
+gstdprime = gvarprime/(2.0*np.sqrt(gvar))
+print('stochastic sampling adjoint')
+print("gmean : %15.14f" % gmean, "fmeanprime : %15.14f" % gmeanprime)
+print("gvar  : %15.14f" % gvar , "fvar prime : %15.14f" % gvarprime)
+print("gstd  : %15.14f" % gstd , "fstd prime : %15.14f" % gstdprime)
+
+
+print("%15.14f" % ((gmean-fmean)/h))
+print("%15.14f" % ((gvar-fvar)/h))
+print("%15.14f" % ((gstd-fstd)/h))
