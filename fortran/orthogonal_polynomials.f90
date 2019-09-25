@@ -2,8 +2,9 @@ module orthogonal_polynomials
 
   implicit none
 
-  private
-  public :: hermite, unit_hermite
+  !private
+  !public :: hermite , unit_hermite
+  !public :: laguerre, unit_laguerre
 
 contains
 
@@ -95,6 +96,77 @@ contains
 
   end function unit_hermite
 
+  !===================================================================!
+  ! Laguerre polynomial of degree d, evaluated at z: L(z,d)
+  !===================================================================!
+  
+  pure recursive function recursive_laguerre(z, d) result(lval)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: lval
+
+    ! Use two term recursion formulae
+    if (d == 0) then
+       lval = 1.0d0
+    else if (d == 1) then
+       lval = 1.0d0 - z  
+    else 
+       lval = ((dble(2*d-1)-z)*recursive_laguerre(z,d-1) &
+            & - dble(d-1)*recursive_laguerre(z,d-2))/dble(d)
+    end if
+
+  end function recursive_laguerre
+ 
+  pure recursive function explicit_laguerre(z, d) result(lval)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: lval
+
+    ! Use two term recursion formulae
+    if (d .eq. 0) then
+       lval = 1.0d0
+    else if (d .eq. 1) then
+       lval = 1.0d0 - z
+    else if (d .eq. 2) then
+       lval = (z**2 - 4.0d0*z + 2.0d0)/factorial(2)
+    else if (d .eq. 3) then
+       lval = (-z**3 + 9.0d0*z**2 - 18.0d0*z + 6.0d0)/factorial(3)
+    else if (d .eq. 4) then
+       lval = (z**4 - 16.0d0*z**3 + 72.0d0*z**2 - 96.0d0*z + 24.0d0)/factorial(4)
+    end if
+    
+  end function explicit_laguerre
+
+  pure function laguerre(z, d)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: laguerre
+
+    if (d .le. 4) then 
+       laguerre = explicit_laguerre(z, d)
+    else
+       laguerre = recursive_laguerre(z, d)
+    end if
+
+  end function laguerre
+
+  !===================================================================!
+  ! Normalize the Laguerre polynomial \hat{L}(z,d)
+  !===================================================================!
+
+  pure function unit_laguerre(z,d)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: unit_laguerre
+
+    unit_laguerre = laguerre(z,d)
+
+  end function unit_laguerre
+
 end module orthogonal_polynomials
 
 program test_orthonormal_polynomials
@@ -105,7 +177,17 @@ program test_orthonormal_polynomials
   integer :: d, i
   real(8), parameter :: z = 1.1d0
 
-  print *, "hello world"
+  print *, "hermite"
+  do i = 0, 10
+     print *, i, hermite(z,i), recursive_hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+  end do
+
+  print *, "laguerre"
+  do i = 0, 10
+     print *, i, laguerre(z,i), recursive_laguerre(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+  end do
+
+  stop
 
   do i = 0, 44
      print *, hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
