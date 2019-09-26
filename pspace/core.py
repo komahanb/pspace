@@ -10,11 +10,12 @@ from enum import Enum
 
 # Local modules
 from stochastic_utils import tensor_indices, nqpts, sparse
-from orthogonal_polynomials import unit_hermite as Hhat
-from orthogonal_polynomials import unit_legendre as Phat
-from orthogonal_polynomials import unit_laguerre as Lhat
 from plotter import plot_jacobian, plot_vector
-
+try:
+    from pyorthogonal_polynomials import orthogonal_polynomials as poly
+except:
+    from orthogonal_polynomials import orthogonal_polynomials as poly
+    
 def index(ii):
     return ii
     if ii == 0:
@@ -192,7 +193,7 @@ class ExponentialParameter(Parameter):
         try:
             return self.basis_map[zkey]
         except:
-            val = Lhat(z,d)
+            val = poly.Lhat(z,d)
             self.basis_map[zkey] = val
             return val
     
@@ -239,7 +240,7 @@ class NormalParameter(Parameter):
         try:
             return self.basis_map[zkey]
         except:
-            val = Hhat(z,d)
+            val = poly.Hhat(z,d)
             self.basis_map[zkey] = val
             return val        
         
@@ -286,7 +287,7 @@ class UniformParameter(Parameter):
         try:
             return self.basis_map[zkey]
         except:
-            val = Phat(z,d)
+            val = poly.Phat(z,d)
             self.basis_map[zkey] = val
             return val
 
