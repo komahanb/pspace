@@ -5,6 +5,7 @@ module orthogonal_polynomials
   !private
   !public :: hermite , unit_hermite
   !public :: laguerre, unit_laguerre
+  !public :: legendre, unit_legendre
 
 contains
 
@@ -16,16 +17,57 @@ contains
 
     integer, intent(in) :: n
     real(8) :: factorial
-
     integer :: i
-
-    factorial = 1.0d0
-    do i = 1, n
-       factorial = factorial*dble(i)
-    end do
+    
+    if ( n .eq. 0 ) then
+       factorial = 1.0d0
+    else if ( n .eq. 1 ) then
+       factorial = 1.0d0
+    else if ( n .eq. 2 ) then   
+       factorial = 2.0d0       
+    else if ( n .eq. 3 ) then
+       factorial = 6.0d0              
+    else if ( n .eq. 4 ) then
+       factorial = 24.0d0                     
+    else if ( n .eq. 5 ) then
+       factorial = 120.0d0                            
+    else if ( n .eq. 6 ) then
+       factorial = 720.0d0                                          
+    else if ( n .eq. 7 ) then
+       factorial = 5040.0d0                                          
+    else if ( n .eq. 8 ) then
+       factorial = 40320.0d0                                                        
+    else if ( n .eq. 9 ) then
+       factorial = 362880.0d0
+    else if ( n .eq. 10 ) then
+       factorial = 3628800.0d0
+    else    
+       factorial = 1.0d0
+       do i = 1, n
+          factorial = factorial*dble(i)
+       end do
+    end if
 
   end function factorial
 
+  !===================================================================!
+  ! Combination nCr = n!/((n-r)!r!)
+  !===================================================================!
+  
+  pure function comb(n,r)
+
+    integer, intent(in) :: n, r
+    real(8) :: comb
+    real(8) :: nfact, rfact, nrfact
+    
+    nfact  = factorial(n)
+    rfact  = factorial(r)
+    nrfact = factorial(n-r)
+
+    comb = nfact/(rfact*nrfact)
+    
+  end function comb
+  
   !===================================================================!
   ! Hermite polynomial of degree d, evaluated at z: H(z,d)
   !===================================================================!
@@ -167,6 +209,76 @@ contains
 
   end function unit_laguerre
 
+  
+  !===================================================================!
+  ! Legendre polynomial of degree d, evaluated at z: P(z,d)
+  !===================================================================!
+  
+  pure recursive function general_legendre(z, d) result(pval)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    integer :: k
+    real(8) :: pval
+
+    ! using general formula
+    pval = 0.0d0
+    do k = 0, d
+       pval = pval + comb(d,k)*comb(d+k,k)*(-z)**k
+    end do
+    pval = pval*(-1.0d0)**d       
+
+  end function general_legendre
+
+  pure recursive function explicit_legendre(z, d) result(pval)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: pval
+
+    ! Use two term recursion formulae
+    if (d .eq. 0) then
+       pval = 1.0d0
+    else if (d .eq. 1) then
+       pval = 2.0d0*z - 1.0d0
+    else if (d .eq. 2) then
+       pval = 6.0d0*z**2 - 6.0d0*z + 1
+    else if (d .eq. 3) then
+       pval = 20.0d0*z**3 -30.0d0*z**2 + 12.0d0*z - 1.0d0
+    else if (d .eq. 4) then
+       pval = 70.0d0*z**4 - 140.0d0*z**3 + 90.0d0*z**2 - 20.0d0*z + 1.0d0
+    end if
+
+  end function explicit_legendre
+
+  pure function legendre(z, d)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: legendre
+
+    if (d .le. 4) then 
+       legendre = explicit_legendre(z, d)
+    else
+       legendre = general_legendre(z, d)
+    end if
+
+  end function legendre
+
+  !===================================================================!
+  ! Normalize the Legendre polynomial \hat{L}(z,d)
+  !===================================================================!
+
+  pure function unit_legendre(z,d)
+
+    real(8), intent(in) :: z
+    integer, intent(in) :: d
+    real(8) :: unit_legendre
+
+    unit_legendre = legendre(z,d)*sqrt(dble(2*d+1))
+
+  end function unit_legendre
+  
 end module orthogonal_polynomials
 
 program test_orthonormal_polynomials
@@ -174,23 +286,34 @@ program test_orthonormal_polynomials
   use orthogonal_polynomials
   implicit none
 
-  integer :: i
+  integer :: i, n
   real(8), parameter :: z = 1.1d0
-
-  print *, "hermite"
-  do i = 0, 44
-     print *, i, laguerre(z,i)!, recursive_hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+  integer, parameter :: max_order = 9
+  
+  do n = 1, 10000
+     do i = 0, max_order
+        print *, i, hermite(z,i)
+        print *, i, legendre(z,i)
+        print *, i, laguerre(z,i)             
+     end do
   end do
 
-!!$  print *, "laguerre"
-!!$  do i = 0, 10
-!!$     print *, i, laguerre(z,i), recursive_laguerre(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+!!$  
+!!$  print *, "hermite"
+!!$  do i = 0, max_order
+!!$     print *, i, unit_hermite(z,i), hermite(z,i)
 !!$  end do
 !!$
-!!$  stop
-
-!!$  do i = 0, 44
-!!$     print *, hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+!!$  print *, ""
+!!$  print *, "laguerre"
+!!$  do i = 0, max_order
+!!$     print *, i, unit_laguerre(z,i), laguerre(z,i)
+!!$  end do
+!!$
+!!$  print *, ""
+!!$  print *, "legendre"
+!!$  do i = 0, max_order
+!!$     print *, i, unit_legendre(z,i), legendre(z,i)
 !!$  end do
 
 end program test_orthonormal_polynomials
