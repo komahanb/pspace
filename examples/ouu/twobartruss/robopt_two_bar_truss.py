@@ -31,8 +31,8 @@ def getCollocationPoints(ymean):
     
     # Create random parameters
     pfactory = ParameterFactory()
-    a1 = pfactory.createNormalParameter('a1', dict(mu=ymean[0], sigma=0.15), 1)
-    a2 = pfactory.createNormalParameter('a2', dict(mu=ymean[1], sigma=0.15), 1)
+    a1 = pfactory.createNormalParameter('a1', dict(mu=ymean[0], sigma=0.00), 1)
+    a2 = pfactory.createNormalParameter('a2', dict(mu=ymean[1], sigma=0.00), 1)
     h  = pfactory.createNormalParameter('h' , dict(mu=ymean[2], sigma=0.10), 1)
     
     # Add random parameters into a container and initialize
@@ -95,7 +95,7 @@ class TwoBarTrussOpt:
         g3exp, g3bar, g3std = self.problem.getFailureSecondBarMoments(a1=x[0], a2=x[1], h=x[2])
 
         # Store function values
-        fobj = self.w1*fexp + self.w2*fvar
+        fobj = self.w1*fexp + self.w2*fstd
         print "fmean, fvar", fexp, fvar
         
         # Store the constraint values
@@ -104,7 +104,7 @@ class TwoBarTrussOpt:
         con[1] = g2exp + self.k*g2std
         con[2] = g3exp + self.k*g3std
 
-        self.fvals = [[fexp, fvar], con]
+        self.fvals = [[fexp, fstd], con]
         
         # Return the values
         return fobj, con, fail
@@ -125,7 +125,7 @@ class TwoBarTrussOpt:
         dg3exp, dg3bar, dg3std = self.problem.getFailureSecondBarMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
 
         g = [0.0]*self.nvars
-        g[0:self.nvars] = self.w1*dfexp + self.w2*dfvar
+        g[0:self.nvars] = self.w1*dfexp + self.w2*dfstd
 
         # Set the constraint gradient
         A = np.zeros([self.ncon, self.nvars])
@@ -158,9 +158,9 @@ def optimize(k, w1, w2):
     opt_prob.addCon('failure-bar2' , type='i')
     
     # Add variables
-    opt_prob.addVar('area-1', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
-    opt_prob.addVar('area-2', type='c', value= 1.0, lower= 1.0e-3, upper= 2.0)
-    opt_prob.addVar('height', type='c', value= 4.0, lower= 4.0   , upper= 10.0)
+    opt_prob.addVar('area-1', type='c', value= 1.5, lower= 1.5, upper= 1.5)
+    opt_prob.addVar('area-2', type='c', value= 1.5, lower= 1.5, upper= 1.5)
+    opt_prob.addVar('height', type='c', value= 4.0, lower= 4.0, upper= 10.0)
     
     # Optimization algorithm
     if args.algorithm == 'ALGENCAN':
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     
     fig = plt.figure(facecolor='w')
     conn = [[0,1], [1,2]]
-    k = 4.0
+    k = 2.0
     kctr = 0
     for w in [0, 0.25, 0.5, 0.75, 1.0]:
         kctr += 1
@@ -266,7 +266,7 @@ if __name__ == "__main__":
                 plt.plot([xpos[2*n1], xpos[2*n2]], 
                          [xpos[2*n1+1], xpos[2*n2+1]],
                          '-ko', linewidth=vars[ctr],
-                         label = 'E[f] = %3.2f' % f[0] + ', V[f] = %3.2f' % f[1] + ', H = %3.2f' % x[2] + ', w = %3.2f' % w,
+                         label = 'E[f] = %3.2f' % f[0] + ', S[f] = %3.2f' % f[1] + ', H = %3.2f' % x[2] + ', $\\alpha$ = %3.2f' % w,
                          color=tableau20[2*kctr])                
             ctr += 1
     plt.axis('equal')

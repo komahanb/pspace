@@ -38,7 +38,6 @@ def laguerre(z,d):
     Polynomials such that <f(z), g(z)>_{exp(-z)}^{0,inf} = 0
     """
     if d == 0:
-        # to support vector return we multiply with zero
         return 1.0 - 0*z
     elif d == 1:
         return 1.0 - z
@@ -103,28 +102,19 @@ if __name__ == "__main__":
     """
     Test hermite polynomials
     """
-
-    print "hermite"
-    print unit_hermite(1.1,0), hermite(1.1,0)/np.sqrt(math.factorial(0))
-    print unit_hermite(1.1,1), hermite(1.1,1)/np.sqrt(math.factorial(1))
-    print unit_hermite(1.1,2), hermite(1.1,2)/np.sqrt(math.factorial(2))
-    print unit_hermite(1.1,3), hermite(1.1,3)/np.sqrt(math.factorial(3))
-    print unit_hermite(1.1,4), hermite(1.1,4)/np.sqrt(math.factorial(4))
-
-
-    print "laguerre"
-    print unit_laguerre(1.1,0), laguerre(1.1,0)
-    print unit_laguerre(1.1,1), laguerre(1.1,1)
-    print unit_laguerre(1.1,2), laguerre(1.1,2)
-    print unit_laguerre(1.1,3), laguerre(1.1,3)
-    print unit_laguerre(1.1,4), laguerre(1.1,4)
+    
+    print unit_hermite(1.2,0), hermite(1.2,0)/np.sqrt(math.factorial(0))
+    print unit_hermite(1.2,1), hermite(1.2,1)/np.sqrt(math.factorial(1))
+    print unit_hermite(1.2,2), hermite(1.2,2)/np.sqrt(math.factorial(2))
+    print unit_hermite(1.2,3), hermite(1.2,3)/np.sqrt(math.factorial(3))
+    print unit_hermite(1.2,4), hermite(1.2,4)/np.sqrt(math.factorial(4))
 
     """
     Test Legendre polynomials
     """
     print "legendre"
-    print unit_legendre(1.1,0), legendre(1.1,0), rlegendre(1.1,0)
-    print unit_legendre(1.1,1), legendre(1.1,1), rlegendre(1.1,1)
-    print unit_legendre(1.1,2), legendre(1.1,2), rlegendre(1.1,2)
-    print unit_legendre(1.1,3), legendre(1.1,3), rlegendre(1.1,3)
-    print unit_legendre(1.1,4), legendre(1.1,4), rlegendre(1.1,4)
+    print unit_legendre(1.2,0), legendre(1.2,0), rlegendre(1.2,0)
+    print unit_legendre(1.2,1), legendre(1.2,1), rlegendre(1.2,1)
+    print unit_legendre(1.2,2), legendre(1.2,2), rlegendre(1.2,2)
+    print unit_legendre(1.2,3), legendre(1.2,3), rlegendre(1.2,3)
+    print unit_legendre(1.2,4), legendre(1.2,4), rlegendre(1.2,4)
