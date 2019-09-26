@@ -14,7 +14,7 @@ from plotter import plot_jacobian, plot_vector
 try:
     from pyorthogonal_polynomials import orthogonal_polynomials as poly
 except:
-    from orthogonal_polynomials import orthogonal_polynomials as poly
+    import orthogonal_polynomials as poly
     
 def index(ii):
     return ii
