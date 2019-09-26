@@ -5,7 +5,14 @@ with open('README.md') as f:
 
 with open('LICENSE') as f:
     license = f.read()
-
+## 
+## ext_modules = [
+##     Extension("fortran",
+##               sources = ["fortran/forthogonal_polynomials.pyf"],
+##               libraries = ["forthogonal_polynomials"])
+## ]
+##
+    
 setup(
     name='pspace',
     version='0.1',
@@ -15,6 +22,7 @@ setup(
     author_email='komibuddy@gmail.com',
     url='https://github.com/komahanb/pspace',
     license=license,
+    #    ext_modules = ext_modules,
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )
 
