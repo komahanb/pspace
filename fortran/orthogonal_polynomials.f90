@@ -174,23 +174,23 @@ program test_orthonormal_polynomials
   use orthogonal_polynomials
   implicit none
 
-  integer :: d, i
+  integer :: i
   real(8), parameter :: z = 1.1d0
 
   print *, "hermite"
-  do i = 0, 10
-     print *, i, hermite(z,i), recursive_hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
-  end do
-
-  print *, "laguerre"
-  do i = 0, 10
-     print *, i, laguerre(z,i), recursive_laguerre(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
-  end do
-
-  stop
-
   do i = 0, 44
-     print *, hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+     print *, i, laguerre(z,i)!, recursive_hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
   end do
+
+!!$  print *, "laguerre"
+!!$  do i = 0, 10
+!!$     print *, i, laguerre(z,i), recursive_laguerre(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+!!$  end do
+!!$
+!!$  stop
+
+!!$  do i = 0, 44
+!!$     print *, hermite(z,i) !unit_hermite(z=z,d=i), hermite(z=z,d=i)/sqrt(factorial(i))
+!!$  end do
 
 end program test_orthonormal_polynomials
