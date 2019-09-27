@@ -289,9 +289,9 @@ program test_orthonormal_polynomials
   use orthogonal_polynomials
   implicit none
 
-  integer :: i, n
+  integer :: i, n, j
   real(8), parameter :: z = 1.1d0
-  integer, parameter :: max_order = 9
+  integer, parameter :: max_order = 9, nruns = 100000
   real(8) :: a
 
 !!$  do n = 1, 10000
@@ -303,7 +303,8 @@ program test_orthonormal_polynomials
 !!$  end do
 
 !!$  print *, a
-  
+
+  do j = 1, nruns
   print *, "hermite"
   do i = 0, max_order
      write(*,"(i2,F10.3,F10.3)") i, hermite(z,i), unit_hermite(z,i)
@@ -315,11 +316,11 @@ program test_orthonormal_polynomials
      write(*,"(i2,F10.3,F10.3)") i, legendre(z,i), unit_legendre(z,i)
   end do
 
-
   print *, ""
   print *, "laguerre"
   do i = 0, max_order
      write(*,"(i2,F10.3,F10.3)") i, laguerre(z,i), unit_laguerre(z,i)
+  end do
   end do
 
 end program test_orthonormal_polynomials

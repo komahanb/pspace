@@ -239,23 +239,24 @@ int main( int argc, char *argv[] ){
   OrthogonalPolynomials *poly = new OrthogonalPolynomials();
   double z = 1.1;
   int max_order = 10;
+  int nruns = 100000;  
+  for (int j = 0; j < nruns; j++){
+    // Test hermite polynomials
+    printf("hermite\n");
+    for (int i = 0; i < max_order; i++){
+      printf("%2d %10.3f %10.3f \n", i, poly->hermite(z,i), poly->unit_hermite(z,i));
+    }
 
-  // Test hermite polynomials
-  printf("hermite\n");
-  for (int i = 0; i < max_order; i++){
-    printf("%2d %10.3f %10.3f \n", i, poly->hermite(z,i), poly->unit_hermite(z,i));
-  }
+    // Test Legendre polynomials
+    printf("\nLegendre\n");
+    for (int i = 0; i < max_order; i++){
+      printf("%2d %10.3f %10.3f \n", i, poly->legendre(z,i), poly->unit_legendre(z,i));
+    }
 
-  // Test Legendre polynomials
-  printf("\nLegendre\n");
-  for (int i = 0; i < max_order; i++){
-    printf("%2d %10.3f %10.3f \n", i, poly->legendre(z,i), poly->unit_legendre(z,i));
+    // Test Laguerre polynomials
+    printf("\nLaguerre\n");
+    for (int i = 0; i < max_order; i++){
+      printf("%2d %10.3f %10.3f \n", i, poly->laguerre(z,i), poly->unit_laguerre(z,i));
+    }
   }
-
-  // Test Laguerre polynomials
-  printf("\nLaguerre\n");
-  for (int i = 0; i < max_order; i++){
-    printf("%2d %10.3f %10.3f \n", i, poly->laguerre(z,i), poly->unit_laguerre(z,i));
-  }
-  
 }
