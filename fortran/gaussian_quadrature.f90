@@ -4,34 +4,41 @@ module gaussian_quadrature
 
 contains
 
-  pure subroutine get_standard_hermite_quadrature(npoints, z, w)
+  pure subroutine hermite_quadrature(npoints, mu, sigma, z, y, w)
 
     integer, intent(in)    :: npoints
-    real(8), intent(inout) :: z(:)
+    real(8), intent(in)    :: mu, sigma
+    real(8), intent(inout) :: z(:), y(:)
     real(8), intent(inout) :: w(:)
 
+    ! Get points in arbitrary quadrature space
+    real(8) :: xi(size(y))
+    xi = 0.0d0
+
+    ! Initialize return arrays
     z = 0.0d0
+    y = 0.0d0
     w = 0.0d0
 
     if ((npoints .gt. 0) .and. (npoints .le. 5)) then
 
        if (npoints .eq. 1) then
-          z = [0.0d0]
+          xi = [0.0d0]
           w = [1.7724538509055159d0]
        else if (npoints .eq. 2) then
-          z = [-0.7071067811865475d0,&
+          xi = [-0.7071067811865475d0,&
                &0.7071067811865475d0]
           w = [0.8862269254527579d0,&
                &0.8862269254527579d0]
        else if (npoints .eq. 3) then
-          z = [-1.224744871391589d0,&
+          xi = [-1.224744871391589d0,&
                &0.0d0,&
                &1.224744871391589d0]
           w = [0.2954089751509194d0,&
                &1.1816359006036772d0,&
                &0.2954089751509194d0]
        else if (npoints .eq. 4) then
-          z = [-1.6506801238857847d0,&
+          xi = [-1.6506801238857847d0,&
                &-0.5246476232752904d0,&
                &0.5246476232752904d0,&
                &1.6506801238857847d0]
@@ -40,7 +47,7 @@ contains
                &0.8049140900055127d0,&
                &0.08131283544724519d0]
        else if (npoints .eq. 5) then
-          z = [-2.0201828704560856d0,&
+          xi = [-2.0201828704560856d0,&
                &-0.9585724646138185d0,&
                &0.0d0,&
                &0.9585724646138185d0,&
@@ -55,7 +62,7 @@ contains
     else if ((npoints .gt. 5) .and. (npoints .le. 10)) then
 
        if (npoints .eq. 6) then
-          z = [-2.3506049736744923d0,&
+          xi = [-2.3506049736744923d0,&
                &-1.335849074013697d0,&
                &-0.4360774119276165d0,&
                &0.4360774119276165d0,&
@@ -68,7 +75,7 @@ contains
                &0.15706732032285647d0,&
                &0.004530009905508835d0]
        else if (npoints .eq. 7) then
-          z = [-2.6519613568352334d0,&
+          xi = [-2.6519613568352334d0,&
                &-1.6735516287674714d0,&
                &-0.8162878828589646d0,&
                &0.0d0,&
@@ -83,7 +90,7 @@ contains
                &0.05451558281912705d0,&
                &0.0009717812450995199d0]
        else if (npoints .eq. 8) then
-          z = [-2.930637420257244d0,&
+          xi = [-2.930637420257244d0,&
                &-1.981656756695843d0,&
                &-1.1571937124467802d0,&
                &-0.3811869902073221d0,&
@@ -100,7 +107,7 @@ contains
                &0.017077983007413467d0,&
                &0.00019960407221136783d0]
        else if (npoints .eq. 9) then
-          z = [-3.1909932017815277d0,&
+          xi = [-3.1909932017815277d0,&
                &-2.266580584531843d0,&
                &-1.468553289216668d0,&
                &-0.7235510187528376d0,&
@@ -119,7 +126,7 @@ contains
                &0.004943624275536941d0,&
                &3.9606977263264365d-05]
        else if (npoints .eq. 10) then
-          z = [-3.4361591188377374d0,&
+          xi = [-3.4361591188377374d0,&
                &-2.5327316742327897d0,&
                &-1.7566836492998816d0,&
                &-1.0366108297895136d0,&
@@ -143,36 +150,48 @@ contains
 
     end if
 
-  end subroutine get_standard_hermite_quadrature
+    ! Find the corresponding point in general and std prob. space
+    y = mu + sigma*sqrt(2.0d0)*xi
+    z = (y - mu)/sigma
+    w = w/sqrt(4.0d0*atan(1.0d0))
 
-  pure subroutine get_standard_legendre_quadrature(npoints, z, w)
+  end subroutine hermite_quadrature
+
+  pure subroutine legendre_quadrature(npoints, a, b, z, y, w)
 
     integer, intent(in)    :: npoints
-    real(8), intent(inout) :: z(:)
+    real(8), intent(in)    :: a, b
+    real(8), intent(inout) :: z(:), y(:)
     real(8), intent(inout) :: w(:)
 
+    ! Get points in arbitrary quadrature space
+    real(8) :: xi(size(y))
+    xi = 0.0d0
+
+    ! Initialize return arrays
     z = 0.0d0
+    y = 0.0d0
     w = 0.0d0
 
     if ((npoints .gt. 0) .and. (npoints .le. 5)) then
 
        if (npoints .eq. 1) then
-          z = [0.0d0]
+          xi = [0.0d0]
           w = [2.0d0]
        else if (npoints .eq. 2) then
-          z = [-0.5773502691896257d0, &
+          xi = [-0.5773502691896257d0, &
                & 0.5773502691896257d0]
           w = [1.0d0, &
                & 1.0d0]
        else if (npoints .eq. 3) then
-          z = [-0.7745966692414834d0,&
+          xi = [-0.7745966692414834d0,&
                &0.0d0,&
                &0.7745966692414834d0]
           w = [0.5555555555555557d0,&
                &0.8888888888888888d0,&
                &0.5555555555555557d0]
        else if (npoints .eq. 4) then
-          z = [-0.8611363115940526d0,&
+          xi = [-0.8611363115940526d0,&
                &-0.33998104358485626d0,&
                &0.33998104358485626d0,&
                &0.8611363115940526d0]
@@ -181,7 +200,7 @@ contains
                &0.6521451548625462d0,&
                &0.3478548451374537d0]
        else if (npoints .eq. 5) then
-          z = [-0.906179845938664d0,&
+          xi = [-0.906179845938664d0,&
                &-0.5384693101056831d0,&
                &0.0d0,&
                &0.5384693101056831d0,&
@@ -196,7 +215,7 @@ contains
     else if ((npoints .gt. 5) .and. (npoints .le. 10)) then
 
        if (npoints .eq. 6) then
-          z = [-0.932469514203152d0,&
+          xi = [-0.932469514203152d0,&
                &-0.6612093864662645d0,&
                &-0.23861918608319693d0,&
                &0.23861918608319693d0,&
@@ -209,7 +228,7 @@ contains
                &0.36076157304813894d0,&
                &0.17132449237916975d0]
        else if (npoints .eq. 7) then
-          z = [-0.9491079123427585d0,&
+          xi = [-0.9491079123427585d0,&
                &-0.7415311855993945d0,&
                &-0.4058451513773972d0,&
                &0.0d0,&
@@ -224,7 +243,7 @@ contains
                &0.2797053914892766d0,&
                &0.12948496616887065d0]
        else if (npoints .eq. 8) then
-          z = [-0.9602898564975362d0,&
+          xi = [-0.9602898564975362d0,&
                &-0.7966664774136267d0,&
                &-0.525532409916329d0,&
                &-0.18343464249564978d0,&
@@ -241,7 +260,7 @@ contains
                &0.22238103445337434d0,&
                &0.10122853629037669d0]
        else if (npoints .eq. 9) then
-          z = [-0.9681602395076261d0,&
+          xi = [-0.9681602395076261d0,&
                &-0.8360311073266358d0,&
                &-0.6133714327005904d0,&
                &-0.3242534234038089d0,&
@@ -260,7 +279,7 @@ contains
                &0.18064816069485712d0,&
                &0.08127438836157472d0]
        else if (npoints .eq. 10) then
-          z = [-0.9739065285171717d0,&
+          xi = [-0.9739065285171717d0,&
                &-0.8650633666889845d0,&
                &-0.6794095682990244d0,&
                &-0.4333953941292472d0,&
@@ -284,36 +303,48 @@ contains
 
     end if
 
-  end subroutine get_standard_legendre_quadrature
+    ! Get points in general and std. prob. space
+    y = (b-a)*xi/2.0d0 + (b+a)/2.0d0
+    z = (y-a)/(b-a)
+    w = w/2.0d0
 
-  pure subroutine get_standard_laguerre_quadrature(npoints, z, w)
+  end subroutine legendre_quadrature
+
+ pure subroutine laguerre_quadrature(npoints, mu, beta, z, y, w)
 
     integer, intent(in)    :: npoints
-    real(8), intent(inout) :: z(:)
+    real(8), intent(in)    :: mu, beta
+    real(8), intent(inout) :: z(:), y(:)
     real(8), intent(inout) :: w(:)
 
+    ! Get points in arbitrary quadrature space
+    real(8) :: xi(size(y))
+    xi = 0.0d0
+
+    ! Initialize return arrays
     z = 0.0d0
+    y = 0.0d0
     w = 0.0d0
 
     if ((npoints .gt. 0) .and. (npoints .le. 5)) then
 
        if (npoints .eq. 1) then
-          z = [1.0d0]
+          xi = [1.0d0]
           w = [1.0d0]
        else if (npoints .eq. 2) then
-          z = [0.585786437626905d0,&
+          xi = [0.585786437626905d0,&
                &3.414213562373095d0]
           w = [0.8535533905932737d0,&
                &0.14644660940672624d0]
        else if (npoints .eq. 3) then
-          z = [0.4157745567834791d0,&
+          xi = [0.4157745567834791d0,&
                &2.294280360279042d0,&
                &6.2899450829374794d0]
           w = [0.7110930099291729d0,&
                &0.278517733569241d0,&
                &0.010389256501586133d0]
        else if (npoints .eq. 4) then
-          z = [0.3225476896193924d0,&
+          xi = [0.3225476896193924d0,&
                &1.7457611011583465d0,&
                &4.536620296921128d0,&
                &9.395070912301133d0]
@@ -322,7 +353,7 @@ contains
                &0.038887908515005405d0,&
                &0.0005392947055613296d0]
        else if (npoints .eq. 5) then
-          z = [0.26356031971814087d0,&
+          xi = [0.26356031971814087d0,&
                &1.4134030591065168d0,&
                &3.596425771040722d0,&
                &7.085810005858837d0,&
@@ -337,7 +368,7 @@ contains
     else if ((npoints .gt. 5) .and. (npoints .le. 10)) then
 
        if (npoints .eq. 6) then
-          z = [0.2228466041792607d0,&
+          xi = [0.2228466041792607d0,&
                &1.1889321016726226d0,&
                &2.992736326059314d0,&
                &5.77514356910451d0,&
@@ -350,7 +381,7 @@ contains
                &0.00026101720281493265d0,&
                &8.985479064296213d-07]
        else if (npoints .eq. 7) then
-          z = [0.19304367656036225d0,&
+          xi = [0.19304367656036225d0,&
                &1.0266648953391924d0,&
                &2.567876744950746d0,&
                &4.900353084526484d0,&
@@ -365,7 +396,7 @@ contains
                &1.5865464348564196d-05,&
                &3.1703154789955624d-08]
        else if (npoints .eq. 8) then
-          z = [0.17027963230510093d0,&
+          xi = [0.17027963230510093d0,&
                &0.90370177679938d0,&
                &2.251086629866131d0,&
                &4.266700170287659d0,&
@@ -382,7 +413,7 @@ contains
                &8.48574671627257d-07,&
                &1.0480011748715153d-09]
        else if (npoints .eq. 9) then
-          z = [0.1523222277318084d0,&
+          xi = [0.1523222277318084d0,&
                &0.8072200227422562d0,&
                &2.005135155619347d0,&
                &3.783473973331233d0,&
@@ -401,7 +432,7 @@ contains
                &4.1107693303495754d-08,&
                &3.290874030350679d-11]
        else if (npoints .eq. 10) then
-          z = [0.1377934705404926d0,&
+          xi = [0.1377934705404926d0,&
                &0.729454549503171d0,&
                &1.8083429017403159d0,&
                &3.4014336978548996d0,&
@@ -425,7 +456,11 @@ contains
 
     end if
 
-  end subroutine get_standard_laguerre_quadrature
+    ! Get points in standard and general prob. spaces
+    y = mu + beta*xi
+    z = xi
+
+  end subroutine laguerre_quadrature
 
 end module gaussian_quadrature
 
@@ -433,28 +468,35 @@ subroutine test_weights(npoints)
 
   use gaussian_quadrature
 
-  real(8) :: z(npoints), w(npoints)
+  real(8) :: y(npoints), z(npoints), w(npoints)
 
-  call get_standard_hermite_quadrature(npoints, z, w)
+  !call standard_hermite_quadrature(npoints, z, w)
   !print *, z 
-  print *, sum(w)/sqrt(4.0d0*atan(1.0d0))
+  !print *, sum(w)
 
-  call get_standard_legendre_quadrature(npoints, z, w)
-  !print *, z 
-  print *, sum(w)/2.0
-
-  call get_standard_laguerre_quadrature(npoints, z, w)
-  !print *, z 
+  call hermite_quadrature(npoints=npoints, mu=0.0d0, sigma=1.0d0, z=z, y=y, w=w)
+  print *, z
+  print *, y
   print *, sum(w)
-  
+
+  call legendre_quadrature(npoints=npoints, a=0.0d0, b=1.0d0, z=z, y=y, w=w)
+  print *, z
+  print *, y
+  print *, sum(w)
+
+  call laguerre_quadrature(npoints=npoints, mu=0.0d0, beta=1.0d0, z=z, y=y, w=w)
+  print *, z
+  print *, y
+  print *, sum(w)
+
 end subroutine test_weights
 
 program main
 
-  integer, parameter :: npoints = 10
+  integer, parameter :: npoints = 4
   integer :: n
 
-  do n = 1, npoints
+  do n = npoints, npoints
      call test_weights(n)
   end do
 
