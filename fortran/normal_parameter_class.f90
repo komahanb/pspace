@@ -65,7 +65,7 @@ contains
 
   end subroutine quadrature
   
-end module normal_parameter_parameter_class
+end module normal_parameter_class
 
 program test_parameters
 

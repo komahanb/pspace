@@ -65,7 +65,7 @@ contains
 
   end subroutine quadrature
   
-end module uniform_parameter_parameter_class
+end module uniform_parameter_class
 
 program test_parameters
   
