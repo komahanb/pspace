@@ -172,11 +172,14 @@ contains
     else if (d .eq. 1) then
        lval = 1.0d0 - z
     else if (d .eq. 2) then
-       lval = (z**2 - 4.0d0*z + 2.0d0)/factorial(2)
+       lval = z**2 - 4.0d0*z + 2.0d0
+       lval = lval/factorial(2)
     else if (d .eq. 3) then
-       lval = (-z**3 + 9.0d0*z**2 - 18.0d0*z + 6.0d0)/factorial(3)
+       lval = -z**3 + 9.0d0*z**2 - 18.0d0*z + 6.0d0
+       lval = lval/factorial(3)
     else if (d .eq. 4) then
-       lval = (z**4 - 16.0d0*z**3 + 72.0d0*z**2 - 96.0d0*z + 24.0d0)/factorial(4)
+       lval = z**4 - 16.0d0*z**3 + 72.0d0*z**2 - 96.0d0*z + 24.0d0
+       lval = lval/factorial(4)
     end if
     
   end function explicit_laguerre
@@ -289,31 +292,34 @@ program test_orthonormal_polynomials
   integer :: i, n
   real(8), parameter :: z = 1.1d0
   integer, parameter :: max_order = 9
+  real(8) :: a
+
+!!$  do n = 1, 10000
+!!$     do i = 0, max_order
+!!$        a = hermite(z,i)
+!!$ !       print *, i, legendre(z,i)
+!!$ !       print *, i, laguerre(z,i)             
+!!$     end do
+!!$  end do
+
+!!$  print *, a
   
-  do n = 1, 10000
-     do i = 0, max_order
-        print *, i, hermite(z,i)
-        print *, i, legendre(z,i)
-        print *, i, laguerre(z,i)             
-     end do
+  print *, "hermite"
+  do i = 0, max_order
+     write(*,"(i2,F10.3,F10.3)") i, hermite(z,i), unit_hermite(z,i)
   end do
 
-!!$  
-!!$  print *, "hermite"
-!!$  do i = 0, max_order
-!!$     print *, i, unit_hermite(z,i), hermite(z,i)
-!!$  end do
-!!$
-!!$  print *, ""
-!!$  print *, "laguerre"
-!!$  do i = 0, max_order
-!!$     print *, i, unit_laguerre(z,i), laguerre(z,i)
-!!$  end do
-!!$
-!!$  print *, ""
-!!$  print *, "legendre"
-!!$  do i = 0, max_order
-!!$     print *, i, unit_legendre(z,i), legendre(z,i)
-!!$  end do
+  print *, ""
+  print *, "legendre"
+  do i = 0, max_order
+     write(*,"(i2,F10.3,F10.3)") i, legendre(z,i), unit_legendre(z,i)
+  end do
+
+
+  print *, ""
+  print *, "laguerre"
+  do i = 0, max_order
+     write(*,"(i2,F10.3,F10.3)") i, laguerre(z,i), unit_laguerre(z,i)
+  end do
 
 end program test_orthonormal_polynomials
