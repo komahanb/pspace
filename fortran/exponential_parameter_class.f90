@@ -61,19 +61,19 @@ contains
     real(8)                      , intent(inout) :: z(:), y(:)
     real(8)                      , intent(inout) :: w(:)
 
-    call laguerre_quadrature(npoints, this % mu, this % sigma, z, y, w)
+    call laguerre_quadrature(npoints, this % mu, this % beta, z, y, w)
 
   end subroutine quadrature
   
-end module exponential_parameter_parameter_class
+end module exponential_parameter_class
 
 program test_parameters
   
   use exponential_parameter_class
 
   type(exponential_parameter) :: m
-  m = exponential_parameter(a=1.0d0, b=1.0d0)
-  print *, m % a
-  print *, m % b
+  m = exponential_parameter(mu=1.0d0, beta=1.0d0)
+  print *, m % mu
+  print *, m % beta
 
 end program test_parameters
