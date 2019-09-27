@@ -429,25 +429,33 @@ contains
 
 end module gaussian_quadrature
 
-program test
+subroutine test_weights(npoints)
 
   use gaussian_quadrature
 
-  integer, parameter :: npoints = 4
   real(8) :: z(npoints), w(npoints)
 
   call get_standard_hermite_quadrature(npoints, z, w)
-  print *, z 
-  print *, w
+  !print *, z 
+  print *, sum(w)/sqrt(4.0d0*atan(1.0d0))
 
   call get_standard_legendre_quadrature(npoints, z, w)
-  print *, z 
-  print *, w
+  !print *, z 
+  print *, sum(w)/2.0
 
   call get_standard_laguerre_quadrature(npoints, z, w)
-  print *, z 
-  print *, w
+  !print *, z 
+  print *, sum(w)
+  
+end subroutine test_weights
 
-  ! Check consistency of points
+program main
 
-end program test
+  integer, parameter :: npoints = 10
+  integer :: n
+
+  do n = 1, npoints
+     call test_weights(n)
+  end do
+
+end program main
