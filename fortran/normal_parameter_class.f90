@@ -1,4 +1,4 @@
-module class_parameter
+module normal_parameter_class
 
   use orthogonal_polynomials, only : hermite, unit_hermite
   use gaussian_quadrature   , only : hermite_quadrature
@@ -6,18 +6,18 @@ module class_parameter
   implicit none
 
   ! Normal parameter type
-  type :: normal
+  type :: normal_parameter
      real(8) :: mu
      real(8) :: sigma
    contains
      procedure :: basis
      procedure :: quadrature
-  end type normal
+  end type normal_parameter
 
   ! Constructor interface for list
-  interface normal
-     module procedure create_normal
-  end interface normal
+  interface normal_parameter
+     module procedure create_normal_parameter
+  end interface normal_parameter
 
 contains
 
@@ -25,7 +25,7 @@ contains
   ! Constructor for normal parameter
   !===================================================================!
   
-  pure type(normal) function create_normal(mu, sigma) &
+  pure type(normal_parameter) function create_normal_parameter(mu, sigma) &
        & result(this)
 
     real(8), intent(in) :: mu
@@ -34,7 +34,7 @@ contains
     this % mu = mu
     this % sigma = sigma
 
-  end function create_normal
+  end function create_normal_parameter
 
   !===================================================================!
   ! Evaluate the basis function and return the value
@@ -42,9 +42,9 @@ contains
   
   pure real(8) function basis(this, z, d)
 
-    class(normal) , intent(in) :: this
-    real(8)       , intent(in) :: z
-    integer       , intent(in) :: d
+    class(normal_parameter) , intent(in) :: this
+    real(8)                 , intent(in) :: z
+    integer                 , intent(in) :: d
 
     basis = unit_hermite(z,d)
 
@@ -56,23 +56,25 @@ contains
 
   pure subroutine quadrature(this, npoints, z, y, w)
     
-    class(normal) , intent(in)    :: this
-    integer       , intent(in)    :: npoints
-    real(8)       , intent(inout) :: z(:), y(:)
-    real(8)       , intent(inout) :: w(:)
+    class(normal_parameter) , intent(in)    :: this
+    integer                 , intent(in)    :: npoints
+    real(8)                 , intent(inout) :: z(:), y(:)
+    real(8)                 , intent(inout) :: w(:)
 
     call hermite_quadrature(npoints, this % mu, this % sigma, z, y, w)
 
   end subroutine quadrature
-
-end module class_parameter
+  
+end module normal_parameter_parameter_class
 
 program test_parameters
 
-  use class_parameter
+  use normal_parameter_class
 
-  type(normal) :: m
-  m = normal(mu=1.0d0, sigma=1.0d0)
+  type(normal_parameter) :: m
+
+  m = normal_parameter(mu=1.0d0, sigma=1.0d0)
+
   print *, m % mu
   print *, m % sigma
 
