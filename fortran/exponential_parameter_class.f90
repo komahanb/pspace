@@ -1,12 +1,13 @@
 module exponential_parameter_class
 
-  use orthogonal_polynomials, only : laguerre, unit_laguerre
-  use gaussian_quadrature   , only : laguerre_quadrature
+  use orthogonal_polynomials   , only : laguerre, unit_laguerre
+  use gaussian_quadrature      , only : laguerre_quadrature
+  use abstract_parameter_class , only : abstract_parameter
   
   implicit none
 
   ! Exponential parameter type
-  type :: exponential_parameter
+  type, extends(abstract_parameter) :: exponential_parameter
      real(8) :: mu
      real(8) :: beta
    contains
@@ -25,12 +26,14 @@ contains
   ! Constructor for exponential parameter
   !===================================================================!
   
-  pure type(exponential_parameter) function create_exponential_parameter(mu, beta) &
+  pure type(exponential_parameter) function create_exponential_parameter(pid, mu, beta) &
        & result(this)
 
+    integer, intent(in) :: pid    
     real(8), intent(in) :: mu
     real(8), intent(in) :: beta
     
+    call this % set_parameter_id(pid)
     this % mu = mu
     this % beta = beta
 
@@ -72,7 +75,7 @@ program test_parameters
   use exponential_parameter_class
 
   type(exponential_parameter) :: m
-  m = exponential_parameter(mu=1.0d0, beta=1.0d0)
+  m = exponential_parameter(pid = 1, mu=1.0d0, beta=1.0d0)
   print *, m % mu
   print *, m % beta
 
