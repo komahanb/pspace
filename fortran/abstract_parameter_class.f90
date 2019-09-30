@@ -1,5 +1,9 @@
 module abstract_parameter_class
 
+  !===================================================================!
+  ! Abstract parameter type
+  !===================================================================!
+  
   type, abstract :: abstract_parameter
 
      integer :: parameter_id

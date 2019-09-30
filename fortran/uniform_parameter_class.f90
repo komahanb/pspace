@@ -1,12 +1,13 @@
 module uniform_parameter_class
 
-  use orthogonal_polynomials, only : legendre, unit_legendre
-  use gaussian_quadrature   , only : legendre_quadrature
-  
+  use orthogonal_polynomials   , only : legendre, unit_legendre
+  use gaussian_quadrature      , only : legendre_quadrature 
+  use abstract_parameter_class , only : abstract_parameter
+ 
   implicit none
 
   ! Uniform parameter type
-  type :: uniform_parameter
+  type, extends(abstract_parameter) :: uniform_parameter
      real(8) :: a
      real(8) :: b
    contains
@@ -25,12 +26,14 @@ contains
   ! Constructor for uniform parameter
   !===================================================================!
   
-  pure type(uniform_parameter) function create_uniform_parameter(a, b) &
+  pure type(uniform_parameter) function create_uniform_parameter(pid, a, b) &
        & result(this)
 
+    integer, intent(in) :: pid
     real(8), intent(in) :: a
     real(8), intent(in) :: b
-    
+
+    call this % set_parameter_id(pid)
     this % a = a
     this % b = b
 
@@ -72,7 +75,7 @@ program test_parameters
   use uniform_parameter_class
 
   type(uniform_parameter) :: m
-  m = uniform_parameter(a=1.0d0, b=1.0d0)
+  m = uniform_parameter(pid = 1, a=1.0d0, b=1.0d0)
   print *, m % a
   print *, m % b
 

@@ -1,12 +1,13 @@
 module normal_parameter_class
 
-  use orthogonal_polynomials, only : hermite, unit_hermite
-  use gaussian_quadrature   , only : hermite_quadrature
+  use orthogonal_polynomials   , only : hermite, unit_hermite
+  use gaussian_quadrature      , only : hermite_quadrature
+  use abstract_parameter_class , only : abstract_parameter
   
   implicit none
 
   ! Normal parameter type
-  type :: normal_parameter
+  type, extends(abstract_parameter) :: normal_parameter
      real(8) :: mu
      real(8) :: sigma
    contains
@@ -25,12 +26,14 @@ contains
   ! Constructor for normal parameter
   !===================================================================!
   
-  pure type(normal_parameter) function create_normal_parameter(mu, sigma) &
+  pure type(normal_parameter) function create_normal_parameter(pid, mu, sigma) &
        & result(this)
 
+    integer, intent(in) :: pid
     real(8), intent(in) :: mu
     real(8), intent(in) :: sigma
-    
+
+    call this % set_parameter_id(pid)    
     this % mu = mu
     this % sigma = sigma
 
@@ -73,7 +76,7 @@ program test_parameters
 
   type(normal_parameter) :: m
 
-  m = normal_parameter(mu=1.0d0, sigma=1.0d0)
+  m = normal_parameter(pid = 1, mu=1.0d0, sigma=1.0d0)
 
   print *, m % mu
   print *, m % sigma
