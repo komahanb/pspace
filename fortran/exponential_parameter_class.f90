@@ -69,14 +69,14 @@ contains
   end subroutine quadrature
   
 end module exponential_parameter_class
-
-program test_parameters
-  
-  use exponential_parameter_class
-
-  type(exponential_parameter) :: m
-  m = exponential_parameter(pid = 1, mu=1.0d0, beta=1.0d0)
-  print *, m % mu
-  print *, m % beta
-
-end program test_parameters
+!!$
+!!$program test_parameters
+!!$  
+!!$  use exponential_parameter_class
+!!$
+!!$  type(exponential_parameter) :: m
+!!$  m = exponential_parameter(pid = 1, mu=1.0d0, beta=1.0d0)
+!!$  print *, m % mu
+!!$  print *, m % beta
+!!$
+!!$end program test_parameters

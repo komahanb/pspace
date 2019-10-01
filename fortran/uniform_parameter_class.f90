@@ -70,13 +70,13 @@ contains
   
 end module uniform_parameter_class
 
-program test_parameters
-  
-  use uniform_parameter_class
-
-  type(uniform_parameter) :: m
-  m = uniform_parameter(pid = 1, a=1.0d0, b=1.0d0)
-  print *, m % a
-  print *, m % b
-
-end program test_parameters
+!!$program test_parameters
+!!$  
+!!$  use uniform_parameter_class
+!!$
+!!$  type(uniform_parameter) :: m
+!!$  m = uniform_parameter(pid = 1, a=1.0d0, b=1.0d0)
+!!$  print *, m % a
+!!$  print *, m % b
+!!$
+!!$end program test_parameters
