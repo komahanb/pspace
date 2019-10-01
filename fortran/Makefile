@@ -20,4 +20,4 @@ fortran:
 		test.o -o a.out
 
 clean:
-	rm *.so *.pyf *.mod *.o *~
+	rm *.so *.pyf *.mod *.o *~ a.out
