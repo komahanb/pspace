@@ -70,15 +70,15 @@ contains
   
 end module normal_parameter_class
 
-program test_parameters
-
-  use normal_parameter_class
-
-  type(normal_parameter) :: m
-
-  m = normal_parameter(pid = 1, mu=1.0d0, sigma=1.0d0)
-
-  print *, m % mu
-  print *, m % sigma
-
-end program test_parameters
+!!$program test_parameters
+!!$
+!!$  use normal_parameter_class
+!!$
+!!$  type(normal_parameter) :: m
+!!$
+!!$  m = normal_parameter(pid = 1, mu=1.0d0, sigma=1.0d0)
+!!$
+!!$  print *, m % mu
+!!$  print *, m % sigma
+!!$
+!!$end program test_parameters

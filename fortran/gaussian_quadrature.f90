@@ -491,13 +491,13 @@ subroutine test_weights(npoints)
 
 end subroutine test_weights
 
-program main
-
-  integer, parameter :: npoints = 4
-  integer :: n
-
-  do n = npoints, npoints
-     call test_weights(n)
-  end do
-
-end program main
+!!$program main
+!!$
+!!$  integer, parameter :: npoints = 4
+!!$  integer :: n
+!!$
+!!$  do n = npoints, npoints
+!!$     call test_weights(n)
+!!$  end do
+!!$
+!!$end program main
