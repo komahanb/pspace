@@ -1,16 +1,39 @@
-module multivariate_helper
+module basis_helper
 
   implicit none
 
   private
-  public :: basis_degrees
+  public :: basis_degrees, sparse !, num_quad_points
 
 contains
   
-  subroutine basis_degrees(pmax, indx)
+  pure function sparse(dmapi, dmapj, dmapf) result(filter)
+
+    integer, intent(in) :: dmapi(:), dmapj(:), dmapf(:)
+    logical, allocatable :: filter(:)
+
+    integer :: nvars
+    integer :: i
+
+    nvars = size(dmapi)
+    allocate(filter(nvars))
+
+    do i = 1, nvars
+       if (abs(dmapi(i) - dmapj(i)) .le. dmapf(i)) then
+          filter(i) = .true.
+       else
+          filter(i) = .false.
+       end if
+    end do
+
+  end function sparse
+
+  function basis_degrees(pmax) result(indx)
 
     integer, intent(in)               :: pmax(:)    
-    integer, allocatable, intent(out) :: indx(:,:)        
+    !integer, allocatable, intent(out) :: indx(:,:)        
+
+    integer, allocatable :: indx(:,:)        
 
     integer :: nvars
     nvars = size(pmax)
@@ -30,7 +53,7 @@ contains
        stop
     end if
 
-  end subroutine basis_degrees
+  end function basis_degrees
 
   subroutine univariate_degree_index(pmax, indx)
     
@@ -162,11 +185,11 @@ contains
 
   end subroutine pentavariate_degree_index
 
-end module multivariate_helper
+end module basis_helper
 
 program test_basis
 
-  use multivariate_helper
+  use basis_helper
 
   integer, allocatable :: idx1(:,:), idx2(:,:), idx3(:,:), idx4(:,:), idx5(:,:)
   integer, parameter   :: pmax1(1) = [2]
@@ -175,30 +198,34 @@ program test_basis
   integer, parameter   :: pmax4(4) = [3,2,3,3]
   integer, parameter   :: pmax5(5) = [1,2,3,3,2]
   integer :: i
+  logical, allocatable :: filter(:)
 
-  call basis_degrees(pmax1, idx1)
+  idx1 = basis_degrees(pmax1)
   do i = 1, size(idx1,dim=2)
      print *, idx1(:,i)
   end do
 
-  call basis_degrees(pmax2, idx2)
+  idx2 = basis_degrees(pmax2)
   do i = 1, size(idx2,dim=2)
      print *, idx2(:,i)
   end do
 
-  call basis_degrees(pmax3, idx3)
+  idx3 = basis_degrees(pmax3)
   do i = 1, size(idx3,dim=2)
      print *, idx3(:,i)
   end do
 
-  call basis_degrees(pmax4, idx4)
+  idx4 = basis_degrees(pmax4)
   do i = 1, size(idx4,dim=2)
      print *, idx4(:,i)
   end do
 
-  call basis_degrees(pmax5, idx5)
+  idx5 = basis_degrees(pmax5)
   do i = 1, size(idx5,dim=2)
      print *, idx5(:,i)
   end do
+
+  filter = sparse([0,0], [0,2], [1,1])
+  print *, filter
 
 end program test_basis
