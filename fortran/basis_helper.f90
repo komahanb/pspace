@@ -1,5 +1,7 @@
 module basis_helper
 
+  use class_list, only : list
+
   implicit none
 
   private
@@ -56,25 +58,38 @@ contains
   end function basis_degrees
 
   subroutine univariate_degree_index(pmax, indx)
-    
-    integer, intent(in) :: pmax(:)
-    integer, allocatable, intent(out) :: indx(:,:)    
 
+    integer, intent(in)               :: pmax(:)
+    integer, allocatable, intent(out) :: indx(:,:)    
+    type(list), allocatable           :: idx_list(:)
+    integer   , allocatable           :: tmp(:,:)
+    
     ! locals
     integer :: nvars, nterms, ctr
-    integer :: ii
+    integer :: ii, jj
 
     nvars = size(pmax)
     nterms = product(1 + pmax)
-
-    allocate(indx(nvars,nterms))
     
-    ctr = 0
+    allocate(idx_list(1+sum(pmax)))
     do ii = 0, pmax(1)
-       ctr = ctr + 1
-       indx(:,ctr) = [ii]
+       idx_list(ii+1) = list(nvars,nterms)
     end do
-
+    do ii = 0, pmax(1)
+       call idx_list(ii+1) % add_entry([ii])
+    end do
+    
+    allocate(indx(nvars,nterms))
+    ctr = 1    
+    do ii = 0, pmax(1)       
+       call idx_list(ii+1) % get_entries(tmp)
+       do jj = 1, idx_list(ii+1) % num_entries
+          indx(:,ctr) = tmp(:,jj)
+          ctr = ctr + 1
+       end do
+       deallocate(tmp)
+    end do
+     
   end subroutine univariate_degree_index
   
   subroutine bivariate_degree_index(pmax, indx)
@@ -192,11 +207,12 @@ program test_basis
   use basis_helper
 
   integer, allocatable :: idx1(:,:), idx2(:,:), idx3(:,:), idx4(:,:), idx5(:,:)
-  integer, parameter   :: pmax1(1) = [2]
+  integer, parameter   :: pmax1(1) = [5]
   integer, parameter   :: pmax2(2) = [3,2]
   integer, parameter   :: pmax3(3) = [3,2,3]
   integer, parameter   :: pmax4(4) = [3,2,3,3]
   integer, parameter   :: pmax5(5) = [1,2,3,3,2]
+
   integer :: i
   logical, allocatable :: filter(:)
 
@@ -204,11 +220,13 @@ program test_basis
   do i = 1, size(idx1,dim=2)
      print *, idx1(:,i)
   end do
-
+  
+  print *, ""
   idx2 = basis_degrees(pmax2)
   do i = 1, size(idx2,dim=2)
-     print *, idx2(:,i)
+     print *, i, idx2(:,i)
   end do
+  stop
 
   idx3 = basis_degrees(pmax3)
   do i = 1, size(idx3,dim=2)
