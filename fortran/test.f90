@@ -24,7 +24,7 @@ program main
   p3 = exponential_parameter(3,1.0d0,1.0d0)
 
   pmax = [2,4,2]
-  call getbasis(nvars, pmax)
+  call basis_degrees(pmax)
   do i = 0, 15
      print *, p1 % basis(z, i), p2 % basis(z, i), p3 % basis(z, i)
   end do
