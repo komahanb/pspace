@@ -61,142 +61,229 @@ contains
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
-    type(list), allocatable           :: idx_list(:)
+    type(list), allocatable           :: degree_list(:)
+    integer   , allocatable           :: tmp(:,:)
+    
+    ! locals
+    integer :: nvars, nterms, ctr
+    integer :: ii
+    integer :: npentries, num_total_degrees
+
+    nvars = size(pmax)
+    nterms = product(1 + pmax)
+    num_total_degrees = 1 + sum(pmax)
+    
+    ! Allocate space for degreewise indices
+    allocate(degree_list(num_total_degrees))
+    do ii = 1, num_total_degrees
+       degree_list(ii) = list(nvars,nterms)
+    end do
+
+    ! Add indices degreewise
+    do ii = 0, pmax(1)
+       call degree_list(ii+1) % add_entry([ii])
+    end do
+    
+    ! Flatten list with ascending degrees
+    allocate(indx(nvars,nterms))
+    ctr = 1
+    do ii = 1, num_total_degrees !0, pmax(1)
+       npentries = degree_list(ii) % num_entries
+       call degree_list(ii) % get_entries(tmp)
+       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       ctr = ctr + npentries
+       deallocate(tmp)
+    end do
+
+    deallocate(degree_list)
+
+  end subroutine univariate_degree_index
+  
+  subroutine bivariate_degree_index(pmax, indx)
+
+    integer, intent(in)               :: pmax(:)
+    integer, allocatable, intent(out) :: indx(:,:)    
+    type(list), allocatable           :: degree_list(:)
     integer   , allocatable           :: tmp(:,:)
     
     ! locals
     integer :: nvars, nterms, ctr
     integer :: ii, jj
-
-    nvars = size(pmax)
-    nterms = product(1 + pmax)
-    
-    allocate(idx_list(1+sum(pmax)))
-    do ii = 0, pmax(1)
-       idx_list(ii+1) = list(nvars,nterms)
-    end do
-    do ii = 0, pmax(1)
-       call idx_list(ii+1) % add_entry([ii])
-    end do
-    
-    allocate(indx(nvars,nterms))
-    ctr = 1    
-    do ii = 0, pmax(1)       
-       call idx_list(ii+1) % get_entries(tmp)
-       do jj = 1, idx_list(ii+1) % num_entries
-          indx(:,ctr) = tmp(:,jj)
-          ctr = ctr + 1
-       end do
-       deallocate(tmp)
-    end do
-     
-  end subroutine univariate_degree_index
-  
-  subroutine bivariate_degree_index(pmax, indx)
-
-    integer, intent(in) :: pmax(:)
-    integer, allocatable, intent(out) :: indx(:,:)    
-
-    ! locals
-    integer :: nvars, nterms, ctr
-    integer :: ii, jj
+    integer :: npentries, num_total_degrees
 
     nvars = size(pmax)
     nterms = product(1 + pmax)
 
-    allocate(indx(nvars,nterms))
-
-    ctr = 0
+    ! Allocate space for degreewise indices
+    num_total_degrees = 1 + sum(pmax)
+    allocate(degree_list(num_total_degrees))
+    do ii = 1, num_total_degrees
+       degree_list(ii) = list(nvars,nterms)
+    end do
+    
+    ! Add indices degreewise
     do ii = 0, pmax(1)
        do jj = 0, pmax(2)
-          ctr = ctr + 1
-          indx(:,ctr) = [ii, jj]
+          call degree_list(ii+jj+1) % add_entry([ii,jj])
        end do
     end do
+    
+    ! Flatten list with ascending degrees
+    allocate(indx(nvars,nterms))
+    ctr = 1
+    do ii = 1, num_total_degrees
+       npentries = degree_list(ii) % num_entries
+       call degree_list(ii) % get_entries(tmp)
+       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       ctr = ctr + npentries
+       deallocate(tmp)
+    end do
+
+    deallocate(degree_list)
 
   end subroutine bivariate_degree_index
 
   subroutine trivariate_degree_index(pmax, indx)
 
-    integer, intent(in) :: pmax(:)
+    integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
+    type(list), allocatable           :: degree_list(:)
+    integer   , allocatable           :: tmp(:,:)
 
     ! locals
     integer :: nvars, nterms, ctr
     integer :: ii, jj, kk
+    integer :: npentries, num_total_degrees
 
     nvars = size(pmax)
     nterms = product(1 + pmax)
 
-    allocate(indx(nvars,nterms))
-
-    ctr = 0
+    ! Allocate space for degreewise indices
+    num_total_degrees = 1 + sum(pmax)
+    allocate(degree_list(num_total_degrees))
+    do ii = 1, num_total_degrees
+       degree_list(ii) = list(nvars,nterms)
+    end do
+    
+    ! Add indices degreewise
     do ii = 0, pmax(1)
        do jj = 0, pmax(2)
           do kk = 0, pmax(3)
-             ctr = ctr + 1
-             indx(:,ctr) = [ii, jj, kk]
+             call degree_list(ii+jj+kk+1) % add_entry([ii,jj,kk])
           end do
        end do
     end do
+
+    ! Flatten list with ascending degrees
+    allocate(indx(nvars,nterms))
+    ctr = 1
+    do ii = 1, num_total_degrees
+       npentries = degree_list(ii) % num_entries
+       call degree_list(ii) % get_entries(tmp)
+       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       ctr = ctr + npentries
+       deallocate(tmp)
+    end do
+
+    deallocate(degree_list)
 
   end subroutine trivariate_degree_index
 
   subroutine quadvariate_degree_index(pmax, indx)
 
-    integer, intent(in) :: pmax(:)
+    integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
+    type(list), allocatable           :: degree_list(:)
+    integer   , allocatable           :: tmp(:,:)
 
     ! locals
     integer :: nvars, nterms, ctr
     integer :: ii, jj, kk, ll
+    integer :: npentries, num_total_degrees
 
     nvars = size(pmax)
     nterms = product(1 + pmax)
 
-    allocate(indx(nvars,nterms))
-
-    ctr = 0
+    ! Allocate space for degreewise indices
+    num_total_degrees = 1 + sum(pmax)
+    allocate(degree_list(num_total_degrees))
+    do ii = 1, num_total_degrees
+       degree_list(ii) = list(nvars,nterms)
+    end do
+    
+    ! Add indices degreewise
     do ii = 0, pmax(1)
        do jj = 0, pmax(2)
           do kk = 0, pmax(3)
              do ll = 0, pmax(4)
-                ctr = ctr + 1
-                indx(:,ctr) = [ii, jj, kk, ll]
+                call degree_list(ii+jj+kk+ll+1) % add_entry([ii,jj,kk,ll])
              end do
           end do
        end do
     end do
+
+    ! Flatten list with ascending degrees
+    allocate(indx(nvars,nterms))
+    ctr = 1
+    do ii = 1, num_total_degrees
+       npentries = degree_list(ii) % num_entries
+       call degree_list(ii) % get_entries(tmp)
+       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       ctr = ctr + npentries
+       deallocate(tmp)
+    end do
+
+    deallocate(degree_list)
 
   end subroutine quadvariate_degree_index
 
   subroutine pentavariate_degree_index(pmax, indx)
 
-    integer, intent(in) :: pmax(:)
+    integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
+    type(list), allocatable           :: degree_list(:)
+    integer   , allocatable           :: tmp(:,:)
 
     ! locals
     integer :: nvars, nterms, ctr
     integer :: ii, jj, kk, ll, mm
+    integer :: npentries, num_total_degrees
 
     nvars = size(pmax)
     nterms = product(1 + pmax)
 
-    allocate(indx(nvars,nterms))
-
-    ctr = 0
+    ! Allocate space for degreewise indices
+    num_total_degrees = 1 + sum(pmax)
+    allocate(degree_list(num_total_degrees))
+    do ii = 1, num_total_degrees
+       degree_list(ii) = list(nvars,nterms)
+    end do
+    
+    ! Add indices degreewise
     do ii = 0, pmax(1)
        do jj = 0, pmax(2)
           do kk = 0, pmax(3)
              do ll = 0, pmax(4)
                 do mm = 0, pmax(5)
-                   ctr = ctr + 1
-                   indx(:,ctr) = [ii, jj, kk, ll, mm]
+                   call degree_list(ii+jj+kk+ll+mm+1) % add_entry([ii,jj,kk,ll,mm])
                 end do
              end do
           end do
        end do
     end do
+
+    ! Flatten list with ascending degrees
+    allocate(indx(nvars,nterms))
+    ctr = 1
+    do ii = 1, num_total_degrees
+       npentries = degree_list(ii) % num_entries
+       call degree_list(ii) % get_entries(tmp)
+       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       ctr = ctr + npentries
+       deallocate(tmp)
+    end do
+
+    deallocate(degree_list)
 
   end subroutine pentavariate_degree_index
 
@@ -208,42 +295,46 @@ program test_basis
 
   integer, allocatable :: idx1(:,:), idx2(:,:), idx3(:,:), idx4(:,:), idx5(:,:)
   integer, parameter   :: pmax1(1) = [5]
-  integer, parameter   :: pmax2(2) = [3,2]
-  integer, parameter   :: pmax3(3) = [3,2,3]
+  integer, parameter   :: pmax2(2) = [3,4]
+  integer, parameter   :: pmax3(3) = [3,1,3]
   integer, parameter   :: pmax4(4) = [3,2,3,3]
   integer, parameter   :: pmax5(5) = [1,2,3,3,2]
 
   integer :: i
   logical, allocatable :: filter(:)
 
+  print *, "1 variable"
   idx1 = basis_degrees(pmax1)
   do i = 1, size(idx1,dim=2)
-     print *, idx1(:,i)
+     print *, i, idx1(:,i), sum(idx1(:,i))
   end do
   
-  print *, ""
+  print *, "2 variables"
   idx2 = basis_degrees(pmax2)
   do i = 1, size(idx2,dim=2)
-     print *, i, idx2(:,i)
+     print *, i, idx2(:,i), sum(idx2(:,i))
   end do
-  stop
 
+  print *, "3 variables"
   idx3 = basis_degrees(pmax3)
   do i = 1, size(idx3,dim=2)
-     print *, idx3(:,i)
+     print *, i, idx3(:,i), sum(idx3(:,i))
   end do
 
+  print *, "4 variables"
   idx4 = basis_degrees(pmax4)
   do i = 1, size(idx4,dim=2)
-     print *, idx4(:,i)
+     print *, i, idx4(:,i), sum(idx4(:,i))
   end do
 
+  print *, "5 variables"
   idx5 = basis_degrees(pmax5)
   do i = 1, size(idx5,dim=2)
-     print *, idx5(:,i)
+     print *, i, idx5(:,i), sum(idx5(:,i))     
   end do
 
-  filter = sparse([0,0], [0,2], [1,1])
-  print *, filter
+!!$  stop
+!!$  filter = sparse([0,0], [0,2], [1,1])
+!!$  print *, filter
 
 end program test_basis
