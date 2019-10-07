@@ -289,7 +289,7 @@ contains
 
 end module basis_helper
 
-program test_basis
+subroutine test_basis
 
   use basis_helper
 
@@ -337,4 +337,4 @@ program test_basis
 !!$  filter = sparse([0,0], [0,2], [1,1])
 !!$  print *, filter
 
-end program test_basis
+end subroutine test_basis
