@@ -10,13 +10,14 @@ module abstract_parameter_class
 
    contains
 
+     ! make it a part of container?
      procedure :: get_parameter_id
      procedure :: set_parameter_id
 
      ! Deferred procedure
      procedure(quadrature_interface), deferred :: quadrature
      procedure(basis_interface)     , deferred :: basis     
-
+     procedure(print_interface)     , deferred :: print
   end type abstract_parameter
 
   interface
@@ -35,6 +36,11 @@ module abstract_parameter_class
        real(8)                   , intent(in) :: z
        integer                   , intent(in) :: d
      end function basis_interface
+
+     subroutine print_interface(this)
+       import abstract_parameter
+       class(abstract_parameter) , intent(in) :: this
+     end subroutine print_interface
 
   end interface
 

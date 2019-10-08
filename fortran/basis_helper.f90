@@ -30,7 +30,7 @@ contains
 
   end function sparse
 
-  function basis_degrees(pmax) result(indx)
+  pure function basis_degrees(pmax) result(indx)
 
     integer, intent(in)               :: pmax(:)    
     !integer, allocatable, intent(out) :: indx(:,:)        
@@ -50,14 +50,14 @@ contains
        call quadvariate_degree_index(pmax, indx)
     else if (nvars.eq.5) then
        call pentavariate_degree_index(pmax, indx)
-    else 
-       print *, "implement multivariate basis for num vars = ", nvars
-       stop
+!!$    else 
+!!$       print *, "implement multivariate basis for num vars = ", nvars
+!!$       stop
     end if
 
   end function basis_degrees
 
-  subroutine univariate_degree_index(pmax, indx)
+  pure subroutine univariate_degree_index(pmax, indx)
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
@@ -90,7 +90,7 @@ contains
     do ii = 1, num_total_degrees !0, pmax(1)
        npentries = degree_list(ii) % num_entries
        call degree_list(ii) % get_entries(tmp)
-       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       indx(:, ctr:ctr+npentries-1) = tmp(:,:)
        ctr = ctr + npentries
        deallocate(tmp)
     end do
@@ -99,7 +99,7 @@ contains
 
   end subroutine univariate_degree_index
   
-  subroutine bivariate_degree_index(pmax, indx)
+  pure subroutine bivariate_degree_index(pmax, indx)
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
@@ -134,7 +134,7 @@ contains
     do ii = 1, num_total_degrees
        npentries = degree_list(ii) % num_entries
        call degree_list(ii) % get_entries(tmp)
-       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       indx(:, ctr:ctr+npentries-1) = tmp(:,:)
        ctr = ctr + npentries
        deallocate(tmp)
     end do
@@ -143,7 +143,7 @@ contains
 
   end subroutine bivariate_degree_index
 
-  subroutine trivariate_degree_index(pmax, indx)
+  pure subroutine trivariate_degree_index(pmax, indx)
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
@@ -180,7 +180,7 @@ contains
     do ii = 1, num_total_degrees
        npentries = degree_list(ii) % num_entries
        call degree_list(ii) % get_entries(tmp)
-       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       indx(:, ctr:ctr+npentries-1) = tmp(:,:)
        ctr = ctr + npentries
        deallocate(tmp)
     end do
@@ -189,7 +189,7 @@ contains
 
   end subroutine trivariate_degree_index
 
-  subroutine quadvariate_degree_index(pmax, indx)
+  pure subroutine quadvariate_degree_index(pmax, indx)
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
@@ -228,7 +228,7 @@ contains
     do ii = 1, num_total_degrees
        npentries = degree_list(ii) % num_entries
        call degree_list(ii) % get_entries(tmp)
-       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       indx(:, ctr:ctr+npentries-1) = tmp(:,:)
        ctr = ctr + npentries
        deallocate(tmp)
     end do
@@ -237,7 +237,7 @@ contains
 
   end subroutine quadvariate_degree_index
 
-  subroutine pentavariate_degree_index(pmax, indx)
+  pure subroutine pentavariate_degree_index(pmax, indx)
 
     integer, intent(in)               :: pmax(:)
     integer, allocatable, intent(out) :: indx(:,:)    
@@ -278,7 +278,7 @@ contains
     do ii = 1, num_total_degrees
        npentries = degree_list(ii) % num_entries
        call degree_list(ii) % get_entries(tmp)
-       indx(:, ctr:ctr+npentries) = tmp(:,:)
+       indx(:, ctr:ctr+npentries-1) = tmp(:,:)
        ctr = ctr + npentries
        deallocate(tmp)
     end do

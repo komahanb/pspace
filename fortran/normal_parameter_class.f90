@@ -13,6 +13,7 @@ module normal_parameter_class
    contains
      procedure :: basis
      procedure :: quadrature
+     procedure :: print
   end type normal_parameter
 
   ! Constructor interface for list
@@ -68,6 +69,14 @@ contains
 
   end subroutine quadrature
   
+  subroutine print(this)
+
+    class(normal_parameter) , intent(in) :: this
+
+    print *, 'normal parameter with mu = ', this % mu, 'and sigma =', this % sigma
+
+  end subroutine print
+
 end module normal_parameter_class
 
 !!$program test_parameters

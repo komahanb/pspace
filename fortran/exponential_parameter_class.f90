@@ -13,6 +13,7 @@ module exponential_parameter_class
    contains
      procedure :: basis
      procedure :: quadrature
+     procedure :: print
   end type exponential_parameter
 
   ! Constructor interface for list
@@ -68,7 +69,16 @@ contains
 
   end subroutine quadrature
   
+  subroutine print(this)
+
+    class(exponential_parameter) , intent(in) :: this
+
+    print *, 'exponential parameter with mu = ', this % mu, 'and beta =', this % beta
+
+  end subroutine print
+  
 end module exponential_parameter_class
+
 !!$
 !!$program test_parameters
 !!$  
