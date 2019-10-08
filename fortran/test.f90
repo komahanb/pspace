@@ -36,13 +36,68 @@ program main
   print *, p1 % get_parameter_id()
   print *, p2 % get_parameter_id()
   print *, p3 % get_parameter_id()
+!!$
+!!$  stop
+!!$
+!!$  do i = 1, size(vardeg,dim=2)
+!!$     do j = 1, 3
+!!$        print *, p1 % basis(z,vardeg(j,i))
+!!$     end do
+!!$  end do
+!!$
 
-  stop
+  test : block
 
-  do i = 1, size(vardeg,dim=2)
-     do j = 1, 3
-        print *, p1 % basis(z,vardeg(j,i))
-     end do
-  end do
+    use parameter_container_class, only : parameter_container
+    
+    type(parameter_container) :: pc
+    real(8) :: psiz
+    
+    call pc % add(p1)
+    call pc % add(p2)
+    call pc % add(p3)
+
+    psiz = pc % basis([1.0d0, 1.1d0, 1.2d0], [0,0,0])
+
+    print *, psiz
+    
+!!$    
+!!$    type param_list
+!!$       class(abstract_parameter), pointer :: p => null()
+!!$    end type param_list
+!!$
+!!$    
+!!$    type(param_list), dimension(5) :: plist
+!!$
+!!$    plist(1) % p => p1
+!!$    plist(2) % p => p2
+!!$    plist(3) % p => p3
+    ! plist(4) % p => a
+    
+    !type(parameter_container) :: pc
+
+    !pc = parameter_container()
+
+!!    print *, loc(p1), loc(p2)
+
+!!$    select type(p)
+!!$    type is (integer)
+!!$    class is (abstract_parameter)
+!!$    class default
+!!$    end select
+
+!!$    print *, plist(1) % p % get_parameter_id()
+!!$    print *, plist(2) % p % get_parameter_id()
+!!$    print *, plist(3) % p % get_parameter_id()
+
+    
+  !  print *, "aa", loc(plist(1) % p)
+    !allocate(pc % parameters(4))
+
+
+    !pc % parameters(1) => p1
+    
+    
+  end block test
 
 end program main
