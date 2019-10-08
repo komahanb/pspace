@@ -13,6 +13,7 @@ module uniform_parameter_class
    contains
      procedure :: basis
      procedure :: quadrature
+     procedure :: print
   end type uniform_parameter
 
   ! Constructor interface for list
@@ -67,6 +68,14 @@ contains
     call legendre_quadrature(npoints, this % a, this % b, z, y, w)
 
   end subroutine quadrature
+
+  subroutine print(this)
+
+    class(uniform_parameter) , intent(in) :: this
+    
+    print *, 'uniform parameter with a = ', this % a, 'and b =', this % b
+
+  end subroutine print
   
 end module uniform_parameter_class
 

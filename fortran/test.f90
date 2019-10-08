@@ -3,14 +3,16 @@ program main
   use normal_parameter_class
   use uniform_parameter_class
   use exponential_parameter_class
+
   use basis_helper, only : basis_degrees
 
-  integer, parameter :: nvars = 3
+  integer, parameter :: nvars = 5
   integer            :: pmax(nvars)
 
-  type(normal_parameter)      :: p1
+  type(normal_parameter)      :: p1, p5
   type(uniform_parameter)     :: p2
   type(exponential_parameter) :: p3
+  type(exponential_parameter) :: p4
 
   integer, allocatable :: vardeg(:,:)
   integer :: i
@@ -23,19 +25,22 @@ program main
 
   z = 1.1d0  
 
-  p1 = normal_parameter(1,1.0d0,1.0d0)
-  p2 = uniform_parameter(2,1.0d0,2.0d0)
-  p3 = exponential_parameter(3,1.0d0,1.0d0)
+  p1 = normal_parameter(1, -4.0d0, 0.5d0)
+  p2 = uniform_parameter(2, -5.0d0, 4.0d0)
+  p3 = exponential_parameter(3, 6.0d0, 1.0d0)
+  p4 = exponential_parameter(4, 6.0d0, 1.0d0)
+  p5 = normal_parameter(5, -4.0d0, 0.5d0)
 
-  pmax = [2,4,2]
-  vardeg = basis_degrees(pmax)
-  do i = 1, size(vardeg,dim=2)
-     print *, i, vardeg(:,i)
-  end do
+  pmax = [3,3,4,4,8]
 
-  print *, p1 % get_parameter_id()
-  print *, p2 % get_parameter_id()
-  print *, p3 % get_parameter_id()
+!!$  vardeg = basis_degrees(pmax)
+!!$  do i = 1, size(vardeg,dim=2)
+!!$     print *, i, vardeg(:,i)
+!!$  end do
+
+!!$  print *, p1 % get_parameter_id()
+!!$  print *, p2 % get_parameter_id()
+!!$  print *, p3 % get_parameter_id()
   
 !!$
 !!$  stop
@@ -46,22 +51,35 @@ program main
 !!$     end do
 !!$  end do
 !!$
-
+  
   test : block
 
     use parameter_container_class, only : parameter_container
-    
-    type(parameter_container) :: pc
+
+    integer :: k, num_terms
+    real(8) :: psikz
     real(8) :: psiz
-    
-    call pc % add(p1)
-    call pc % add(p2)
-    call pc % add(p3)
+    real(8) :: z(5) 
+    type(parameter_container) :: pc
 
-    psiz = pc % basis([1.0d0, 1.1d0, 1.2d0], [0,0,0])
+    z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
 
-    print *, psiz
-    
+    call pc % add(p1,pmax(1))
+    call pc % add(p2,pmax(2))
+    call pc % add(p3,pmax(3))
+    call pc % add(p4,pmax(4))
+    call pc % add(p5,pmax(5))
+
+    call pc % initialize()
+    do j = 1, 100
+       do k = 1, pc % get_num_basis_terms()
+          psikz = pc % basis(k, z)
+          !print *, k, psikz
+       end do
+    end do
+
+  end block test
+  
 !!$    
 !!$    type param_list
 !!$       class(abstract_parameter), pointer :: p => null()
@@ -97,8 +115,5 @@ program main
 
 
     !pc % parameters(1) => p1
-    
-    
-  end block test
-
+  
 end program main

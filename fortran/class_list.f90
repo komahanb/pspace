@@ -32,8 +32,8 @@ contains
   ! Constructor implementaion of list
   !===================================================================!
 
-  type(list) function create(num_tuples, max_entries) result(this)
-
+  pure type(list) function create(num_tuples, max_entries) result(this)
+    
     integer, intent(in) :: max_entries
     integer, intent(in) :: num_tuples
 
@@ -77,7 +77,7 @@ contains
   ! Add an entry into the list
   !===================================================================!
 
-  subroutine add_entry(this, tuple)
+  pure subroutine add_entry(this, tuple)
 
     class(list), intent(inout) :: this
     integer   , intent(in)    :: tuple(:)
