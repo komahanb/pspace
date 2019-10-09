@@ -6,7 +6,7 @@ program main
 
   use basis_helper, only : basis_degrees
 
-  integer, parameter :: nvars = 5
+  integer, parameter :: nvars = 4
   integer            :: pmax(nvars)
 
   type(normal_parameter)      :: p1, p5
@@ -38,7 +38,7 @@ program main
   p4 = exponential_parameter(4, 6.0d0, 1.0d0)
   p5 = normal_parameter(5, -4.0d0, 0.5d0)
 
-  pmax = [3,3,4,4,8]
+  pmax = [3,3,4,4] !,8]
 
 !!$  allocate(z1(nqpts(1)),y1(nqpts(1)),w1(nqpts(1)))
 !!$  allocate(z2(nqpts(2)),y2(nqpts(2)),w2(nqpts(2)))
@@ -77,35 +77,45 @@ program main
     integer :: k, num_terms
     real(8) :: psikz
     real(8) :: psiz
-    real(8) :: z(5) 
+    real(8) :: z(nvars) 
     type(parameter_container) :: pc
 
-    integer :: nqpts, q
+    integer :: nqpts(nvars), q, totnqpts
     integer :: vmaxdeg(nvars)
+    real(8) :: zq(nvars), yq(nvars), wq
 
-    !nqpts = [1, 2, 3, 1, 0]
-    z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
+
+    ! z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
+    z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0] 
 
     call pc % add(p1)
     call pc % add(p2)
     call pc % add(p3)
     call pc % add(p4)
-    call pc % add(p5)
-    
+    ! call pc % add(p5)
+
     call pc % initialize_basis(pmax)        
     do j = 1, 1
        do k = 1, pc % get_num_basis_terms()
           psikz = pc % basis(k, z)
-          print *, k, psikz
+          ! print *, k, psikz
        end do
     end do
+    
+    ! nqpts = [1, 1, 1, 1, 3]
+    nqpts = [3, 3, 2, 2] !, 3]
+        
+    call pc % initialize_quadrature(nqpts)
+    totnqpts = pc % get_num_quadrature_points()
+    do q = 1, totnqpts
+       call pc % get_quadrature(q, zq, yq, wq)
+       print *, q, "zq", zq, "w=", wq
+    end do
 
-!!$    
-!!$    call pc % initialize_quadrature(nqpts_variable)
-!!$    nqpts = pc % get_num_quadrature_points()
-!!$    do q = 1, nqpts
-!!$       call pc % quadrature(q, zq, yq, wq)       
-!!$    end do
+    ! for every basis term
+    !   initialize quadrature based on degree
+    !   for every quadrature node
+    !     evaluate basis
     
   end block test
   

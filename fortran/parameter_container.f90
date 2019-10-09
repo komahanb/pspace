@@ -1,8 +1,9 @@
 module parameter_container_class
 
   use abstract_parameter_class, only : abstract_parameter
-  use basis_helper, only : basis_degrees
-
+  use basis_helper            , only : basis_degrees
+  use quadrature_helper       , only : tensor_product
+  
   implicit none
 
   type param_ptr
@@ -15,10 +16,11 @@ module parameter_container_class
 
      type(param_ptr), dimension(5) :: plist
      integer        , dimension(5) :: param_maxdeg = 0
-     integer        , dimension(5) :: param_nqpts = 0
+     ! integer        , dimension(5) :: param_nqpts = 0
 
      integer, allocatable :: dindex(:,:)
-
+     real(8), allocatable :: zz(:,:), yy(:,:), ww(:)
+     
      integer :: num_basis_terms = 0
      logical :: basis_initialized = .false.
 
@@ -31,18 +33,15 @@ module parameter_container_class
      generic   :: basis => basis_term, basis_given_degrees
      
      procedure :: initialize_quadrature
-          
+     procedure :: get_quadrature
+     
      procedure :: add
      procedure :: get_num_basis_terms
+     procedure :: get_num_quadrature_points
      
      procedure, private :: basis_term, basis_given_degrees
      
   end type parameter_container
-  
-!!$  interface psi1
-!!$     module procedure basis_term
-!!$     module procedure basis_given_degrees
-!!$  end interface psi1
 
 contains
   
@@ -51,8 +50,35 @@ contains
     class(parameter_container), intent(inout) :: this
     integer                   , intent(in) :: pnqpts(:)
 
-    this % param_nqpts (1 : this % num_parameters) = pnqpts(:)
+    real(8) :: zp(this % num_parameters, maxval(pnqpts))
+    real(8) :: yp(this % num_parameters, maxval(pnqpts))
+    real(8) :: wp(this % num_parameters, maxval(pnqpts))
+    integer :: p
+    
+    if (allocated(this % zz)) deallocate(this % zz)
+    if (allocated(this % yy)) deallocate(this % yy)
+    if (allocated(this % ww)) deallocate(this % ww) 
+        
+    do p = 1, this % num_parameters
+       call this % plist (p) % p % quadrature(&
+            & pnqpts(p), &
+            & zp(p, 1 : pnqpts(p)), &
+            & yp(p, 1 : pnqpts(p)), &
+            & wp(p, 1 : pnqpts(p)) &
+            & )
+    end do
 
+    call tensor_product(&
+         & pnqpts, &
+         & zp, yp, wp, &
+         & this % zz, this % yy, this % ww)
+    
+    if (allocated(this % zz)) then 
+       this % num_quadrature_points = size(this % zz, dim = 2)
+    else
+       print *, "quadrature points not allocated"
+    end if
+    
   end subroutine initialize_quadrature
 
   subroutine initialize_basis(this, pmax)
@@ -89,6 +115,14 @@ contains
     call this % plist(this % num_parameters) % p % print()
 
   end subroutine add
+
+  pure integer function get_num_quadrature_points(this) result(nqpts)
+
+    class(parameter_container) , intent(in) :: this
+
+    nqpts = this % num_quadrature_points
+
+  end function get_num_quadrature_points
 
   pure integer function get_num_basis_terms(this) result(nterms)
     
@@ -128,4 +162,17 @@ contains
 
   end function basis_given_degrees
   
+  subroutine get_quadrature(this, q, z, y, w)
+
+    class(parameter_container) , intent(in)    :: this
+    integer                    , intent(in)    :: q
+    real(8)                    , intent(inout) :: z(:), y(:)
+    real(8)                    , intent(inout) :: w
+
+    z = this % zz(:,q)
+    y = this % yy(:,q)
+    w = this % ww(q)
+
+  end subroutine get_quadrature
+
 end module parameter_container_class
