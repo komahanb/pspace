@@ -308,7 +308,7 @@ contains
     z = (y-a)/(b-a)
     w = w/2.0d0
 
-  end subroutine legendre_quadrature
+ end subroutine legendre_quadrature
 
  pure subroutine laguerre_quadrature(npoints, mu, beta, z, y, w)
 
