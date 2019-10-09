@@ -6,7 +6,7 @@ c = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 4)
 m = pfactory.createUniformParameter('m', dict(a=-5.0, b=4.0), 4)
 k = pfactory.createExponentialParameter('k', dict(mu=6.0, beta=1.0), 5)
 K = pfactory.createExponentialParameter('k', dict(mu=6.0, beta=1.0), 5)
-C = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 9)
+#C = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 9)
 
 # Add "Parameter" into "ParameterContainer"
 pc = ParameterContainer()
@@ -14,18 +14,27 @@ pc.addParameter(c)
 pc.addParameter(m)
 pc.addParameter(k)
 pc.addParameter(K)
-pc.addParameter(C)
+#pc.addParameter(C)
 
 pc.initialize()
 
 N = pc.getNumStochasticBasisTerms()
 #zmap = {0:1.01, 1:1.00,2 :1.0001}
-zmap = {0:1.01, 1:1.00, 2:1.0001, 3:2.0, 4:0.231312}
+zmap = {0:1.01, 1:1.00, 2:1.0001, 3:2.0} #, 4:0.231312}
 
-for j in range(1):
-    for k in range(N):
-        k+1, pc.psi(k,zmap)
+## for k in range(N):
+##     k+1, pc.psi(k,zmap)
 
+for k in range(N):   
+    # Initialize quadrature with number of gauss points
+    # necessary for i-th basis entry
+    nqpts_map = pc.getNumQuadraturePointsFromDegree(pc.basistermwise_parameter_degrees[k])
+    pc.initializeQuadrature(nqpts_map)
+
+    #print nqpts_map
+    for q in pc.quadrature_map.keys():                
+        print("%4d %4d %13.6f" % (k, q, pc.evalOrthoNormalBasis(k,q)))
+        
 ## import forthogonal_polynomials as fortho
 ## import numpy as np
 

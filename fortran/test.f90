@@ -94,29 +94,54 @@ program main
     call pc % add(p4)
     ! call pc % add(p5)
 
-    call pc % initialize_basis(pmax)        
-    do j = 1, 1
-       do k = 1, pc % get_num_basis_terms()
-          psikz = pc % basis(k, z)
-          ! print *, k, psikz
-       end do
-    end do
-    
+    call pc % initialize_basis(pmax)
+
+!!$    do j = 1, 1
+!!$       do k = 1, pc % get_num_basis_terms()
+!!$          psikz = pc % basis(k, z)
+!!$          print *, k, psikz
+!!$       end do
+!!$    end do
+!!$    
+!!$    !stop
+
     ! nqpts = [1, 1, 1, 1, 3]
-    nqpts = [3, 3, 2, 2] !, 3]
-        
-    call pc % initialize_quadrature(nqpts)
-    totnqpts = pc % get_num_quadrature_points()
-    do q = 1, totnqpts
-       call pc % get_quadrature(q, zq, yq, wq)
-       print *, q, "zq", zq, "w=", wq
+    ! nqpts = [3, 3, 2, 2] !, 3]
+
+!!$        
+!!$    call pc % initialize_quadrature(nqpts)
+!!$    totnqpts = pc % get_num_quadrature_points()
+!!$    do q = 1, totnqpts
+!!$       call pc % get_quadrature(q, zq, yq, wq)
+!!$       print *, q, "zq", zq, "w=", wq
+!!$    end do
+
+    ! initialize quadrature with num-quad-points for each variable
+
+    ! nqpts = nqpts_from_max_degree(pmax)
+    call pc % initialize_quadrature(1 + pmax)
+       
+    do k = 1, pc % get_num_basis_terms()
+
+       do q = 1, pc % get_num_quadrature_points()
+
+          call pc % get_quadrature(q, zq, yq, wq)
+
+          psikz = pc % basis(k, zq)
+
+          ! write(*,'(i4, i4, f13.6)') k-1, q-1, psikz
+
+       end do
+
     end do
+
+    print *,  pc % get_num_basis_terms()*pc % get_num_quadrature_points()
 
     ! for every basis term
     !   initialize quadrature based on degree
     !   for every quadrature node
     !     evaluate basis
-    
+
   end block test
   
 !!$    
