@@ -234,7 +234,8 @@ double OrthogonalPolynomials::general_legendre(double z, int d){
   return pval;
 }
 
-int main( int argc, char *argv[] ){
+
+void test_polynomials( int argc, char *argv[] ){
   
   OrthogonalPolynomials *poly = new OrthogonalPolynomials();
   double z = 1.1;
@@ -260,3 +261,4 @@ int main( int argc, char *argv[] ){
     }
   }
 }
+
