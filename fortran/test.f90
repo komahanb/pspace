@@ -19,7 +19,14 @@ program main
 
   real(8) :: z
   real(8) :: y(2)
+  
+  real(8), allocatable, dimension(:) :: z1, z2
+  real(8), allocatable, dimension(:) :: y1, y2
+  real(8), allocatable, dimension(:) :: w1, w2
+  integer :: nqpts(2)
 
+  nqpts = [3,4]
+  
   y(1) = 1.0d0
   y(2) = 1.1d0
 
@@ -33,6 +40,17 @@ program main
 
   pmax = [3,3,4,4,8]
 
+!!$  allocate(z1(nqpts(1)),y1(nqpts(1)),w1(nqpts(1)))
+!!$  allocate(z2(nqpts(2)),y2(nqpts(2)),w2(nqpts(2)))
+!!$  
+!!$  call p1 % quadrature(nqpts(1), z1, y1, w1)
+!!$  call p2 % quadrature(nqpts(2), z2, y2, w2)
+!!$
+!!$  call pc % quadrature(q, zq, yq, wq)
+!!$
+!!$  print *, z1, y1, w1
+!!$  print *, z2, y2, w2
+  
 !!$  vardeg = basis_degrees(pmax)
 !!$  do i = 1, size(vardeg,dim=2)
 !!$     print *, i, vardeg(:,i)
@@ -62,22 +80,33 @@ program main
     real(8) :: z(5) 
     type(parameter_container) :: pc
 
+    integer :: nqpts, q
+    integer :: vmaxdeg(nvars)
+
+    !nqpts = [1, 2, 3, 1, 0]
     z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
 
-    call pc % add(p1,pmax(1))
-    call pc % add(p2,pmax(2))
-    call pc % add(p3,pmax(3))
-    call pc % add(p4,pmax(4))
-    call pc % add(p5,pmax(5))
-
-    call pc % initialize()
-    do j = 1, 100
+    call pc % add(p1)
+    call pc % add(p2)
+    call pc % add(p3)
+    call pc % add(p4)
+    call pc % add(p5)
+    
+    call pc % initialize_basis(pmax)        
+    do j = 1, 1
        do k = 1, pc % get_num_basis_terms()
           psikz = pc % basis(k, z)
-          !print *, k, psikz
+          print *, k, psikz
        end do
     end do
 
+!!$    
+!!$    call pc % initialize_quadrature(nqpts_variable)
+!!$    nqpts = pc % get_num_quadrature_points()
+!!$    do q = 1, nqpts
+!!$       call pc % quadrature(q, zq, yq, wq)       
+!!$    end do
+    
   end block test
   
 !!$    
