@@ -2,7 +2,7 @@
   Class to evaluate orthogonal polynomials.
 
   Author: Komahan Boopathy (komahanboopathy@gmail.com)
- */
+*/
 class OrthogonalPolynomials {
  public:
 
