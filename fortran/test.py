@@ -22,7 +22,7 @@ N = pc.getNumStochasticBasisTerms()
 #zmap = {0:1.01, 1:1.00,2 :1.0001}
 zmap = {0:1.01, 1:1.00, 2:1.0001, 3:2.0, 4:0.231312}
 
-for j in range(100):
+for j in range(1):
     for k in range(N):
         k+1, pc.psi(k,zmap)
 
