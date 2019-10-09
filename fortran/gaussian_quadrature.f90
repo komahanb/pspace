@@ -1,6 +1,8 @@
 module gaussian_quadrature
 
   implicit none
+  
+  public : hermite_quadrature, legendre_quadrature, laguerre_quadrature
 
 contains
 
