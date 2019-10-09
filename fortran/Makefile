@@ -17,12 +17,14 @@ fortran:
 	caf -O3 -fbounds-check -c exponential_parameter_class.f90
 	caf -O3 -fbounds-check -c class_list.f90
 	caf -O3 -fbounds-check -c basis_helper.f90
+	caf -O3 -fbounds-check -c quadrature_helper.f90
 	caf -O3 -fbounds-check -c parameter_container.f90
 	caf -O3 -fbounds-check -c test.f90
 	caf -O3 -fbounds-check orthogonal_polynomials.o gaussian_quadrature.o \
 		abstract_parameter_class.o normal_parameter_class.o \
 		uniform_parameter_class.o exponential_parameter_class.o \
-		class_list.o basis_helper.o parameter_container.o test.o -o a.out
+		class_list.o basis_helper.o quadrature_helper.o \
+		parameter_container.o test.o -o a.out
 
 clean:
 	rm *.so *.pyf *.mod *.o *~ a.out
