@@ -111,7 +111,7 @@ contains
     end if
 
     this % num_parameters = this % num_parameters + 1
-    this % plist (this % num_parameters) % p => param        
+    this % plist (param % get_parameter_id()) % p => param        
     call this % plist(this % num_parameters) % p % print()
 
   end subroutine add
