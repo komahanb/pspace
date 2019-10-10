@@ -3,7 +3,8 @@
 /*
   Construct uniform parameter with input parameters
 */
-UniformParameter::UniformParameter(int pid, double a, double b){
+UniformParameter::UniformParameter(int pid, double a, double b)
+  : AbstractParameter() {
   this->setParameterID(pid);
   this->a = a;
   this->b = b;

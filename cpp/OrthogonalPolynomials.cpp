@@ -234,10 +234,10 @@ double OrthogonalPolynomials::general_legendre(double z, int d){
   return pval;
 }
 
-
 void test_polynomials( int argc, char *argv[] ){
   
   OrthogonalPolynomials *poly = new OrthogonalPolynomials();
+
   double z = 1.1;
   int max_order = 10;
   int nruns = 100000;  

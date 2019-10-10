@@ -5,6 +5,8 @@
 #include"BasisHelper.h"
 #include"QuadratureHelper.h"
 
+using namespace std;
+
 class ParameterContainer {
  public:
   // Constructor and Destructor
@@ -28,7 +30,7 @@ class ParameterContainer {
  private:
 
   // Maintain a map of parameters
-  //map<int,AbstractParameter> pmap;
+  std::map<int,AbstractParameter*> pmap;
 
   int num_parameters;
   int num_basis_terms;

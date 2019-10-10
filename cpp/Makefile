@@ -16,4 +16,4 @@ python:
 	python setup.py build_ext --inplace
 
 clean:
-	rm *.so *.pyf *.mod *.o *~ a.out
+	rm *.so *.pyf *.mod *.o *~ a.out *.gch
