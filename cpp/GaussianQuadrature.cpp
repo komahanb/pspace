@@ -505,8 +505,7 @@ void GaussianQuadrature::laguerreQuadrature(int npoints,
   }
 }
 
-/*
-int test(int argc, char *argv[] ){
+void test(int argc, char *argv[] ){
 
   // Create quadrature object
   GaussianQuadrature *gaussQuad = new GaussianQuadrature();
@@ -559,4 +558,4 @@ int test(int argc, char *argv[] ){
   delete[] y;
   delete[] w;
 }
-*/
+

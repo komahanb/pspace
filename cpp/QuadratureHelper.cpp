@@ -108,7 +108,7 @@ void QuadratureHelper::tensorProduct( const int nvars,
   } // end if
 }
 
-int main(int argc, char *argv[] ){
+void test_quadraure_multi(int argc, char *argv[] ){
   
   QuadratureHelper *qh = new QuadratureHelper();
 

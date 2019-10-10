@@ -3,7 +3,8 @@
 /*
   Construct exponential parameter with input parameters
 */
-ExponentialParameter::ExponentialParameter(int pid, double mu, double beta){
+ExponentialParameter::ExponentialParameter(int pid, double mu, double beta)
+  : AbstractParameter() {
   this->setParameterID(pid);
   this->mu = mu;
   this->beta = beta;

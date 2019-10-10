@@ -3,7 +3,8 @@
 /*
   Construct normal parameter with input parameters
 */
-NormalParameter::NormalParameter(int pid, double mu, double sigma){
+NormalParameter::NormalParameter(int pid, double mu, double sigma)
+  : AbstractParameter() {
   this->setParameterID(pid);
   this->mu = mu;
   this->sigma = sigma;
