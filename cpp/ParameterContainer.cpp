@@ -1,7 +1,5 @@
 #include"ParameterContainer.h"
-#include"NormalParameter.h"
-#include"UniformParameter.h"
-#include"ExponentialParameter.h"
+#include"ParameterFactory.h"
 
 ParameterContainer::ParameterContainer(){
   this->num_parameters = 0;
@@ -37,11 +35,12 @@ void  ParameterContainer::initializeQuadrature(){}
 
 int main( int argc, char *argv[] ){
   // Create random parameters
-  AbstractParameter *p1 = (AbstractParameter*) new NormalParameter(0, -4.0, 0.5);
-  AbstractParameter *p2 = (AbstractParameter*) new UniformParameter(1, -5.0, 4.0);
-  AbstractParameter *p3 = (AbstractParameter*) new ExponentialParameter(2, 6.0, 1.0);
-  AbstractParameter *p4 = (AbstractParameter*) new ExponentialParameter(3, 6.0, 1.0);
-  AbstractParameter *p5 = (AbstractParameter*) new NormalParameter(4, -4.0, 0.5);
+  ParameterFactory *factory = new ParameterFactory();
+  AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);
+  AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0);
+  AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0);
+  AbstractParameter *p4 = factory->createExponentialParameter(6.0, 1.0);
+  AbstractParameter *p5 = factory->createNormalParameter(-4.0, 0.5);
    
   // Create container and add random paramters
   ParameterContainer *pc = new ParameterContainer();

@@ -11,7 +11,9 @@ default:
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check OrthogonalPolynomials.o \
 	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
-	ExponentialParameter.o BasisHelper.o QuadratureHelper.o ParameterContainer.o -o a.out
+	ExponentialParameter.o ParameterFactory.o \
+	BasisHelper.o QuadratureHelper.o ParameterContainer.o \
+	-o a.out
 
 python:
 	python setup.py build_ext --inplace

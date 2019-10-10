@@ -10,9 +10,9 @@ class ParameterFactory {
   ~ParameterFactory();
   
   // Creates different parameter types
-  void createNormalParameter(double mu, double sigma);
-  void createUniformParameter(double a, double b);
-  void createExponentialParameter(double mu, double);
+  AbstractParameter* createNormalParameter(double mu, double sigma);
+  AbstractParameter* createUniformParameter(double a, double b);
+  AbstractParameter* createExponentialParameter(double mu, double);
   
  private:
   int next_parameter_id;
