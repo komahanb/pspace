@@ -1,3 +1,6 @@
+#ifndef ABSTRACT_PARAMETER
+#define ABSTRACT_PARAMETER
+
 #include "GaussianQuadrature.h"
 #include "OrthogonalPolynomials.h"
 
@@ -22,3 +25,5 @@ class AbstractParameter {
  private:
   int parameter_id;
 };
+
+#endif

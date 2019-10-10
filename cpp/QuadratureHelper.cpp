@@ -1,12 +1,19 @@
-#include "QuadratureHelper.h"
+#include <stdio.h>
+#include"QuadratureHelper.h"
+
+#include"NormalParameter.h"
+#include"UniformParameter.h"
+#include"ExponentialParameter.h"
 
 QuadratureHelper::QuadratureHelper(){}
 QuadratureHelper::~QuadratureHelper(){}
 
 void QuadratureHelper::tensorProduct( const int nvars,
                                       const int *nqpts,
-                                      const int **zp, const int **yp, const int **wp,
-                                      int **zz, int **yy, int *ww ){  
+                                      double **zp, double **yp, double **wp,
+                                      double **zz, double **yy, double *ww ){
+
+
   if (nvars == 1) {
 
     int ctr = 0;
@@ -99,5 +106,92 @@ void QuadratureHelper::tensorProduct( const int nvars,
     }
     
   } // end if
+}
+
+int main(int argc, char *argv[] ){
   
+  QuadratureHelper *qh = new QuadratureHelper();
+
+  const int nvars = 3;
+  
+  int nqpts[nvars];
+  nqpts[0] = 4;
+  nqpts[1] = 2;
+  nqpts[2] = 3;
+  
+  double **zp = new double*[nvars];
+  for (int i = 0; i < nvars; i++){
+    zp[i] = new double[nqpts[0]];
+  }
+
+  double **yp = new double*[nvars];
+  for (int i = 0; i < nvars; i++){
+    yp[i] = new double[nqpts[1]];
+  }
+  
+  double **wp = new double*[nvars];
+  for (int i = 0; i < nvars; i++){
+    wp[i] = new double[nqpts[2]];
+  }
+
+  NormalParameter *p1 = new NormalParameter(0, 0.0, 1.0);
+  UniformParameter *p2 = new UniformParameter(1, -1.0, 1.0);
+  ExponentialParameter *p3 = new ExponentialParameter(2, 1.0, 0.5);
+
+  p1->quadrature(nqpts[0], zp[0], yp[0], wp[0]);
+  p2->quadrature(nqpts[1], zp[1], yp[1], wp[1]);
+  p3->quadrature(nqpts[2], zp[2], yp[2], wp[2]);
+  
+  double wsum = 0.0;
+  for(int k = 0; k < nqpts[0]; k++){
+    wsum += wp[0][k];
+    printf("%f %f %f %f \n", zp[0][k], yp[0][k], wp[0][k], wsum);
+  }
+
+  printf("\n");
+  wsum = 0.0;
+  for(int k = 0; k < nqpts[1]; k++){
+    wsum += wp[1][k];
+    printf("%f %f %f %f \n", zp[1][k], yp[1][k], wp[1][k], wsum);
+  }
+
+  printf("\n");
+  wsum = 0.0;
+  for(int k = 0; k < nqpts[2]; k++){
+    wsum += wp[2][k];
+    printf("%f %f %f %f\n", zp[2][k], yp[2][k], wp[2][k], wsum);
+  }
+
+  double **zz;
+  double **yy;
+  double *ww;
+
+  // Allocate space for return variables
+  int totquadpts = 1;
+  for (int i = 0; i < nvars; i++){
+    totquadpts *= nqpts[i];
+  }
+  
+  zz = new double*[nvars];
+  yy = new double*[nvars];  
+  for (int i = 0; i < nvars; i++){
+    zz[i] = new double[totquadpts];
+    yy[i] = new double[totquadpts];    
+  }
+  ww = new double[totquadpts];  
+
+  // Find tensor product of 1d rules
+  qh->tensorProduct(nvars, nqpts,
+                    zp, yp, wp,
+                    zz, yy, ww);
+
+  wsum = 0.0;
+  for(int k = 0; k < totquadpts; k++){
+    printf("%d ", k);
+    for(int j = 0; j < nvars; j++){ 
+      printf(" %f ", zz[j][k]);
+    }
+    wsum += ww[k];
+    printf(" %f %f \n", ww[k], wsum);
+  }  
 }
