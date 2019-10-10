@@ -2,6 +2,21 @@
 
 ParameterFactory::ParameterFactory(){}
 ParameterFactory::~ParameterFactory(){}
-void ParameterFactory::createNormalParameter(double mu, double sigma){}
-void ParameterFactory::createUniformParameter(double a, double b){}
-void ParameterFactory::createExponentialParameter(double mu, double beta){}
+
+AbstractParameter* ParameterFactory::createNormalParameter(double mu, double sigma){
+  int pid = this->next_parameter_id;
+  this->next_parameter_id++;
+  return (AbstractParameter*) new NormalParameter(pid, mu, sigma);  
+}
+
+AbstractParameter* ParameterFactory::createUniformParameter(double a, double b){
+  int pid = this->next_parameter_id;
+  this->next_parameter_id++;
+  return (AbstractParameter*) new UniformParameter(pid, a, b);  
+}
+
+AbstractParameter* ParameterFactory::createExponentialParameter(double mu, double beta){
+  int pid = this->next_parameter_id;
+  this->next_parameter_id++;
+  return (AbstractParameter*) new ExponentialParameter(pid, mu, beta);  
+}
