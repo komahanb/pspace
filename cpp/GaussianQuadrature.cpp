@@ -180,9 +180,9 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
 
   // Return points in appropriate domains
   for ( int n = 0; n < npoints; n++ ) {
-    y[n] = mu + sigma*pow(2.0,0.5)*x[n];
+    y[n] = mu + sigma*sqrt(2.0)*x[n];
     z[n] = (y[n] - mu)/sigma;
-    w[n] = w[n]/pow(4.0*atan(1.0),0.5);
+    w[n] = w[n]/sqrt(4.0*atan(1.0));
   }
 }
 
