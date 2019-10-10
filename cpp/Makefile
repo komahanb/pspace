@@ -5,6 +5,7 @@ default:
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c NormalParameter.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c UniformParameter.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ExponentialParameter.cpp
+	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterFactory.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
