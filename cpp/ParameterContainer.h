@@ -15,7 +15,7 @@ class ParameterContainer {
   
   // Key funtionalities
   void addParameter(AbstractParameter *param);
-  //void basis();
+  // double basis();
   // void quadrature();
 
   // Accessors
@@ -24,8 +24,8 @@ class ParameterContainer {
   int getNumQuadraturePoints();
 
   // Initiliazation tasks
-  void initializeBasis();
-  void initializeQuadrature();
+  void initializeBasis(const int *pmax);
+  void initializeQuadrature(const int *nqpts);
 
  private:
 
