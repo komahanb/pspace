@@ -29,9 +29,11 @@ int ParameterContainer::getNumQuadraturePoints(){
   return this->num_quadrature_points;
 }
 
-void  ParameterContainer::initializeBasis(){}
+void  ParameterContainer::initializeBasis(const int *pmax){
+}
 
-void  ParameterContainer::initializeQuadrature(){}
+void  ParameterContainer::initializeQuadrature(const int *nqpts){
+}
 
 int main( int argc, char *argv[] ){
 
@@ -50,6 +52,24 @@ int main( int argc, char *argv[] ){
   pc->addParameter(p3);
   pc->addParameter(p4);
   pc->addParameter(p5);
-  
+
+  const int nvars = pc->getNumParameters();
+  int *pmax = new int[nvars];
+  int *nqpts =new int[nvars];
+  for (int i = 0; i < nvars; i++){
+    pmax[i] = i+2;
+    nqpts[i] = pmax[i]+1;
+  }
+
+  pc->initializeBasis(pmax);
+  for (int k = 0; k < pc->getNumBasisTerms(); k++){
+    pc->initializeQuadrature(nqpts);
+    printf("\n");
+    for (int q = 0; q < pc->getNumBasisTerms(); q++){
+      //pc->quadrature(q, zq, yq, wq);
+      //printf("%e ", pc->basis(k,zq));
+    }
+  }
+
   return 1;
 }
