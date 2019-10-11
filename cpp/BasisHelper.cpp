@@ -11,15 +11,15 @@ BasisHelper::~BasisHelper(){}
 */
 void BasisHelper::basisDegrees(const int nvars, const int *pmax, int **indx){
   if ( nvars == 1 ) {
-    univariateBasisDegrees(pmax, indx);
+    univariateBasisDegrees(nvars, pmax, indx);
   } else if ( nvars == 2 ) {
-    bivariateBasisDegrees(pmax, indx);
+    bivariateBasisDegrees(nvars, pmax, indx);
   } else if ( nvars == 3 ) {
-    trivariateBasisDegrees(pmax, indx);
+    trivariateBasisDegrees(nvars, pmax, indx);
   } else if ( nvars == 4 ) {
-    quadvariateBasisDegrees(pmax, indx);
+    quadvariateBasisDegrees(nvars, pmax, indx);
   } else if ( nvars == 5 ) {   
-    pentavariateBasisDegrees(pmax, indx);
+    pentavariateBasisDegrees(nvars, pmax, indx);
   } else {
     printf("Basis not implemented for more than five variables");
   }
@@ -41,8 +41,26 @@ void BasisHelper::sparse(const int nvars,
   }
 }
 
-void BasisHelper::univariateBasisDegrees(const int *pmax, int **indx){}
-void BasisHelper::bivariateBasisDegrees(const int *pmax, int **indx){}
-void BasisHelper::trivariateBasisDegrees(const int *pmax, int **indx){}
-void BasisHelper::quadvariateBasisDegrees(const int *pmax, int **indx){}
-void BasisHelper::pentavariateBasisDegrees(const int *pmax, int **indx){}
+void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, int **indx){
+  
+  int nterms = 1;
+  for(int i = 0; i < nvars; i++){
+    nterms *= 1 + pmax[i];
+  }
+
+  int num_total_degrees = 1;
+  for(int i = 0; i < nvars; i++){
+    num_total_degrees += pmax[i];
+  }
+
+  // int *degree_list = new int[num_total_degrees];
+  // for(int i = 0; i < nvars; i++){
+  //   degree_list[i] = 
+  // }
+  
+}
+
+void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
+void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
+void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
+void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax, int **indx){}

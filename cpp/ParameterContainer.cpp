@@ -34,6 +34,7 @@ void  ParameterContainer::initializeBasis(){}
 void  ParameterContainer::initializeQuadrature(){}
 
 int main( int argc, char *argv[] ){
+
   // Create random parameters
   ParameterFactory *factory = new ParameterFactory();
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);

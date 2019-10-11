@@ -10,9 +10,9 @@ class BasisHelper {
               bool *sparse);
 
  private:
-  void univariateBasisDegrees(const int *pmax, int **indx);
-  void bivariateBasisDegrees(const int *pmax, int **indx);
-  void trivariateBasisDegrees(const int *pmax, int **indx);
-  void quadvariateBasisDegrees(const int *pmax, int **indx);
-  void pentavariateBasisDegrees(const int *pmax, int **indx);
+  void univariateBasisDegrees(const int nvars, const int *pmax, int **indx);
+  void bivariateBasisDegrees(const int nvars, const int *pmax, int **indx);
+  void trivariateBasisDegrees(const int nvars, const int *pmax, int **indx);
+  void quadvariateBasisDegrees(const int nvars, const int *pmax, int **indx);
+  void pentavariateBasisDegrees(const int nvars, const int *pmax, int **indx);
 };
