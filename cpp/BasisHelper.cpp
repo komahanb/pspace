@@ -9,17 +9,18 @@ BasisHelper::~BasisHelper(){}
 /*
   Return the index set corresponding to maximum degrees of each parameter
 */
-void BasisHelper::basisDegrees(const int nvars, const int *pmax, int **indx){
+void BasisHelper::basisDegrees(const int nvars, const int *pmax, 
+                               int *nindices, int **indx){
   if ( nvars == 1 ) {
-    univariateBasisDegrees(nvars, pmax, indx);
+    univariateBasisDegrees(nvars, pmax, nindices, indx);
   } else if ( nvars == 2 ) {
-    bivariateBasisDegrees(nvars, pmax, indx);
+    bivariateBasisDegrees(nvars, pmax, nindices, indx);
   } else if ( nvars == 3 ) {
-    trivariateBasisDegrees(nvars, pmax, indx);
+    trivariateBasisDegrees(nvars, pmax, nindices, indx);
   } else if ( nvars == 4 ) {
-    quadvariateBasisDegrees(nvars, pmax, indx);
+    quadvariateBasisDegrees(nvars, pmax, nindices, indx);
   } else if ( nvars == 5 ) {   
-    pentavariateBasisDegrees(nvars, pmax, indx);
+    pentavariateBasisDegrees(nvars, pmax, nindices, indx);
   } else {
     printf("Basis not implemented for more than five variables");
   }
@@ -41,7 +42,8 @@ void BasisHelper::sparse(const int nvars,
   }
 }
 
-void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, int **indx){
+void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, 
+                                         int *nindices, int **indx){
   
   int nterms = 1;
   for(int i = 0; i < nvars; i++){
@@ -60,7 +62,11 @@ void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, int *
   
 }
 
-void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
-void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
-void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
-void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax, int **indx){}
+void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, 
+                                        int *nindices, int **indx){}
+void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax, 
+                                         int *nindices, int **indx){}
+void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax, 
+                                          int *nindices, int **indx){}
+void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax, 
+                                           int *nindices, int **indx){}

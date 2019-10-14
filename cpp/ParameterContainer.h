@@ -32,14 +32,15 @@ class ParameterContainer {
   // Maintain a map of parameters
   std::map<int,AbstractParameter*> pmap;
 
-  int num_parameters;
-  int num_basis_terms;
-  int num_quadrature_points; 
+  int tnum_parameters;        // total number of parameters
+  int tnum_basis_terms;       // total number of basis terms
+  int tnum_quadrature_points; // total number of quadrature points
 
-  int *param_max_deg;
-  int **dindex;
-  double **Z, **Y, **W;
+  int *param_max_degree;   // maximum monomial degree of each parameter
+  int **dindex;         // parameterwise degree for each basis entry
+  double **Z, **Y, **W; 
 
+  // Helpers to access basis evaluation and quadrature points
   BasisHelper *bhelper;
   QuadratureHelper *qhelper;
   
