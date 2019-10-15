@@ -15,8 +15,10 @@ class ParameterContainer {
   
   // Key funtionalities
   void addParameter(AbstractParameter *param);
-  // double basis();
+
+  // Evaluate basis at quadrature points
   void quadrature(int q, double *zq, double *yq, double *wq);
+  double basis(int k, double *z);
 
   // Accessors
   int getNumBasisTerms();

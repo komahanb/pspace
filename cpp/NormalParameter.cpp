@@ -27,6 +27,6 @@ void NormalParameter::quadrature(int npoints, double *z, double *y, double *w){
 /*
   Evalute the basis of order d at the point z
 */
-void NormalParameter::basis(double z, int d){
-  this->polyn->unit_hermite(z, d);
+double NormalParameter::basis(double z, int d){
+  return this->polyn->unit_hermite(z, d);
 }

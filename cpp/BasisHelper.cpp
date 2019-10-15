@@ -1,6 +1,11 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<map>
+#include<list>
+
 #include"BasisHelper.h"
+
+using namespace std;
 
 // Constructor and Destructor
 BasisHelper::BasisHelper(){}
@@ -44,22 +49,47 @@ void BasisHelper::sparse(const int nvars,
 
 void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, 
                                          int *nindices, int **indx){
-  
+  // Number of terms from tensor product
   int nterms = 1;
-  for(int i = 0; i < nvars; i++){
+  for (int i = 0; i < nvars; i++){
     nterms *= 1 + pmax[i];
   }
 
   int num_total_degrees = 1;
-  for(int i = 0; i < nvars; i++){
+  for (int i = 0; i < nvars; i++){
     num_total_degrees += pmax[i];
   }
 
-  // int *degree_list = new int[num_total_degrees];
-  // for(int i = 0; i < nvars; i++){
-  //   degree_list[i] = 
+  // Add indices degreewise
+  list<int*> **degree_list = new list<int*>*[num_total_degrees];
+  for (int ii = 0; ii <= pmax[0]; ii++){
+    int tmp[nvars];
+    tmp[0] = ii;
+    degree_list[ii] = new list<int*>[nterms];
+  }
+
+  // Flatten the list with ascending degrees
+  for (int k = 0; k < num_total_degrees; k++){
+    
+  }
+  // https://www.geeksforgeeks.org/list-cpp-stl/
+  int d1[nvars];
+  int d2[nvars];
+
+  // degree_list->push_back(d1);
+  // degree_list->push_back(d2);
+
+  // for (int i = 0; i < num_total_degrees; i++){    
+  //   // Get the number of entries
+  //   int ndegentries = 4;
+  //   for (int j = 0; j < ndegentries; j++){
+  //     kdegs = map[j]
+  //     for (int p = 0; p < nvars; p++){
+  //       indx[p][i] = kdegs[p];
+  //     }
+  //   }
   // }
-  
+
 }
 
 void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, 
