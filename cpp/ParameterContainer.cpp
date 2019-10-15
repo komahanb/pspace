@@ -46,32 +46,73 @@ void  ParameterContainer::initializeBasis(const int *pmax){
                               this->dindex);
   }
 
-void  ParameterContainer::initializeQuadrature(const int *nqpts){
-  
+void ParameterContainer::initializeQuadrature(const int *nqpts){  
   const int nvars = getNumParameters();
-
-  // Allocate space for return variables
   int totquadpts = 1;
   for (int i = 0; i < nvars; i++){
     totquadpts *= nqpts[i];
   }
+  this->tnum_quadrature_points = totquadpts;
+  
+  // Get the univariate quadrature points from parameters
+  double **y = new double*[nvars];
+  double **z = new double*[nvars];
+  double **w = new double*[nvars];
+  for (int i = 0; i < nvars; i++){
+    z[i] = new double[nqpts[i]];
+    y[i] = new double[nqpts[i]];
+    w[i] = new double[nqpts[i]];    
+  }
+  map<int,AbstractParameter*>::iterator it;
+  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
+    int pid = it->first;
+    it->second->quadrature(nqpts[pid], z[pid], y[pid], w[pid]);
+  }
+
+  // Allocate space for return variables  
+  // for (int i = 0; i < nvars; i++){
+  //   if (Z[i]){ delete Z[i]; };
+  //   if (Y[i]){ delete Y[i]; };
+  // }
+  // if (Z){ delete [] Z; };
+  // if (Y){ delete [] Y; };
+  // if (W){ delete [] W; };  
 
   Z = new double*[nvars];
-  Y = new double*[nvars]; 
+  Y = new double*[nvars];
+  W = new double[totquadpts];  
   for (int i = 0; i < nvars; i++){
     Z[i] = new double[totquadpts];
     Y[i] = new double[totquadpts];    
   }
-  W = new double[totquadpts];  
 
   // Find tensor product of 1d rules
-  qh->tensorProduct(nvars, nqpts, zp, yp, wp,
-                    Z, Y, W);
-
+  qhelper->tensorProduct(nvars, nqpts, z, y, w, Z, Y, W);
+  
+  // Deallocate space
+  for (int i = 0; i < nvars; i++){
+    delete z[i];
+    delete y[i];
+    delete w[i];
+  }
+  delete [] y;
+  delete [] z;
+  delete [] w;
 }
 
-int main( int argc, char *argv[] ){
+/*
+ */
+void ParameterContainer::quadrature(int q,
+                                    double *zq, double *yq, double *wq){
+  const int nvars = getNumParameters(); 
+  wq[0] = this->W[q];
+  for (int i = 0; i < nvars; i++){
+    zq[i] = this->Z[i][q];
+    yq[i] = this->Y[i][q];
+  }
+}
 
+int main( int argc, char *argv[] ) {
   // Create random parameters
   ParameterFactory *factory = new ParameterFactory();
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);
@@ -107,9 +148,16 @@ int main( int argc, char *argv[] ){
   printf("\n");
 
   pc->initializeBasis(pmax);
+  pc->initializeQuadrature(nqpts);  
+  double *zq = new double[nvars];
+  double *yq = new double[nvars];
+  double wq;
+  int nqpoints = pc->getNumQuadraturePoints();
+  printf("%d\n", nqpoints);
+  for (int q = 0; q < nqpoints; q++){   
+    pc->quadrature(q, zq, yq, &wq);
+  } 
 
-  printf("%d\n", pc->getNumBasisTerms());
-  
   for (int k = 0; k < pc->getNumBasisTerms(); k++){
     // pc->initializeQuadrature(nqpts);
     //   printf("\n");
