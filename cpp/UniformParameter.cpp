@@ -27,6 +27,6 @@ void UniformParameter::quadrature(int npoints, double *z, double *y, double *w){
 /*
   Evalute the basis of order d at the point z
 */
-void UniformParameter::basis(double z, int d){
-  this->polyn->unit_legendre(z, d);
+double UniformParameter::basis(double z, int d){
+  return this->polyn->unit_legendre(z, d);
 }

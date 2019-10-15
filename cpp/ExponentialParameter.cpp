@@ -25,8 +25,8 @@ void ExponentialParameter::quadrature(int npoints, double *z, double *y, double 
 }
 
 /*
-  Evalute the basis of order d at the point z
+  Evaluate the basis of order d at the point z
 */
-void ExponentialParameter::basis(double z, int d){
-  this->polyn->unit_laguerre(z, d);
+double ExponentialParameter::basis(double z, int d){
+  return this->polyn->unit_laguerre(z, d);
 }

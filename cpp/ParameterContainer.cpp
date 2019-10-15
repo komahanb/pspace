@@ -44,7 +44,7 @@ void  ParameterContainer::initializeBasis(const int *pmax){
   this->bhelper->basisDegrees(nvars, pmax, 
                               &this->tnum_basis_terms, 
                               this->dindex);
-  }
+}
 
 void ParameterContainer::initializeQuadrature(const int *nqpts){  
   const int nvars = getNumParameters();
@@ -112,7 +112,20 @@ void ParameterContainer::quadrature(int q,
   }
 }
 
-int main( int argc, char *argv[] ) {
+/*
+  Evaluate the k-the basis function at point "z"
+*/
+double ParameterContainer::basis(int k, double *z){
+  double psi = 1.0;
+  map<int,AbstractParameter*>::iterator it;
+  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
+    int pid = it->first;
+    psi *= it->second->basis(z[pid], this->dindex[pid][k]);
+  }
+  return psi;
+}
+
+int main( int argc, char *argv[] ){
   // Create random parameters
   ParameterFactory *factory = new ParameterFactory();
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);
@@ -129,14 +142,15 @@ int main( int argc, char *argv[] ) {
   pc->addParameter(p4);
   pc->addParameter(p5);
 
+  // Set max degrees of expansion and get corresponding number of
+  // quadrature points
   const int nvars = pc->getNumParameters();
   int *pmax = new int[nvars];
-  int *nqpts =new int[nvars];
+  int *nqpts = new int[nvars];
   for (int i = 0; i < nvars; i++){
     pmax[i] = i+2;
     nqpts[i] = pmax[i]+1;
   }
-
   printf("max orders        = ");
   for (int i = 0; i < nvars; i++){
     printf("%d ", pmax[i]);
@@ -147,24 +161,30 @@ int main( int argc, char *argv[] ) {
   }
   printf("\n");
 
+  // Initialize basis
   pc->initializeBasis(pmax);
+  int nbasis = pc->getNumBasisTerms();
+
+  // Initialize quadrature
   pc->initializeQuadrature(nqpts);  
+  int nqpoints = pc->getNumQuadraturePoints();
+
+  // Space for quadrature points and weights
   double *zq = new double[nvars];
   double *yq = new double[nvars];
   double wq;
-  int nqpoints = pc->getNumQuadraturePoints();
-  printf("%d\n", nqpoints);
-  for (int q = 0; q < nqpoints; q++){   
-    pc->quadrature(q, zq, yq, &wq);
-  } 
+  printf("%d %d \n", nqpoints, nbasis);
 
-  for (int k = 0; k < pc->getNumBasisTerms(); k++){
-    // pc->initializeQuadrature(nqpts);
-    //   printf("\n");
-    //   for (int q = 0; q < pc->getNumBasisTerms(); q++){
-    //     //pc->quadrature(q, zq, yq, wq);
-    //     //printf("%e ", pc->basis(k,zq));
-    //   }
+  // for (int q = 0; q < nqpoints; q++){
+  //   pc->quadrature(q, zq, yq, &wq);
+  // }
+
+  for (int k = 0; k < nbasis; k++){
+    printf("\n");
+    for (int q = 0; q < nbasis; q++){
+      pc->quadrature(q, zq, yq, &wq);
+      printf("%e ", pc->basis(k,zq));
+    }
   }
     
   return 1;
