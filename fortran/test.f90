@@ -6,7 +6,7 @@ program main
 
   use basis_helper, only : basis_degrees
 
-  integer, parameter :: nvars = 4
+  integer, parameter :: nvars = 5
   integer            :: pmax(nvars)
 
   type(normal_parameter)      :: p1, p5
@@ -18,19 +18,19 @@ program main
   integer :: i
 
   real(8) :: z
-  real(8) :: y(2)
+!!$  real(8) :: y(2)
   
   real(8), allocatable, dimension(:) :: z1, z2
   real(8), allocatable, dimension(:) :: y1, y2
   real(8), allocatable, dimension(:) :: w1, w2
-  integer :: nqpts(2)
+!!$  integer :: nqpts(2)
 
-  nqpts = [3,4]
-  
-  y(1) = 1.0d0
-  y(2) = 1.1d0
-
-  z = 1.1d0  
+!!$  nqpts = [3,4]
+!!$  
+!!$  y(1) = 1.0d0
+!!$  y(2) = 1.1d0
+!!$
+!!$  z = 1.1d0  
 
   p1 = normal_parameter(1, -4.0d0, 0.5d0)
   p2 = uniform_parameter(2, -5.0d0, 4.0d0)
@@ -38,7 +38,7 @@ program main
   p4 = exponential_parameter(4, 6.0d0, 1.0d0)
   p5 = normal_parameter(5, -4.0d0, 0.5d0)
 
-  pmax = [3,3,4,4] !,8]
+  pmax = [3,3,4,4,2]
 
 !!$  allocate(z1(nqpts(1)),y1(nqpts(1)),w1(nqpts(1)))
 !!$  allocate(z2(nqpts(2)),y2(nqpts(2)),w2(nqpts(2)))
@@ -85,14 +85,14 @@ program main
     real(8) :: zq(nvars), yq(nvars), wq
 
 
-    ! z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
-    z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0] 
+    z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0, 0.231312d0]
+    !z = [1.01d0, 1.00d0, 1.0001d0, 2.0d0] 
 
     call pc % add(p1)
     call pc % add(p2)
     call pc % add(p3)
     call pc % add(p4)
-    ! call pc % add(p5)
+    call pc % add(p5)
 
     call pc % initialize_basis(pmax)
 
@@ -129,7 +129,7 @@ program main
 
           psikz = pc % basis(k, zq)
 
-          ! write(*,'(i4, i4, f13.6)') k-1, q-1, psikz
+          !write(*,'(i6, i6, f13.6)') k-1, q-1, psikz
 
        end do
 
