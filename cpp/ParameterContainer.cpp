@@ -40,10 +40,26 @@ void  ParameterContainer::initializeBasis(const int *pmax){
     param_max_degree[k] = pmax[k];
   }
 
+  // Number of terms from tensor product
+  int nterms = 1;
+  for (int i = 0; i < nvars; i++){
+    nterms *= 1 + pmax[i];
+  }
+
+  // Allocate space for storing degree set
+  this->dindex = new int*[nterms];
+  for (int k = 0; k < nterms; k++){
+    this->dindex[k] = new int[nvars];
+  }
+  
   // Generate and store a set of indices
   this->bhelper->basisDegrees(nvars, pmax, 
                               &this->tnum_basis_terms, 
                               this->dindex);
+
+  if (this->tnum_basis_terms != nterms){
+    printf("Error initializing basis\n");
+  };
 }
 
 void ParameterContainer::initializeQuadrature(const int *nqpts){  
@@ -120,7 +136,8 @@ double ParameterContainer::basis(int k, double *z){
   map<int,AbstractParameter*>::iterator it;
   for (it = this->pmap.begin(); it != this->pmap.end(); it++){
     int pid = it->first;
-    psi *= it->second->basis(z[pid], this->dindex[pid][k]);
+    //printf("%d %d \n", pid, this->dindex[k][pid]);
+    psi *= it->second->basis(z[pid], this->dindex[k][pid]);
   }
   return psi;
 }
@@ -130,17 +147,18 @@ int main( int argc, char *argv[] ){
   ParameterFactory *factory = new ParameterFactory();
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);
   AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0);
-  AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0);
-  AbstractParameter *p4 = factory->createExponentialParameter(6.0, 1.0);
-  AbstractParameter *p5 = factory->createNormalParameter(-4.0, 0.5);
+  
+  // AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0);
+  // AbstractParameter *p4 = factory->createExponentialParameter(6.0, 1.0);
+  // AbstractParameter *p5 = factory->createNormalParameter(-4.0, 0.5);
    
   // Create container and add random paramters
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(p1);
   pc->addParameter(p2);
-  pc->addParameter(p3);
-  pc->addParameter(p4);
-  pc->addParameter(p5);
+  // pc->addParameter(p3);
+  // pc->addParameter(p4);
+  // pc->addParameter(p5);
 
   // Set max degrees of expansion and get corresponding number of
   // quadrature points
@@ -181,8 +199,9 @@ int main( int argc, char *argv[] ){
 
   for (int k = 0; k < nbasis; k++){
     printf("\n");
-    for (int q = 0; q < nbasis; q++){
+    for (int q = 0; q < nqpoints; q++){
       pc->quadrature(q, zq, yq, &wq);
+      //pc->basis(k,zq);
       printf("%e ", pc->basis(k,zq));
     }
   }

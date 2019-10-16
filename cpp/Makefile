@@ -1,4 +1,5 @@
 default:
+	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c OrthogonalPolynomials.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c GaussianQuadrature.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c AbstractParameter.cpp
@@ -9,7 +10,7 @@ default:
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
 	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check OrthogonalPolynomials.o \
+	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check ArrayList.o OrthogonalPolynomials.o \
 	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
 	ExponentialParameter.o ParameterFactory.o \
 	BasisHelper.o QuadratureHelper.o ParameterContainer.o \
