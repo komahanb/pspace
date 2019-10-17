@@ -38,7 +38,6 @@ def laguerre(z,d):
     Polynomials such that <f(z), g(z)>_{exp(-z)}^{0,inf} = 0
     """
     if d == 0:
-        # to support vector return we multiply with zero
         return 1.0 - 0*z
     elif d == 1:
         return 1.0 - z
@@ -99,27 +98,23 @@ def unit_legendre(z,d):
     return legendre(z,d)*np.sqrt(2*d+1)
 
 if __name__ == "__main__":
-    z = np.random.rand()
-    for t in range(10000):
-        for d in range(10):
-            print(d,hermite(z,d))
-            print(d,legendre(z,d))
-            print(d,laguerre(z,d))
-            
-##         
-##     """
-##     Test hermite polynomials
-##     """
-##     z = 1.1
-##     print "hermite"
-##     for i in range(10):
-##         print unit_hermite(z,i), hermite(z,i)
-## 
-##     print "\nlaguerre"
-##     for i in range(10):
-##         print unit_laguerre(z,i), laguerre(z,i)
-## 
-##     print "\nlegendre"
-##     for i in range(10):
-##         print unit_legendre(z,i), legendre(z,i)
-## 
+    
+    """
+    Test hermite polynomials
+    """
+    
+    print unit_hermite(1.2,0), hermite(1.2,0)/np.sqrt(math.factorial(0))
+    print unit_hermite(1.2,1), hermite(1.2,1)/np.sqrt(math.factorial(1))
+    print unit_hermite(1.2,2), hermite(1.2,2)/np.sqrt(math.factorial(2))
+    print unit_hermite(1.2,3), hermite(1.2,3)/np.sqrt(math.factorial(3))
+    print unit_hermite(1.2,4), hermite(1.2,4)/np.sqrt(math.factorial(4))
+
+    """
+    Test Legendre polynomials
+    """
+    print "legendre"
+    print unit_legendre(1.2,0), legendre(1.2,0), rlegendre(1.2,0)
+    print unit_legendre(1.2,1), legendre(1.2,1), rlegendre(1.2,1)
+    print unit_legendre(1.2,2), legendre(1.2,2), rlegendre(1.2,2)
+    print unit_legendre(1.2,3), legendre(1.2,3), rlegendre(1.2,3)
+    print unit_legendre(1.2,4), legendre(1.2,4), rlegendre(1.2,4)
