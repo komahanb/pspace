@@ -70,9 +70,8 @@ void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax,
 
   // Add degree wise tuples into each arraylist
   for (int ii = 0; ii <= pmax[0]; ii++){
-      int tuple[] = {ii};
-      dmap[ii]->addEntry(tuple);
-    }
+    int tuple[] = {ii};
+    dmap[ii]->addEntry(tuple);
   }
 
   int ctr = 0;
