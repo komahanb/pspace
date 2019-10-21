@@ -1,16 +1,16 @@
 default:
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c OrthogonalPolynomials.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c GaussianQuadrature.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c AbstractParameter.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c NormalParameter.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c UniformParameter.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ExponentialParameter.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterFactory.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
-	g++ -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check ArrayList.o OrthogonalPolynomials.o \
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c OrthogonalPolynomials.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c GaussianQuadrature.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c AbstractParameter.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c NormalParameter.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c UniformParameter.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ExponentialParameter.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterFactory.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
+	mpicxx -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check ArrayList.o OrthogonalPolynomials.o \
 	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
 	ExponentialParameter.o ParameterFactory.o \
 	BasisHelper.o QuadratureHelper.o ParameterContainer.o \
