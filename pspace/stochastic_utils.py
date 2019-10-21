@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 from collections import Counter
 
@@ -98,7 +100,7 @@ def tensor_indices(phdmap):
                                                                 pids[4]:k4})) # add five element tuple to map
                             ctr += 1
     else:
-        print 'fix implementation for more elements in tuple'
+        print('fix implementation for more elements in tuple')
         raise
 
     # Make a flat list
