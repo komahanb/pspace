@@ -1,3 +1,6 @@
+#ifndef QUADRATURE_HELPER
+#define QUADRATURE_HELPER
+
 class QuadratureHelper {
  public:
   // Constructor and destructor
@@ -10,3 +13,4 @@ class QuadratureHelper {
                      double **zz, double **yy, double *ww);
 };
 
+#endif

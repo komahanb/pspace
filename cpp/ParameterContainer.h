@@ -1,3 +1,6 @@
+#ifndef PARAMETER_CONTAINER
+#define PARAMETER_CONTAINER
+
 #include<stdio.h>
 #include<map>
 
@@ -24,6 +27,7 @@ class ParameterContainer {
   int getNumBasisTerms();
   int getNumParameters();
   int getNumQuadraturePoints();
+  void getBasisParamDeg(int k, int *degs);
 
   // Initiliazation tasks
   void initializeBasis(const int *pmax);
@@ -50,3 +54,5 @@ class ParameterContainer {
   // void basisTerm();
   // void basisGivenDegrees();
 };
+
+#endif
