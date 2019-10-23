@@ -1,3 +1,6 @@
+#ifndef BASIS_HELPER
+#define BASIS_HELPER
+
 class BasisHelper{
  public:
   // Constructor and destructor
@@ -16,3 +19,5 @@ class BasisHelper{
   void quadvariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
   void pentavariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
 };
+
+#endif
