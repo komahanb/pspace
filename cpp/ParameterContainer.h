@@ -18,6 +18,7 @@ class ParameterContainer {
   
   // Key funtionalities
   void addParameter(AbstractParameter *param);
+  // void addParameter(AbstractParameter *param, int max_deg, );
 
   // Evaluate basis at quadrature points
   void quadrature(int q, double *zq, double *yq, double *wq);
@@ -53,6 +54,10 @@ class ParameterContainer {
   // Private Functions
   // void basisTerm();
   // void basisGivenDegrees();
+
+  // Fancy Stuff
+  // int pid;
+  // int deg;
 };
 
 #endif
