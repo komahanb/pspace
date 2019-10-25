@@ -81,8 +81,11 @@ int main( int argc, char *argv[] ){
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5);
   //p1->elem = m1;
   p1->setClient(m1);
-  p1->set = Mass::setMass;
+  // p1->set = Mass::setMass;
+  p1->setClientFunction(Mass::setMass);
+  
   p1->get = Mass::getMass;
+  
   AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0);  
   AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0);
   AbstractParameter *p4 = factory->createExponentialParameter(6.0, 1.0);

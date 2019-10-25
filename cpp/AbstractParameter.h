@@ -27,6 +27,10 @@ class AbstractParameter {
   void setClient(void* obj){
     this->elem = obj;
   }
+  void setClientFunction( void (*func)(void*, double) ){
+    this->set = func;
+  }
+
   void *elem; // points to element of consitituvive object to update 
   void (*set)(void*, double); // handle to set things
   double (*get)(void*);   // handle to get things
