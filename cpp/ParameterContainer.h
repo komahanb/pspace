@@ -8,8 +8,6 @@
 #include"BasisHelper.h"
 #include"QuadratureHelper.h"
 
-using namespace std;
-
 class ParameterContainer {
  public:
   // Constructor and Destructor
@@ -54,5 +52,4 @@ class ParameterContainer {
   BasisHelper *bhelper;
   QuadratureHelper *qhelper;
 };
-
 #endif

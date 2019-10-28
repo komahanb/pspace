@@ -1,6 +1,6 @@
 #include"ParameterContainer.h"
-#include"ParameterFactory.h"
 
+using namespace std;
 
 ParameterContainer::ParameterContainer(){
   this->tnum_parameters = 0;
@@ -21,7 +21,7 @@ void ParameterContainer::addParameter(AbstractParameter *param){
   if (this->tnum_parameters > 4){
     printf("Warning: Parameter container is full\n");
   }
-  this->pmap.insert(pair<int, AbstractParameter*>(param->getParameterID(), param));
+  this->pmap.insert(std::pair<int, AbstractParameter*>(param->getParameterID(), param));
   this->tnum_parameters++;
 }
 
