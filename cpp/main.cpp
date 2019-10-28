@@ -1,9 +1,12 @@
 #include <string>
 #include <map>
 #include <list>
+#include <functional>
 
 #include"ParameterContainer.h"
 #include"ParameterFactory.h"
+
+using namespace std;
 
 class Object{
 public:
@@ -108,6 +111,10 @@ int main( int argc, char *argv[] ){
   s1.id  = 1;
   smd.id = 2;
 
+  //  std::function<void(int)> disp;
+
+
+  return 0;
   //mm.id = 3;
   
   // list<void*> clist;
@@ -151,7 +158,9 @@ int main( int argc, char *argv[] ){
   AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5, 1,
                                                          &Mass::setMass,
                                                          &Mass::getMass);
-  p1->addClientID(m1.id);
+  p1->setClient(&m1);
+
+  // p1->addClientID(m1.id);
   // p1->setClientFunction(&Mass::setMass);
   // p1->getClientFunction(&Mass::getMass);
 
@@ -171,7 +180,7 @@ int main( int argc, char *argv[] ){
   AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0, 1,
                                                           &SMD::setMass,
                                                           &SMD::getMass);  
-  p2->addClientID(smd.id);
+  p2->setClient(&smd);
     
   // p2->setClientFunction(&Spring::setStiffness);
   // p2->getClientFunction(&Spring::getStiffness);
@@ -185,7 +194,7 @@ int main( int argc, char *argv[] ){
   AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0, 1,
                                                               &SMD::setStiffness,
                                                               &SMD::getStiffness);
-  p3->addClientID(smd.id);
+  p3->setClient(&smd);
 
   // maybe this?
   // p3->addClient(smd.id, SMD::setStiffness);
@@ -346,7 +355,7 @@ int main( int argc, char *argv[] ){
   for (int k = 0; k < nbasis; k++){
     for (int q = 0; q < nqpoints; q++){
       pc->quadrature(q, zq, yq, &wq);
-      pc->updateParameters(m1.id, &m1, yq);
+      pc->updateParameters(&m1, yq);
       printf("reg mass = %f %f \n", yq[0], m1.m);
       //      pc->updateParameters(&smd, yq);
       printf("smd mass = %f %f \n", yq[1], smd.m );

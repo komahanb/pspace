@@ -36,58 +36,67 @@ class AbstractParameter {
   void getClientFunction( double (*func)(void*) ){
     this->get = func;
   }
-
-  void (*set)(void*, double); // handle to set things
-  double (*get)(void*);   // handle to get things
-
-  //  void *elem; // points to element of consitituvive object to update 
-
- 
-  int match(int cid){
-    std::list<int>::iterator it;
-    for (it = clist.begin(); it != clist.end(); ++it){
-      if (cid == *it){
-        return 1;
-      }
-    }
-    return 0;
-  }
   
-  // Make this a part of TACS maybe?
-  // Fancy test stuff
-  void addClient(int cid, void (*fset)(void*, double)){ 
-    //    this->elem = obj;
-    //    cmap.insert(std::pair<int, ClientData// void(*)(void*,double)>(cid,fset));
-  }
-    
-  // Make this a part of TACS maybe?
-  // Fancy test stuff
-  void addClientID(int cid){ 
-    //    this->elem = obj;
-    this->clist.push_back(cid);
-    //    cmap.insert(std::pair<void*,int>(obj,0));
+  void setClient(void *client){ 
+    this->client = client;
   }
 
-  void updateValue(int cid, void *obj, double value){
-    if (!obj){
-      printf("NULL Object\n");
-    }
-    if ( match(cid) ){
+  void updateValue(void *obj, double value){
+    printf("calling cpp update \n");
+    if ( this->client == obj ){
       this->set(obj, value);
+    } else {
+      printf("skipping update \n");
     }
   };
   
-  double getValue(int cid, void *obj){ 
-    if ( match(cid) ){
+  double getValue(void *obj){ 
+    printf("calling cpp get \n");
+    if ( this->client == obj ){
       return this->get(obj); 
     } else {
+      printf("default return \n");
       return 0.0;
     }
   }; 
 
+  /* 
+     int match(int cid){
+     std::list<int>::iterator it;
+     for (it = clist.begin(); it != clist.end(); ++it){
+     if (cid == *it){
+     return 1;
+     }
+     }
+     return 0;
+     }
+     void addClientID(int cid){ 
+     this->clist.push_back(cid);
+     }
+     void updateValue(int cid, void *obj, double value){
+     if (!obj){
+     printf("NULL Object\n");
+     }
+     if ( match(cid) ){
+     this->set(obj, value);
+     }
+     };
+  
+     double getValue(int cid, void *obj){ 
+     if ( match(cid) ){
+     return this->get(obj); 
+     } else {
+     return 0.0;
+     }
+     }; 
+  */
+
  protected:
   GaussianQuadrature *gauss;
   OrthogonalPolynomials *polyn;
+  void (*set)(void*, double); // handle to set things
+  double (*get)(void*);   // handle to get things  
+  void *client; // points to element of consitituvive object to update 
   
  private:
   int parameter_id;

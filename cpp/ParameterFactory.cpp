@@ -1,6 +1,9 @@
 #include"ParameterFactory.h"
 
-ParameterFactory::ParameterFactory(){}
+ParameterFactory::ParameterFactory(){
+  this->next_parameter_id = 0;
+}
+
 ParameterFactory::~ParameterFactory(){}
 
 AbstractParameter* ParameterFactory::createNormalParameter(double mu, double sigma)
@@ -66,5 +69,3 @@ AbstractParameter* ParameterFactory::createExponentialParameter( double mu, doub
   param->setMaxDegree(dmax);
   return param;
 }
-
-
