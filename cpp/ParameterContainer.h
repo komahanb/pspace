@@ -36,10 +36,9 @@ class ParameterContainer {
   void initializeQuadrature(const int *nqpts);
 
   // Modify the elements
-  void updateParameters(int cid, void *obj, const double *yq);
+  void updateParameters(void *obj, const double *yq);
   
  private:
-
   // Maintain a map of parameters
   std::map<int,AbstractParameter*> pmap;
 
@@ -54,14 +53,6 @@ class ParameterContainer {
   // Helpers to access basis evaluation and quadrature points
   BasisHelper *bhelper;
   QuadratureHelper *qhelper;
-  
-  // Private Functions
-  // void basisTerm();
-  // void basisGivenDegrees();
-
-  // Fancy Stuff
-  // int pid;
-  // int deg;
 };
 
 #endif

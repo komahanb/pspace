@@ -6,14 +6,11 @@ ParameterContainer::ParameterContainer(){
   this->tnum_parameters = 0;
 }
 ParameterContainer::~ParameterContainer(){
-
-  if(param_max_degree){delete [] param_max_degree;};
-
+  if (param_max_degree){ delete [] param_max_degree; };
   for (int k = 0; k < this->tnum_basis_terms; k++){
     delete [] this->dindex[k];
   };
   delete [] this->dindex;
-
   // Deallocate Z, Y, W  
 }
 
@@ -145,7 +142,6 @@ double ParameterContainer::basis(int k, double *z){
   map<int,AbstractParameter*>::iterator it;
   for (it = this->pmap.begin(); it != this->pmap.end(); it++){
     int pid = it->first;
-    //printf("%d %d \n", pid, this->dindex[k][pid]);
     psi *= it->second->basis(z[pid], this->dindex[k][pid]);
   }
   return psi;
@@ -165,15 +161,11 @@ void ParameterContainer::getBasisParamDeg(int k, int *degs) {
   obj : input element/constitutive obj
   yq : values
 */
-void ParameterContainer::updateParameters(int cid, void *obj, const double *yq){
+void ParameterContainer::updateParameters(void *obj, const double *yq){
   map<int,AbstractParameter*>::iterator it;
   for (it = this->pmap.begin(); it != this->pmap.end(); it++){
     int pid = it->first;    
-    //  printf(" param[%d] = %f ", pid, it->second->getValue(cid, obj));
-
-    
-    it->second->updateValue(cid, obj, yq[pid]);
-    // printf("param[%d] = %f \n", pid, it->second->getValue(cid, obj));
+    it->second->updateValue(obj, yq[pid]);
   }
 }
 
