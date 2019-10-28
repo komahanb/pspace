@@ -31,9 +31,13 @@ class ParameterContainer {
   void getBasisParamDeg(int k, int *degs);
 
   // Initiliazation tasks
+  void initialize();
   void initializeBasis(const int *pmax);
   void initializeQuadrature(const int *nqpts);
 
+  // Modify the elements
+  void updateParameters(int cid, void *obj, const double *yq);
+  
  private:
 
   // Maintain a map of parameters

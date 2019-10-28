@@ -16,12 +16,15 @@ class ParameterFactory {
 
   // Overloaded constructors
   AbstractParameter* createNormalParameter( double mu, double sigma,
+                                            int dmax,
                                             void (*setfunc)(void*, double),
                                             double (*getfunc)(void*) );
   AbstractParameter* createUniformParameter( double a, double b,
+                                             int dmax,
                                              void (*setfunc)(void*, double),
                                              double (*getfunc)(void*) );
   AbstractParameter* createExponentialParameter( double mu, double beta,
+                                                 int dmax,
                                                  void (*setfunc)(void*, double),
                                                  double (*getfunc)(void*) );
   

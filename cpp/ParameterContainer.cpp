@@ -1,6 +1,7 @@
 #include"ParameterContainer.h"
 #include"ParameterFactory.h"
 
+
 ParameterContainer::ParameterContainer(){
   this->tnum_parameters = 0;
 }
@@ -155,4 +156,41 @@ void ParameterContainer::getBasisParamDeg(int k, int *degs) {
   for (int i = 0; i < nvars; i++){
     degs[i] = this->dindex[k][i];
   }
+}
+
+/*
+  Iterate through the map of parameters and update the state of
+  objects
+
+  obj : input element/constitutive obj
+  yq : values
+*/
+void ParameterContainer::updateParameters(int cid, void *obj, const double *yq){
+  map<int,AbstractParameter*>::iterator it;
+  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
+    int pid = it->first;    
+    //  printf(" param[%d] = %f ", pid, it->second->getValue(cid, obj));
+
+    
+    it->second->updateValue(cid, obj, yq[pid]);
+    // printf("param[%d] = %f \n", pid, it->second->getValue(cid, obj));
+  }
+}
+
+/*
+  Default initialization 
+*/
+void ParameterContainer::initialize(){
+  const int nvars = getNumParameters();
+  int nqpts[nvars];
+  int pmax[nvars];    
+  map<int,AbstractParameter*>::iterator it;
+  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
+    int pid = it->first;
+    int dmax = it->second->getMaxDegree();
+    pmax[pid] = dmax;
+    nqpts[pid] = dmax + 1;
+  }
+  this->initializeBasis(pmax);  
+  this->initializeQuadrature(nqpts);
 }
