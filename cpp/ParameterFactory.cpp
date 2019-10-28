@@ -26,6 +26,7 @@ AbstractParameter* ParameterFactory::createExponentialParameter(double mu, doubl
 
 
 AbstractParameter* ParameterFactory::createNormalParameter( double mu, double sigma,
+                                                            int dmax,
                                                             void (*setfunc)(void*, double),
                                                             double (*getfunc)(void*) )
 {
@@ -34,10 +35,12 @@ AbstractParameter* ParameterFactory::createNormalParameter( double mu, double si
   AbstractParameter *param =  (AbstractParameter*) new NormalParameter(pid, mu, sigma); 
   param->setClientFunction(setfunc);
   param->getClientFunction(getfunc);
+  param->setMaxDegree(dmax);
   return param;
 }
 
 AbstractParameter* ParameterFactory::createUniformParameter( double a, double b,
+                                                             int dmax,
                                                              void (*setfunc)(void*, double),
                                                              double (*getfunc)(void*) )
 {
@@ -46,10 +49,12 @@ AbstractParameter* ParameterFactory::createUniformParameter( double a, double b,
   AbstractParameter *param = (AbstractParameter*) new UniformParameter(pid, a, b);  
   param->setClientFunction(setfunc);
   param->getClientFunction(getfunc);
+  param->setMaxDegree(dmax);
   return param;
 }
 
 AbstractParameter* ParameterFactory::createExponentialParameter( double mu, double beta,
+                                                                 int dmax,
                                                                  void (*setfunc)(void*, double),
                                                                  double (*getfunc)(void*) )
 {
@@ -58,6 +63,7 @@ AbstractParameter* ParameterFactory::createExponentialParameter( double mu, doub
   AbstractParameter *param = (AbstractParameter*) new ExponentialParameter(pid, mu, beta);
   param->setClientFunction(setfunc);
   param->getClientFunction(getfunc);
+  param->setMaxDegree(dmax);
   return param;
 }
 
