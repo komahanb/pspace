@@ -114,7 +114,7 @@ int main( int argc, char *argv[] ){
   //  std::function<void(int)> disp;
 
 
-  return 0;
+  //  return 0;
   //mm.id = 3;
   
   // list<void*> clist;
@@ -354,7 +354,8 @@ int main( int argc, char *argv[] ){
   
   for (int k = 0; k < nbasis; k++){
     for (int q = 0; q < nqpoints; q++){
-      pc->quadrature(q, zq, yq, &wq);
+      wq = pc->quadrature(q, zq, yq);
+      printf("weight = %e \n", wq);
       pc->updateParameters(&m1, yq);
       printf("reg mass = %f %f \n", yq[0], m1.m);
       //      pc->updateParameters(&smd, yq);
