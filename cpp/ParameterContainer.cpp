@@ -124,14 +124,13 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
 
 /*
  */
-void ParameterContainer::quadrature(int q,
-                                    double *zq, double *yq, double *wq){
+double ParameterContainer::quadrature(int q, double *zq, double *yq){
   const int nvars = getNumParameters(); 
-  wq[0] = this->W[q];
   for (int i = 0; i < nvars; i++){
     zq[i] = this->Z[i][q];
     yq[i] = this->Y[i][q];
   }
+  return this->W[q];
 }
 
 /*
