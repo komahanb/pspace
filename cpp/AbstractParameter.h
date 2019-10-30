@@ -20,46 +20,18 @@ class AbstractParameter {
   // Implemented procedures
   int getParameterID();  
   void setParameterID(int pid);
-  void setMaxDegree(int dmax){
-    this->dmax = dmax;
-  }
-  int getMaxDegree(){
-    return this->dmax;
-  }
+  void setMaxDegree(int dmax);
+  int getMaxDegree();
   
   // Function pointer to set values
-  void setClientFunction( void (*func)(void*, double) ){
-    this->set = func;
-  }
+  void setClientFunction(void (*func)(void*, double));
+  void getClientFunction(double (*func)(void*));  
+  void setClient(void *client);
 
-  // Function pointer to retrieve values
-  void getClientFunction( double (*func)(void*) ){
-    this->get = func;
-  }
+  // Update the client with parameter value
+  void updateValue(void *obj, double value);
+  double getValue(void *obj);
   
-  void setClient(void *client){ 
-    this->client = client;
-  }
-
-  void updateValue(void *obj, double value){
-    printf("calling cpp update \n");
-    if ( this->client == obj ){
-      this->set(obj, value);
-    } else {
-      printf("skipping update \n");
-    }
-  };
-  
-  double getValue(void *obj){ 
-    printf("calling cpp get \n");
-    if ( this->client == obj ){
-      return this->get(obj); 
-    } else {
-      printf("default return \n");
-      return 0.0;
-    }
-  }; 
-
   /* 
      int match(int cid){
      std::list<int>::iterator it;
