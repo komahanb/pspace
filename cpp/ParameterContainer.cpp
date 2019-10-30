@@ -154,21 +154,6 @@ void ParameterContainer::getBasisParamDeg(int k, int *degs) {
 }
 
 /*
-  Iterate through the map of parameters and update the state of
-  objects
-
-  obj : input element/constitutive obj
-  yq : values
-*/
-void ParameterContainer::updateParameters(void *obj, const double *yq){
-  map<int,AbstractParameter*>::iterator it;
-  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
-    int pid = it->first;    
-    it->second->updateValue(obj, yq[pid]);
-  }
-}
-
-/*
   Default initialization 
 */
 void ParameterContainer::initialize(){
