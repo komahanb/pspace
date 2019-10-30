@@ -5,11 +5,11 @@ int main( int argc, char *argv[] ){
 
   // Create random parameterse
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5, 0, NULL, NULL);
-  AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0, 0, NULL, NULL);
-  AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0, 0, NULL, NULL);
-  AbstractParameter *p4 = factory->createUniformParameter(-5.0, 4.0, 0, NULL, NULL);
-  AbstractParameter *p5 = factory->createExponentialParameter(6.0, 1.0, 0, NULL, NULL);
+  AbstractParameter *p1 = factory->createNormalParameter(-4.0, 0.5, 0);
+  AbstractParameter *p2 = factory->createUniformParameter(-5.0, 4.0, 0);
+  AbstractParameter *p3 = factory->createExponentialParameter(6.0, 1.0, 0);
+  AbstractParameter *p4 = factory->createUniformParameter(-5.0, 4.0, 0);
+  AbstractParameter *p5 = factory->createExponentialParameter(6.0, 1.0, 0);
 
   // Create container and add random paramters
   ParameterContainer *pc = new ParameterContainer();

@@ -32,9 +32,6 @@ class ParameterContainer {
   void initialize();
   void initializeBasis(const int *pmax);
   void initializeQuadrature(const int *nqpts);
-
-  // Modify the elements
-  void updateParameters(void *obj, const double *yq);
   
  private:
   // Maintain a map of parameters
