@@ -13,12 +13,15 @@ class SMD : public TACSElement{
                           const TacsScalar Xpts[] );
   int numDisplacements(){
     return 1;
-  }; 
-
+  };
+  
   int numNodes() {
     return 1;
   }
 
- private:
+  const char * elementName(){
+    return "SMD";
+  }
+
   double m, c, k;
 };
