@@ -60,7 +60,6 @@ int main( int argc, char *argv[] ){
   // Create TACS using SMD element
   SMD *smd = new SMD(1.0, 0.1, 5.0);
   smd->incref();
-  smd->setUpdateCallback(updateSMD);
 
   int nelems = 1;
   int nnodes = 1;  
@@ -124,6 +123,7 @@ int main( int argc, char *argv[] ){
   // should I copy the element instead?
   TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc);
   ssmd->incref();
+  ssmd->setUpdateCallback(updateSMD);
   
   TACSElement **selems = new TACSElement*[ nelems ];
   for ( int i = 0 ; i < nelems; i++ ){
