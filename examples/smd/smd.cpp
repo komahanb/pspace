@@ -46,6 +46,15 @@ void SMD :: getInitConditions( TacsScalar vars[],
   dvars[0] = -1.0;
 }
 
+void SMD :: addJacobian( double time, TacsScalar J[],
+                         double alpha, double beta, double gamma,
+                         const TacsScalar X[],
+                         const TacsScalar v[],
+                         const TacsScalar dv[],
+                         const TacsScalar ddv[] ){
+  J[0] += gamma*m + beta*c + alpha*k;
+}
+
 TACSAssembler *createTACS(){  
 }
 
@@ -58,7 +67,7 @@ int main( int argc, char *argv[] ){
   MPI_Comm_rank(comm, &rank); 
 
   // Create TACS using SMD element
-  SMD *smd = new SMD(1.0, 0.1, 5.0);
+  SMD *smd = new SMD(2.0, 3.0, 4.0);
   smd->incref();
 
   int nelems = 1;
@@ -107,10 +116,10 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createNormalParameter(1.0, 0.01, 2);
-  AbstractParameter *c = factory->createNormalParameter(0.1, 0.001, 5);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.5, 2);
-
+  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 4);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
+  AbstractParameter *k = factory->createNormalParameter(2.0, 3.0, 2);
+ 
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
   pc->addParameter(c);
@@ -168,3 +177,30 @@ int main( int argc, char *argv[] ){
   MPI_Finalize();
   return 0;
 }
+
+  // Test Stochastic Jacobian
+  /*
+  int ndof  = nsterms*vars_per_node;
+  TacsScalar *v = new TacsScalar[ndof];
+  TacsScalar *vdot = new TacsScalar[ndof];
+  TacsScalar *vddot = new TacsScalar[ndof];
+  TacsScalar *J = new TacsScalar[ndof*ndof];
+  memset(J, 0, ndof*ndof*sizeof(TacsScalar));
+
+  ssmd->addJacobian( 0.0, J,
+                     0.0, 0.0, 1.0,
+                     NULL,
+                     v,
+                     vdot,
+                     vddot);
+  int ctr = 0;
+  for ( int i = 0 ; i < ndof; i++ ){
+    for ( int j = 0 ; j < ndof; j++ ){
+      printf(" %e ", J[ctr]);
+      ctr ++;
+    }
+    printf("\n");
+  }
+
+  return 0;
+  */
