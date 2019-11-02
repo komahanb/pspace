@@ -116,7 +116,7 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 4);
+  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 3);
   AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
   AbstractParameter *k = factory->createNormalParameter(2.0, 3.0, 2);
  

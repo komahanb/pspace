@@ -9,8 +9,8 @@
 void updatePPA( TACSElement *elem, TacsScalar *vals ){
   PPA *ppa = dynamic_cast<PPA*>(elem);
   if (ppa != NULL) {
-    //    ppa->m  = vals[0];
-    // ppa->If = vals[1];
+    ppa->m  = vals[0];
+    ppa->If = vals[1];
   } else {
     printf("Element mismatch while updating...");
   }
@@ -81,8 +81,7 @@ int main( int argc, char *argv[] ){
 
   // Create TACS using PPA element
   double xcm = 0.375,  xf = 0.25;
-  //  double m = 55.3291, If = 3.4581;
-  double m = 1.0, If = 2.0;
+  double m = 55.3291, If = 3.4581;
   double ch = 0.0, ca = 0.0;
   double kh = 11366.0, ka = 7002.6;
   PPA *ppa = new PPA(xcm, xf, m, If, ch, ca, kh, ka);
@@ -134,12 +133,12 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pm  = factory->createNormalParameter(55.3291, 5.3291, 1);
-  //  AbstractParameter *pIf = factory->createUniformParameter(3.4581, 4.581, 0);
+  AbstractParameter *pm  = factory->createNormalParameter(55.3291, 5.3291, 3);
+  AbstractParameter *pIf = factory->createUniformParameter(3.4581, 4.581, 4);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(pm);
-  //  pc->addParameter(pIf);
+  pc->addParameter(pIf);
   pc->initialize();
 
   int nsterms = pc->getNumBasisTerms();
