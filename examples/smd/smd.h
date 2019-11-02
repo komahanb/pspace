@@ -11,6 +11,13 @@ class SMD : public TACSElement{
                           TacsScalar dvars[],
                           TacsScalar ddvars[],
                           const TacsScalar Xpts[] );
+  void addJacobian( double time, TacsScalar J[],
+                    double alpha, double beta, double gamma,
+                    const TacsScalar X[],
+                    const TacsScalar v[],
+                    const TacsScalar dv[],
+                    const TacsScalar ddv[] );
+
   int numDisplacements(){
     return 1;
   };
