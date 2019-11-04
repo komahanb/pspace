@@ -24,38 +24,32 @@ SMD :: SMD(double m, double c, double k){
   this->k = k;  
 }
 
-void SMD :: addResidual( double time, TacsScalar res[],
-                         const TacsScalar Xpts[],
-                         const TacsScalar vars[],
-                         const TacsScalar dvars[],
-                         const TacsScalar ddvars[] ){
-  res[0] += m*ddvars[0] + c*dvars[0] + k*vars[0];
+void SMD :: addResidual( int elemIndex, double time,
+                         const TacsScalar X[], const TacsScalar v[],
+                         const TacsScalar dv[], const TacsScalar ddv[],
+                         TacsScalar res[] ){
+  res[0] += m*ddv[0] + c*dv[0] + k*v[0];
 }
 
-void SMD :: getInitConditions( TacsScalar vars[],
-                               TacsScalar dvars[],
-                               TacsScalar ddvars[],
-                               const TacsScalar Xpts[] ){
-  // zero values
-  memset(vars, 0, numVariables()*sizeof(TacsScalar));
-  memset(dvars, 0, numVariables()*sizeof(TacsScalar));
-  memset(ddvars, 0, numVariables()*sizeof(TacsScalar));
+void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
+                             TacsScalar v[], TacsScalar dv[], TacsScalar ddv[] ){
+  int num_vars = getNumNodes()*getVarsPerNode();
+  memset(v, 0, num_vars*sizeof(TacsScalar));
+  memset(dv, 0, num_vars*sizeof(TacsScalar));
+  memset(ddv, 0, num_vars*sizeof(TacsScalar));
 
   // set init conditions
-  vars[0] = 1.0;
-  dvars[0] = -1.0;
+  v[0] = 1.0;
+  dv[0] = -1.0;
 }
 
-void SMD :: addJacobian( double time, TacsScalar J[],
-                         double alpha, double beta, double gamma,
-                         const TacsScalar X[],
-                         const TacsScalar v[],
-                         const TacsScalar dv[],
-                         const TacsScalar ddv[] ){
-  J[0] += gamma*m + beta*c + alpha*k;
-}
-
-TACSAssembler *createTACS(){  
+void SMD::addJacobian( int elemIndex, double time,
+                       TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
+                       const TacsScalar X[], const TacsScalar v[],
+                       const TacsScalar dv[], const TacsScalar ddv[],
+                       TacsScalar res[], TacsScalar mat[] ){
+  addResidual(elemIndex, time, X, v, dv, ddv, res);
+  mat[0] += gamma*m + beta*c + alpha*k;
 }
 
 int main( int argc, char *argv[] ){
@@ -104,7 +98,7 @@ int main( int argc, char *argv[] ){
     creator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
     creator->setNodes(X);
   }
-  creator->setElements(elems, nelems);
+  creator->setElements(nelems, elems);
 
   TACSAssembler *tacs = creator->createTACS();
   tacs->incref();  
@@ -116,9 +110,9 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 3);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
-  AbstractParameter *k = factory->createNormalParameter(2.0, 3.0, 2);
+  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 0);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 0);
+  AbstractParameter *k = factory->createNormalParameter(2.0, 3.0, 0);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
@@ -130,9 +124,8 @@ int main( int argc, char *argv[] ){
   printf("nsterms = %d \n", nsterms);
   
   // should I copy the element instead?
-  TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc);
+  TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc, updateSMD);
   ssmd->incref();
-  ssmd->setUpdateCallback(updateSMD);
   
   TACSElement **selems = new TACSElement*[ nelems ];
   for ( int i = 0 ; i < nelems; i++ ){
@@ -146,7 +139,7 @@ int main( int argc, char *argv[] ){
     screator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
     screator->setNodes(X);
   }
-  screator->setElements(selems, nelems);
+  screator->setElements(nelems, selems);
 
   TACSAssembler *stacs = screator->createTACS();
   stacs->incref();
@@ -162,15 +155,15 @@ int main( int argc, char *argv[] ){
   delete [] elems;
 
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 1.0, 10, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 1.0, 100, 2);
   bdf->incref();
-  bdf->setAbsTol(1e-3);
-  bdf->setRelTol(1e-3);
+  bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
+  bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(2);
   bdf->integrate();
+  bdf->writeRawSolution("smd.dat", 1);
 
-  // write solution and test
-  
+  // write solution and test 
   bdf->decref();
   tacs->decref();
   
