@@ -108,13 +108,12 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
 
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 0);
+  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 1);
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(pmA);
   pc->initialize();
   int nsterms = pc->getNumBasisTerms();
   printf("nsterms = %d \n", nsterms);
-
   
   // Create the Timoshenko stiffness object
   TACSTimoshenkoConstitutive *stiffA =
@@ -442,15 +441,15 @@ int main( int argc, char *argv[] ){
     beam->decref();
   } else {
     // Create the finite-element model
-    int nA = 4, nB = 8, nC = 4;
+    int nA = 1, nB = 1, nC = 1;
     TACSAssembler *tacs = four_bar_mechanism(nA, nB, nC);
     tacs->incref();
 
     // Set the final time
-    double tf = 12.0;
+    double tf = 1.0e-3;
 
     // The number of total steps (100 per second)
-    int num_steps = 1200;
+    int num_steps = 1;
 
     // Create the integrator class
     TACSIntegrator *integrator =
