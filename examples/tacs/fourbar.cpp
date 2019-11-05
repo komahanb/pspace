@@ -446,10 +446,10 @@ int main( int argc, char *argv[] ){
     tacs->incref();
 
     // Set the final time
-    double tf = 1.0e-3;
+    double tf = 0.01;
 
     // The number of total steps (100 per second)
-    int num_steps = 1;
+    int num_steps = 10;
 
     // Create the integrator class
     TACSIntegrator *integrator =
@@ -461,6 +461,14 @@ int main( int argc, char *argv[] ){
     integrator->setAbsTol(1e-7);
     integrator->setPrintLevel(2);
     integrator->setOutputFrequency(10);
+
+    TACSBVec *ans = tacs->createVec();
+    tacs->getInitConditions(ans, NULL, NULL);
+    tacs->setVariables(ans);
+
+    for ( int i = 0; i < tacs->getNumElements(); i++ ){
+      tacs->testElement(i, 2);
+    }
 
     // Integrate the equations of motion forward in time
     integrator->integrate();
