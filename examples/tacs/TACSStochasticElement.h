@@ -21,7 +21,7 @@ class TACSStochasticElement : public TACSElement {
   /*
     TACSElementBasis* getElementBasis(){
     return delem->getElementBasis();
-  }
+    }
   */
   
   // Return the Initial conditions
@@ -48,8 +48,6 @@ class TACSStochasticElement : public TACSElement {
   void updateElement(TACSElement* elem, TacsScalar* vals){
     if (this->update != NULL){
       this->update(elem, vals);
-    } else {
-      printf("TACS Warning: No callback present? \n");
     }
   }
 
