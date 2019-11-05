@@ -24,7 +24,7 @@ namespace{
     Place entry into the matrix location
   */ 
   double getElement(double *A, int size, int row, int col) {
-    // printf(" local entry is at %d ", size * row + col);
+    // printf(" local entry %d = ", size * row + col);
     return A[size * row + col];
   };
 
@@ -32,7 +32,7 @@ namespace{
     Add entry into the matrix location
   */ 
   void addElement(double *J, int size, int row, int col, double value) {
-    // printf(" global entry is at %d \n", size * row + col);
+    //  printf(" global entry  %d \n", size * row + col);
     J[size * row + col] += value;
   };
   
@@ -154,16 +154,13 @@ void TACSStochasticElement::getInitConditions( int elemIndex,
       }
     } // quadrature
 
-    // Order the stochastic states node after node
-    for (int ii = 0; ii < getNumNodes(); ii++){
-      int listart = ii*ndnvars;
-      int gistart = ii*nsdof + k*ndnvars;
-      for (int c = 0; c < ndnvars; c++){
-        v[gistart+c]   = utmpk[listart+c];
-        dv[gistart+c]  = udtmpk[listart+c];
-        ddv[gistart+c] = uddtmpk[listart+c];
-      } // dofs
-    } // nodes
+    // Store k-th projected ICs into stochastic array
+    int ptr = k*nddof;
+    for (int ii = 0; ii < nddof; ii++){
+      v[ptr+ii] = utmpk[ii];
+      dv[ptr+ii] = udtmpk[ii];
+      ddv[ptr+ii] = uddtmpk[ii];
+    }
   }
 
   // clear the heap
@@ -249,14 +246,12 @@ void TACSStochasticElement::addResidual( int elemIndex,
       }
     } // quadrature
 
-    // Order the stochastic residual node after node
-    for (int ii = 0; ii < getNumNodes(); ii++){
-      int listart = ii*ndnvars;
-      int gistart = ii*nsdof + i*ndnvars;
-      for (int c = 0; c < ndnvars; c++){
-        res[gistart+c] += rtmpi[listart+c];
-      } // dofs
-    } // nodes
+    // Store i-th projected Residual into stochastic array
+    int ptr = i*nddof;
+    for (int ii = 0; ii < nddof; ii++){
+      res[ptr+ii] += rtmpi[ii];
+    }
+
   } // end nsterms
 
   // clear the heap
@@ -290,6 +285,9 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   const int nsterms = pc->getNumBasisTerms();
   const int nnodes  = getNumNodes();
 
+  printf("nsdof = %d, nddof = %d, nnodes = %d, ndnvars = %d, nsterms = %d \n",
+         nsdof, nddof, nnodes, ndnvars, nsterms);
+
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
   double *zq = new double[nsparams];
@@ -321,7 +319,7 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
       pc->getBasisParamDeg(j, dmapj);
 
-      if (nonzero(nsparams, dmapi, dmapj, dmapf)){
+      if (1){ // nonzero(nsparams, dmapi, dmapj, dmapf)){
 
         memset(A, 0, nddof*nddof*sizeof(TacsScalar));
 
@@ -360,39 +358,16 @@ void TACSStochasticElement::addJacobian( int elemIndex,
                                    A);
         } // quadrature
 
-        // Place the deterministic block into the bigger stochastic
-        // jacobian block
-        for ( int ii = 0 ; ii < nnodes; ii++ ){
+        // Store (i,j)-th projected Jacobian into stochastic Jacobian
+        int iptr = i*nddof;
+        int jptr = j*nddof;
+        for (int ii = 0; ii < nddof; ii++){
+          for (int jj = 0; jj < nddof; jj++){
+            addElement(mat, nsdof, iptr + ii, jptr + jj,
+                       getElement(A, nddof, ii, jj));              
+          }
+        }
 
-          int listart = ii*ndnvars;
-          int liend   = (ii+1)*ndnvars;
-          int gistart = ii*nsdof + i*ndnvars;
-          int giend   = ii*nsdof + (i+1)*ndnvars;
-
-          for ( int jj = 0 ; jj < nnodes; jj++ ){
-            
-            int ljstart = jj*ndnvars;
-            int ljend   = (jj+1)*ndnvars;                           
-            int gjstart = jj*nsdof + j*ndnvars;
-            int gjend   = jj*nsdof + (j+1)*ndnvars;
-            
-            for ( int iii = 0 ; iii < ndnvars; iii++ ){
-              
-              for ( int jjj = 0 ; jjj < ndnvars; jjj++ ){              
-              
-                // check listart offset
-                addElement(mat, nddof*nsterms, gistart + iii, gjstart + jjj,
-                           getElement(A, nddof, listart + iii, ljstart + jjj));
-              
-                printf("\n");
-              } // jjj
-        
-            } // iii              
-       
-          } // jj        
-        
-        } // ii
-        
       } // nonzero
       
     } // end j
