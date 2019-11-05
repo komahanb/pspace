@@ -14,9 +14,11 @@ void updateBeamAB( TACSElement *elem, TacsScalar *vals ){
   if (mitc3 != NULL) {
     TACSTimoshenkoConstitutive *stiff = dynamic_cast<TACSTimoshenkoConstitutive*>(mitc3->getConstitutive());
     if (stiff){
-      stiff->incref();
-      stiff->rho[0] = vals[0];
-      stiff->decref();        
+      stiff->incref();      TacsScalar rho[4];
+      stiff->getProperties(rho, NULL, NULL);
+      rho[0] = vals[0];
+      stiff->setProperties(rho, NULL, NULL);
+      stiff->decref();
     }
   } else {
     printf("Element mismatch while updating...");
@@ -185,7 +187,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesA[2*i];
     conn[ptr[elem]+1] = nodesA[2*i+1];
     conn[ptr[elem]+2] = nodesA[2*i+2];
-    elems[elem] = beamA;
+    elems[elem] = sbeamA;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -194,7 +196,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesB[2*i];
     conn[ptr[elem]+1] = nodesB[2*i+1];
     conn[ptr[elem]+2] = nodesB[2*i+2];
-    elems[elem] = beamB;
+    elems[elem] = sbeamB;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -203,7 +205,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesC[2*i];
     conn[ptr[elem]+1] = nodesC[2*i+1];
     conn[ptr[elem]+2] = nodesC[2*i+2];
-    elems[elem] = beamC;
+    elems[elem] = sbeamC;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -211,27 +213,27 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   // Add the connectivities for the constraints
   conn[ptr[elem]] = nodesA[0];
   conn[ptr[elem]+1] = nnodes-4;
-  elems[elem] = revDriverA;
+  elems[elem] = srevDriverA;
   ptr[elem+1] = ptr[elem] + 2;
   elem++;
 
   conn[ptr[elem]] = nodesA[2*nA];
   conn[ptr[elem]+1] = nodesB[0];
   conn[ptr[elem]+2] = nnodes-3;
-  elems[elem] = revB;
+  elems[elem] = srevB;
   ptr[elem+1] = ptr[elem] + 3;
   elem++;
 
   conn[ptr[elem]] = nodesC[0];
   conn[ptr[elem]+1] = nodesB[2*nB];
   conn[ptr[elem]+2] = nnodes-2;
-  elems[elem] = revC;
+  elems[elem] = srevC;
   ptr[elem+1] = ptr[elem] + 3;
   elem++;
 
   conn[ptr[elem]] = nodesC[2*nC];
   conn[ptr[elem]+1] = nnodes-1;
-  elems[elem] = revD;
+  elems[elem] = srevD;
   ptr[elem+1] = ptr[elem] + 2;
   elem++;
 

@@ -19,8 +19,8 @@ int main( int argc, char *argv[] ){
   pc->addParameter(p4);
   pc->addParameter(p5);
 
-  int pmax[] = {4,4,4,4,4};
-  int nqpts[] = {5,5,5,5,5};
+  int pmax[] = {2,2,2,2,2};
+  int nqpts[] = {3,3,3,3,3};
   
   printf("initializing basis\n");
   pc->initializeBasis(pmax);
@@ -44,7 +44,18 @@ int main( int argc, char *argv[] ){
       wq = pc->quadrature(q, zq, yq);
       pc->basis(k,zq);
     }
-  }
-  
+  }  
+
+  delete [] zq;
+  delete [] yq;
+
+  delete p1;
+  delete p2;
+  delete p3;
+  delete p4;
+  delete p5;
+  delete factory;
+  delete pc;
+
   return 1;
 }

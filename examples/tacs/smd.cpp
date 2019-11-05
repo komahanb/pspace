@@ -155,7 +155,7 @@ int main( int argc, char *argv[] ){
   delete [] elems;
 
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 10.0, 100, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 1.0, 10, 2);
   bdf->incref();
   // bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
   bdf->setAbsTol(1e-7);

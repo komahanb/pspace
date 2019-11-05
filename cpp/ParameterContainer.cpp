@@ -6,12 +6,25 @@ ParameterContainer::ParameterContainer(){
   this->tnum_parameters = 0;
 }
 ParameterContainer::~ParameterContainer(){
-  if (param_max_degree){ delete [] param_max_degree; };
-  for (int k = 0; k < this->tnum_basis_terms; k++){
+  // Clear information about parameters
+  if (param_max_degree){ 
+    delete [] param_max_degree; 
+  };
+
+  // Degree of kth basis entry
+  for (int k = 0; k < this->getNumBasisTerms(); k++){
     delete [] this->dindex[k];
   };
   delete [] this->dindex;
-  // Deallocate Z, Y, W  
+
+  // Deallocate quadrature information
+  for (int i = 0; i < this->getNumParameters(); i++){
+    delete [] Z[i];
+    delete [] Y[i];
+  }
+  delete [] Z;
+  delete [] Y;
+  delete [] W;
 }
 
 /*
@@ -91,15 +104,7 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
     it->second->quadrature(nqpts[pid], z[pid], y[pid], w[pid]);
   }
 
-  // Allocate space for return variables  
-  // for (int i = 0; i < nvars; i++){
-  //   if (Z[i]){ delete Z[i]; };
-  //   if (Y[i]){ delete Y[i]; };
-  // }
-  // if (Z){ delete [] Z; };
-  // if (Y){ delete [] Y; };
-  // if (W){ delete [] W; };  
-
+  // Compute multivariate quadrature and store
   Z = new double*[nvars];
   Y = new double*[nvars];
   W = new double[totquadpts];  
@@ -113,9 +118,9 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
   
   // Deallocate space
   for (int i = 0; i < nvars; i++){
-    delete z[i];
-    delete y[i];
-    delete w[i];
+    delete [] z[i];
+    delete [] y[i];
+    delete [] w[i];
   }
   delete [] y;
   delete [] z;

@@ -260,5 +260,6 @@ void test_polynomials( int argc, char *argv[] ){
       printf("%2d %10.3f %10.3f \n", i, poly->laguerre(z,i), poly->unit_laguerre(z,i));
     }
   }
+  delete poly;
 }
 

@@ -13,14 +13,6 @@ public:
   int id;
 };
 
-// class ParamData {
-//   int pid;
-//   int deg;
-//   Object *elem;
-//   void (*set)(Object*, double);
-//   double (*get)(Object*);  
-// };
-
 // Mass test element
 class Mass : public Object {
 public:

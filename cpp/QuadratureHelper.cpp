@@ -194,4 +194,6 @@ void test_quadraure_multi(int argc, char *argv[] ){
     wsum += ww[k];
     printf(" %f %f \n", ww[k], wsum);
   }  
+
+
 }
