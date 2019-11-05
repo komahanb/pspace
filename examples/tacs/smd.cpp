@@ -18,17 +18,10 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   }
 }
 
-SMD :: SMD(double m, double c, double k){
+SMD::SMD(double m, double c, double k){
   this->m = m;
   this->c = c;
   this->k = k;  
-}
-
-void SMD :: addResidual( int elemIndex, double time,
-                         const TacsScalar X[], const TacsScalar v[],
-                         const TacsScalar dv[], const TacsScalar ddv[],
-                         TacsScalar res[] ){
-  res[0] += m*ddv[0] + c*dv[0] + k*v[0];
 }
 
 void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
@@ -41,6 +34,13 @@ void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
   // set init conditions
   v[0] = 1.0;
   dv[0] = -1.0;
+}
+
+void SMD::addResidual( int elemIndex, double time,
+                         const TacsScalar X[], const TacsScalar v[],
+                         const TacsScalar dv[], const TacsScalar ddv[],
+                         TacsScalar res[] ){
+  res[0] += m*ddv[0] + c*dv[0] + k*v[0];
 }
 
 void SMD::addJacobian( int elemIndex, double time,
@@ -110,9 +110,9 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(5.0, 0.5, 0);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 0);
-  AbstractParameter *k = factory->createNormalParameter(2.0, 3.0, 0);
+  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 2);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
+  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 3);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
@@ -155,9 +155,9 @@ int main( int argc, char *argv[] ){
   delete [] elems;
 
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 1.0, 100, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 10.0, 100, 2);
   bdf->incref();
-  bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
+  // bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
   bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(2);
   bdf->integrate();

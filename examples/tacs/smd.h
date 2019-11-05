@@ -30,10 +30,5 @@ class SMD : public TACSElement{
   int getNumNodes() {
     return 1;
   }
-
-  const char * elementName(){
-    return "SMD";
-  }
-
   double m, c, k;
 };
