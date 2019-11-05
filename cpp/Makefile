@@ -1,15 +1,17 @@
+CFLAGS = -Wall -fPIC -g
+
 default:
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c OrthogonalPolynomials.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c GaussianQuadrature.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c AbstractParameter.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c NormalParameter.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c UniformParameter.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ExponentialParameter.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterFactory.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
-	mpicxx -Wall  -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c OrthogonalPolynomials.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c GaussianQuadrature.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c AbstractParameter.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c NormalParameter.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c UniformParameter.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ExponentialParameter.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterFactory.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c BasisHelper.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c QuadratureHelper.cpp
+	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ParameterContainer.cpp
 
 	# Create dynamic library
 	ar rcs libpspace.a  ArrayList.o OrthogonalPolynomials.o \

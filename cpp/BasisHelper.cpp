@@ -81,6 +81,11 @@ void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax,
     ctr = ctr + nrecords;
   }  
   nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
 }
 
 void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, 
@@ -117,6 +122,11 @@ void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax,
     ctr = ctr + nrecords;
   }  
   nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
 }
 
 void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax, 
@@ -155,6 +165,11 @@ void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax,
     ctr = ctr + nrecords;
   }  
   nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
 }
 
 void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax, 
@@ -195,6 +210,11 @@ void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax,
     ctr = ctr + nrecords;
   }  
   nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
 }
 
 void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax, 
@@ -237,4 +257,9 @@ void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax,
     ctr = ctr + nrecords;
   }  
   nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
 }

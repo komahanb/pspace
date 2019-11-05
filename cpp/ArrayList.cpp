@@ -56,8 +56,6 @@ void mainz( int argc, char *argv[] ){
   printf("get entries %d\n", dlist->getNumEntries());
 
 
-
-
   // Allocate return array
   int **indx = new int*[5];
   for (int i = 0 ; i < 5; i++){
@@ -80,6 +78,10 @@ void mainz( int argc, char *argv[] ){
   
   // }     
       //}
-  
+
+  for (int i = 0 ; i < 5; i++){
+    delete [] indx[i];
+  }
+  delete [] indx;
   delete dlist;
 }

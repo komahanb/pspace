@@ -24,7 +24,7 @@ namespace{
     Place entry into the matrix location
   */ 
   double getElement(double *A, int size, int row, int col) {
-    // printf(" local entry is at \%d ", size * row + col);
+    // printf(" local entry is at %d ", size * row + col);
     return A[size * row + col];
   };
 
@@ -32,7 +32,7 @@ namespace{
     Add entry into the matrix location
   */ 
   void addElement(double *J, int size, int row, int col, double value) {
-    // printf(" global entry is at \%d ", size * row + col);
+    // printf(" global entry is at %d \n", size * row + col);
     J[size * row + col] += value;
   };
   
@@ -69,7 +69,6 @@ TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
 
   // Parameter container
   pc = _pc;
-  pc->initialize();
 
   // Set number of dofs
   num_nodes     = delem->getNumNodes();
@@ -383,9 +382,9 @@ void TACSStochasticElement::addJacobian( int elemIndex,
               
                 // check listart offset
                 addElement(mat, nddof*nsterms, gistart + iii, gjstart + jjj,
-                           getElement(A, nddof, iii, jjj));
+                           getElement(A, nddof, listart + iii, ljstart + jjj));
               
-            
+                printf("\n");
               } // jjj
         
             } // iii              
