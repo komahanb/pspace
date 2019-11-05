@@ -1,12 +1,23 @@
 include ${HOME}/git/tacs/Makefile.in
 include ${HOME}/git/tacs/TACS_Common.mk
 
-OBJS = smd.o ppa.o vpl.o
+PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/
+PSPACE_LIB = -L${HOME}/git/pspace/cpp/libpspace.so -lpspace
+
+# This is the one rule that is used to compile all the
+# source code in TACS
+%.o: %.cpp
+	${CXX} ${TACS_CC_FLAGS} ${PSPACE_INCLUDE} -c $< -o $*.o
+	@echo
+	@echo "        --- Compiled $*.cpp successfully ---"
+	@echo
+
+OBJS = TACSStochasticElement.o smd.o vpl.o ppa.o
 
 default: ${OBJS}
-	${CXX} -o smd smd.o ${TACS_LD_FLAGS}
-	${CXX} -o ppa ppa.o ${TACS_LD_FLAGS}
-	${CXX} -o vpl vpl.o ${TACS_LD_FLAGS}
+	${CXX} -o smd TACSStochasticElement.o smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
+	${CXX} -o vpl TACSStochasticElement.o vpl.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
+	${CXX} -o ppa TACSStochasticElement.o ppa.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 
 debug: TACS_CC_FLAGS=${TACS_DEBUG_CC_FLAGS}
 debug: default
@@ -24,8 +35,10 @@ test: default
 	./smd
 	./ppa
 	./vpl
+	./fourbar
 
 test_complex: complex
 	./smd
 	./ppa
 	./vpl
+	./fourbar

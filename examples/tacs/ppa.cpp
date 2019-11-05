@@ -11,12 +11,10 @@ void updatePPA( TACSElement *elem, TacsScalar *vals ){
   if (ppa != NULL) {
     ppa->m  = vals[0];
     ppa->If = vals[1];
-  } else {
-    printf("Element mismatch while updating...");
   }
 }
 
-PPA :: PPA( double xcm, double xf, 
+PPA::PPA( double xcm, double xf, 
             double m  , double If, 
             double ch , double ca,
             double kh , double ka ){
@@ -31,44 +29,38 @@ PPA :: PPA( double xcm, double xf,
   this->s   = m*(xcm-xf);
 }
 
-void PPA :: addResidual( double time, TacsScalar res[],
-                         const TacsScalar Xpts[],
-                         const TacsScalar v[],
-                         const TacsScalar dv[],
-                         const TacsScalar ddv[] ){
+void PPA::addResidual( int elemIndex, double time,
+                         const TacsScalar X[], const TacsScalar v[],
+                         const TacsScalar dv[], const TacsScalar ddv[],
+                         TacsScalar res[] ){
   res[0] += m*ddv[0] +  s*ddv[1] + ch*dv[0] + kh*v[0];
   res[1] += s*ddv[0] + If*ddv[1] + ca*dv[1] + ka*v[1];
 }
 
-void PPA :: getInitConditions( TacsScalar vars[],
-                               TacsScalar dvars[],
-                               TacsScalar ddvars[],
-                               const TacsScalar Xpts[] ){
-  // zero values
-  memset(vars, 0, numVariables()*sizeof(TacsScalar));
-  memset(dvars, 0, numVariables()*sizeof(TacsScalar));
-  memset(ddvars, 0, numVariables()*sizeof(TacsScalar));
+void PPA::getInitConditions( int elemIndex, const TacsScalar X[],
+                               TacsScalar v[], TacsScalar dv[], TacsScalar ddv[] ){
+  int num_vars = getNumNodes()*getVarsPerNode();
+  memset(v, 0, num_vars*sizeof(TacsScalar));
+  memset(dv, 0, num_vars*sizeof(TacsScalar));
+  memset(ddv, 0, num_vars*sizeof(TacsScalar));
 
   // set init conditions
-  vars[0]  = 0.1;
-  vars[1]  = 0.2;
-  dvars[0] = 0.0;
-  dvars[1] = 0.0;
+  v[0]  = 0.1;
+  v[1]  = 0.2;
+  dv[0] = 0.0;
+  dv[1] = 0.0;
 }
 
-void PPA :: addJacobian( double time, TacsScalar J[],
-                         double alpha, double beta, double gamma,
-                         const TacsScalar X[],
-                         const TacsScalar v[],
-                         const TacsScalar dv[],
-                         const TacsScalar ddv[] ){
-  J[0] += gamma*m  + beta*ch + alpha*kh;
-  J[1] += gamma*s;
-  J[2] += gamma*s;
-  J[3] += gamma*If + beta*ca + alpha*ka;
-}
-
-TACSAssembler *createTACS(){  
+void PPA::addJacobian( int elemIndex, double time,
+                         TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
+                         const TacsScalar X[], const TacsScalar v[],
+                         const TacsScalar dv[], const TacsScalar ddv[],
+                         TacsScalar res[], TacsScalar mat[] ){
+  addResidual(elemIndex, time, X, v, dv, ddv, res);  
+  mat[0] += gamma*m  + beta*ch + alpha*kh;
+  mat[1] += gamma*s;
+  mat[2] += gamma*s;
+  mat[3] += gamma*If + beta*ca + alpha*ka;
 }
 
 int main( int argc, char *argv[] ){
@@ -121,7 +113,7 @@ int main( int argc, char *argv[] ){
     creator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
     creator->setNodes(X);
   }
-  creator->setElements(elems, nelems);
+  creator->setElements(nelems, elems);
 
   TACSAssembler *tacs = creator->createTACS();
   tacs->incref();  
@@ -145,9 +137,8 @@ int main( int argc, char *argv[] ){
   printf("nsterms = %d \n", nsterms);
   
   // should I copy the element instead?
-  TACSStochasticElement *sppa = new TACSStochasticElement(ppa, pc);
+  TACSStochasticElement *sppa = new TACSStochasticElement(ppa, pc, updatePPA);
   sppa->incref();
-  sppa->setUpdateCallback(updatePPA);
   
   TACSElement **selems = new TACSElement*[ nelems ];
   for ( int i = 0 ; i < nelems; i++ ){
@@ -161,7 +152,7 @@ int main( int argc, char *argv[] ){
     screator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
     screator->setNodes(X);
   }
-  screator->setElements(selems, nelems);
+  screator->setElements(nelems, selems);
 
   TACSAssembler *stacs = screator->createTACS();
   stacs->incref();
