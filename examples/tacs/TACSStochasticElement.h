@@ -6,8 +6,8 @@
 
 class TACSStochasticElement : public TACSElement {
  public:
-  TACSStochasticElement( TACSElement *_delem, 
-                         ParameterContainer *_pc, 
+  TACSStochasticElement( TACSElement *_delem,
+                         ParameterContainer *_pc,
                          void (*_update)(TACSElement*, TacsScalar*) );
   ~TACSStochasticElement();
 
@@ -18,12 +18,15 @@ class TACSStochasticElement : public TACSElement {
 
   // Get the element basis
   //-----------------------
-  /*
-    TACSElementBasis* getElementBasis(){
+  TACSElementBasis* getElementBasis(){
     return delem->getElementBasis();
-    }
-  */
-  
+  }
+
+  int getMultiplierIndex(){
+    return delem->getMultiplierIndex();
+  }
+
+
   // Return the Initial conditions
   // -----------------------------
   void getInitConditions( int elemIndex, const TacsScalar X[],
