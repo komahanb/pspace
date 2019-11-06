@@ -17,37 +17,37 @@ namespace{
     for( int i = 0; i < nvars; i++ ){
       prod *= filter[i];
     }
-    return prod;    
-  } 
-  
+    return prod;
+  }
+
   /*
     Place entry into the matrix location
-  */ 
-  double getElement(double *A, int size, int row, int col) {
+  */
+  TacsScalar getElement(TacsScalar *A, int size, int row, int col) {
     // printf(" local entry %d = ", size * row + col);
     return A[size * row + col];
   };
 
   /*
     Add entry into the matrix location
-  */ 
-  void addElement(double *J, int size, int row, int col, double value) {
+  */
+  void addElement(TacsScalar *J, int size, int row, int col, TacsScalar value) {
     //  printf(" global entry  %d \n", size * row + col);
     J[size * row + col] += value;
   };
-  
+
   /*
     Display the matrix sparsity pattern
   */
   void printSparsity( TacsScalar *J, int size,  double tol = 1.0e-12 ){
     for (int ii = 0; ii < size; ii++){
-      printf("%2d ", ii);          
+      printf("%2d ", ii);
       for (int jj = 0; jj < size; jj++){
         if (abs(getElement(J, size, ii, jj)) > tol) {
           printf("%2s", "x");
         } else {
           printf("%2s", " ");
-        }      
+        }
       }
       printf("\n");
     }
@@ -77,7 +77,6 @@ TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
 
 TACSStochasticElement::~TACSStochasticElement(){
   delem->decref();
-  delete pc;
 }
 
 /*
@@ -350,11 +349,11 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
           // Fetch the deterministic element residual
           double scale = pc->basis(i,zq)*pc->basis(j,zq)*wq;
-          this->delem->addJacobian(elemIndex, 
+          this->delem->addJacobian(elemIndex,
                                    time,
                                    scale*alpha, scale*beta, scale*gamma,
-                                   X, uq, udq, uddq, 
-                                   resq, 
+                                   X, uq, udq, uddq,
+                                   resq,
                                    A);
         } // quadrature
 
@@ -364,18 +363,18 @@ void TACSStochasticElement::addJacobian( int elemIndex,
         for (int ii = 0; ii < nddof; ii++){
           for (int jj = 0; jj < nddof; jj++){
             addElement(mat, nsdof, iptr + ii, jptr + jj,
-                       getElement(A, nddof, ii, jj));              
+                       getElement(A, nddof, ii, jj));
           }
         }
 
       } // nonzero
-      
+
     } // end j
 
   } // end i
 
-  printSparsity(mat, nddof*nsterms);
-  
+  // printSparsity(mat, nddof*nsterms);
+
   // clear the heap
   delete [] A;
   delete [] resq;

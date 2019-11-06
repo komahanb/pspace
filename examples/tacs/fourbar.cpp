@@ -108,7 +108,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
 
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 1);
+  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 0);
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(pmA);
   pc->initialize();
@@ -461,6 +461,14 @@ int main( int argc, char *argv[] ){
     integrator->setAbsTol(1e-7);
     integrator->setPrintLevel(2);
     integrator->setOutputFrequency(10);
+
+    TACSBVec *ans = tacs->createVec();
+    tacs->getInitConditions(ans, NULL, NULL);
+    tacs->setVariables(ans);
+
+    for ( int i = 0; i < tacs->getNumElements(); i++ ){
+      tacs->testElement(i, 2);
+    }
 
     // Integrate the equations of motion forward in time
     integrator->integrate();
