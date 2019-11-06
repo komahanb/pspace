@@ -185,10 +185,7 @@ void TACSStochasticElement::addResidual( int elemIndex,
                                          TacsScalar res[] ){
   // Deterministic information
   const int ndnvars = delem->getVarsPerNode();
-  const int nnodes = delem->getNumNodes();
   const int nddof   = delem->getNumVariables();
-  const int nsnvars = getVarsPerNode();
-
   const int nsdof   = this->getNumVariables();
   const int nsterms = pc->getNumBasisTerms();
 
@@ -228,14 +225,12 @@ void TACSStochasticElement::addResidual( int elemIndex,
       // Evaluate the basis at quadrature node and form the state
       // vectors
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k, zq);
-
-        for ( int c = 0; c < nnodes; c++ ){
-          for ( int j = 0; j < ndnvars; j++ ){
-            uq[ndnvars*c + j] += psikz*v[*k + ndnvars*c + j];
-            udq[ndnvars*c + j] += psikz*v[nddof*k + ndnvars*c + j];
-            uddq[ndnvars*c + j] += psikz*v[nddof*k + ndnvars*c + j];
-          }
+        double psikz = pc->basis(k,zq);
+        int ptr = k*nddof;
+        for (int c = 0; c < nddof; c++){
+          uq[c]   += v[ptr+c]*psikz;
+          udq[c]  += dv[ptr+c]*psikz;
+          uddq[c] += ddv[ptr+c]*psikz;
         }
       }
 
@@ -244,7 +239,7 @@ void TACSStochasticElement::addResidual( int elemIndex,
 
       //  Project the determinic element residual onto the
       //  stochastic basis and place in global residual array
-      double scale = pc->basis(i, zq)*wq;
+      double scale = pc->basis(i,zq)*wq;
       for (int c = 0; c < nddof; c++){
         rtmpi[c] += resq[c]*scale;
       }
@@ -252,8 +247,6 @@ void TACSStochasticElement::addResidual( int elemIndex,
 
     // Store i-th projected Residual into stochastic array
     int ptr = i*nddof;
-    for ( int ii = 0; ii < nnodes; ii++ ){
-      res[ndnvars*
     for (int ii = 0; ii < nddof; ii++){
       res[ptr+ii] += rtmpi[ii];
     }
@@ -291,8 +284,8 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   const int nsterms = pc->getNumBasisTerms();
   const int nnodes  = getNumNodes();
 
-  // printf("nsdof = %d, nddof = %d, nnodes = %d, ndnvars = %d, nsterms = %d \n",
-  // nsdof, nddof, nnodes, ndnvars, nsterms);
+  printf("nsdof = %d, nddof = %d, nnodes = %d, ndnvars = %d, nsterms = %d \n",
+         nsdof, nddof, nnodes, ndnvars, nsterms);
 
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
