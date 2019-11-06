@@ -37,7 +37,7 @@ class TACSStochasticElement : public TACSElement {
                     const TacsScalar X[], const TacsScalar v[],
                     const TacsScalar dv[], const TacsScalar ddv[],
                     TacsScalar res[] );
-/*
+
   // Compute the Jacobian of the governing equations
   // -----------------------------------------------
   void addJacobian( int elemIndex, double time,
@@ -45,9 +45,9 @@ class TACSStochasticElement : public TACSElement {
                     const TacsScalar X[], const TacsScalar v[],
                     const TacsScalar dv[], const TacsScalar ddv[],
                     TacsScalar res[], TacsScalar mat[] );
-*/
 
   // Invoke this function to update this element through user supplied callback
+  //---------------------------------------------------------------------------
   void updateElement(TACSElement* elem, TacsScalar* vals){
     if (this->update != NULL){
       this->update(elem, vals);
