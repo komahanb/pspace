@@ -26,7 +26,6 @@ class TACSStochasticElement : public TACSElement {
     return delem->getMultiplierIndex();
   }
 
-
   // Return the Initial conditions
   // -----------------------------
   void getInitConditions( int elemIndex, const TacsScalar X[],
@@ -48,6 +47,7 @@ class TACSStochasticElement : public TACSElement {
                     TacsScalar res[], TacsScalar mat[] );
 
   // Invoke this function to update this element through user supplied callback
+  //---------------------------------------------------------------------------
   void updateElement(TACSElement* elem, TacsScalar* vals){
     if (this->update != NULL){
       this->update(elem, vals);
