@@ -108,7 +108,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
 
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 3);
+  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 1);
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(pmA);
   pc->initialize();
@@ -446,7 +446,7 @@ int main( int argc, char *argv[] ){
     tacs->incref();
 
     // Set the final time
-    double tf = 10.0e-3;
+    double tf = 0.01;
 
     // The number of total steps (100 per second)
     int num_steps = 10;
@@ -473,8 +473,6 @@ int main( int argc, char *argv[] ){
     // Integrate the equations of motion forward in time
     integrator->integrate();
 
-    // deactivate post processing for now
-    /*
     // Set the output options/locations
     int elem[3];
     // elem[0] = nA/2;
@@ -515,7 +513,6 @@ int main( int argc, char *argv[] ){
       }
       fclose(fp);
     }
-    */
 
     integrator->decref();
     tacs->decref();

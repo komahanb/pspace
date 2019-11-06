@@ -9,12 +9,12 @@ ParameterContainer::~ParameterContainer(){
   // Clear information about parameters
   if (param_max_degree){ 
     delete [] param_max_degree; 
-  };
+  }
 
   // Degree of kth basis entry
   for (int k = 0; k < this->getNumBasisTerms(); k++){
     delete [] this->dindex[k];
-  };
+  }
   delete [] this->dindex;
 
   // Deallocate quadrature information
@@ -78,7 +78,7 @@ void  ParameterContainer::initializeBasis(const int *pmax){
 
   if (this->tnum_basis_terms != nterms){
     printf("Error initializing basis\n");
-  };
+  }
 }
 
 void ParameterContainer::initializeQuadrature(const int *nqpts){  

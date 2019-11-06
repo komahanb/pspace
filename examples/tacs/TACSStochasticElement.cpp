@@ -98,12 +98,11 @@ void TACSStochasticElement::getInitConditions( int elemIndex,
                                                TacsScalar v[],
                                                TacsScalar dv[],
                                                TacsScalar ddv[] ){
-  const int ndvpn   = delem->getVarsPerNode();
-  const int nsvpn   = this->getVarsPerNode();
+  // Deterministic information
+  const int ndnvars = delem->getVarsPerNode();
   const int nddof   = delem->getNumVariables();
   const int nsdof   = this->getNumVariables();
   const int nsterms = pc->getNumBasisTerms();
-  const int nnodes  = this->getNumNodes();
 
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
@@ -144,26 +143,22 @@ void TACSStochasticElement::getInitConditions( int elemIndex,
       // Fetch the deterministic element residual
       delem->getInitConditions(elemIndex, X, uq, udq, uddq);
 
-      // Project the determinic states onto the stochastic basis and
-      // place in global state array
+      //  Project the determinic states onto the stochastic basis and
+      //  place in global state array
       double scale = pc->basis(k,zq)*wq;
       for (int c = 0; c < nddof; c++){
         utmpk[c] += uq[c]*scale;
         udtmpk[c] += udq[c]*scale;
         uddtmpk[c] += uddq[c]*scale;
       }
-
     } // quadrature
 
-    // Store the initial conditions in termwise order
-    for (int n = 0; n < nnodes; n++){
-      int lptr = n*ndvpn;
-      int gptr = n*nsvpn + k*ndvpn;
-      for (int d = 0; d < ndvpn; d++){        
-        v[gptr+d] = utmpk[lptr+d];
-        dv[gptr+d] = udtmpk[lptr+d];
-        ddv[gptr+d] = uddtmpk[lptr+d];
-      }
+    // Store k-th projected ICs into stochastic array
+    int ptr = k*nddof;
+    for (int ii = 0; ii < nddof; ii++){
+      v[ptr+ii] = utmpk[ii];
+      dv[ptr+ii] = udtmpk[ii];
+      ddv[ptr+ii] = uddtmpk[ii];
     }
   }
 
@@ -188,12 +183,14 @@ void TACSStochasticElement::addResidual( int elemIndex,
                                          const TacsScalar dv[],
                                          const TacsScalar ddv[],
                                          TacsScalar res[] ){
-  const int ndvpn   = delem->getVarsPerNode();
-  const int nsvpn   = this->getVarsPerNode();
+  // Deterministic information
+  const int ndnvars = delem->getVarsPerNode();
+  const int nnodes = delem->getNumNodes();
   const int nddof   = delem->getNumVariables();
+  const int nsnvars = getVarsPerNode();
+
   const int nsdof   = this->getNumVariables();
   const int nsterms = pc->getNumBasisTerms();
-  const int nnodes  = this->getNumNodes();
 
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
@@ -230,15 +227,14 @@ void TACSStochasticElement::addResidual( int elemIndex,
 
       // Evaluate the basis at quadrature node and form the state
       // vectors
-      for (int n = 0; n < nnodes; n++){
-        for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
-          int lptr = n*ndvpn;
-          int gptr = n*nsvpn + k*ndvpn;
-          for (int d = 0; d < ndvpn; d++){        
-            uq[lptr+d] += v[gptr+d]*psikz;
-            udq[lptr+d] += dv[gptr+d]*psikz;
-            uddq[lptr+d] += ddv[gptr+d]*psikz;
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k, zq);
+
+        for ( int c = 0; c < nnodes; c++ ){
+          for ( int j = 0; j < ndnvars; j++ ){
+            uq[ndnvars*c + j] += psikz*v[*k + ndnvars*c + j];
+            udq[ndnvars*c + j] += psikz*v[nddof*k + ndnvars*c + j];
+            uddq[ndnvars*c + j] += psikz*v[nddof*k + ndnvars*c + j];
           }
         }
       }
@@ -248,20 +244,18 @@ void TACSStochasticElement::addResidual( int elemIndex,
 
       //  Project the determinic element residual onto the
       //  stochastic basis and place in global residual array
-      double scale = pc->basis(i,zq)*wq;
+      double scale = pc->basis(i, zq)*wq;
       for (int c = 0; c < nddof; c++){
         rtmpi[c] += resq[c]*scale;
       }
-
     } // quadrature
 
     // Store i-th projected Residual into stochastic array
-    for (int n = 0; n < nnodes; n++){
-      int lptr = n*ndvpn;
-      int gptr = n*nsvpn + i*ndvpn;
-      for (int d = 0; d < ndvpn; d++){        
-        res[gptr+d] += rtmpi[lptr+d];
-      }
+    int ptr = i*nddof;
+    for ( int ii = 0; ii < nnodes; ii++ ){
+      res[ndnvars*
+    for (int ii = 0; ii < nddof; ii++){
+      res[ptr+ii] += rtmpi[ii];
     }
 
   } // end nsterms
@@ -290,12 +284,15 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   // Call the residual implementation
   addResidual(elemIndex, time, X, v, dv, ddv, res);
 
-  const int ndvpn   = delem->getVarsPerNode();
-  const int nsvpn   = this->getVarsPerNode();
+  // Deterministic information
+  const int ndnvars = delem->getVarsPerNode();
   const int nddof   = delem->getNumVariables();
   const int nsdof   = this->getNumVariables();
   const int nsterms = pc->getNumBasisTerms();
-  const int nnodes  = this->getNumNodes();
+  const int nnodes  = getNumNodes();
+
+  // printf("nsdof = %d, nddof = %d, nnodes = %d, ndnvars = %d, nsterms = %d \n",
+  // nsdof, nddof, nnodes, ndnvars, nsterms);
 
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
@@ -306,7 +303,7 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   // polynomial degrees
   int dmapi[nsparams], dmapj[nsparams], dmapf[nsparams];
 
-  // Assume all parameters to be of degree atmost 3 (faster)
+  // Assume all parameters to be of degree atmost 3 (faster) // fix
   for (int i = 0; i <nsparams; i++){
     dmapf[i] = 3;
   }
@@ -328,7 +325,7 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
       pc->getBasisParamDeg(j, dmapj);
 
-      if (nonzero(nsparams, dmapi, dmapj, dmapf)){
+      if (1){ // nonzero(nsparams, dmapi, dmapj, dmapf)){
 
         memset(A, 0, nddof*nddof*sizeof(TacsScalar));
 
@@ -347,16 +344,13 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
           // Evaluate the basis at quadrature node and form the state
           // vectors
-          for (int n = 0; n < nnodes; n++){
-            for (int k = 0; k < nsterms; k++){
-              double psikz = pc->basis(k,zq);
-              int lptr = n*ndvpn;
-              int gptr = n*nsvpn + k*ndvpn;
-              for (int d = 0; d < ndvpn; d++){  
-                uq[lptr+d] += v[gptr+d]*psikz;
-                udq[lptr+d] += dv[gptr+d]*psikz;
-                uddq[lptr+d] += ddv[gptr+d]*psikz;      
-              }
+          for (int k = 0; k < nsterms; k++){
+            double psikz = pc->basis(k,zq);
+            int ptr = k*nddof;
+            for (int c = 0; c < nddof; c++){
+              uq[c]   += v[ptr+c]*psikz;
+              udq[c]  += dv[ptr+c]*psikz;
+              uddq[c] += ddv[ptr+c]*psikz;
             }
           }
 
@@ -370,21 +364,13 @@ void TACSStochasticElement::addJacobian( int elemIndex,
                                    A);
         } // quadrature
 
-        // Place the (i,j)-projected block into the stochastic block
-        for (int ni = 0; ni < nnodes; ni++){
-          int liptr = ni*ndvpn;
-          int giptr = ni*nsvpn + i*ndvpn;
-          for (int di = 0; di < ndvpn; di++){
-            for (int nj = 0; nj < nnodes; nj++){
-              int ljptr = nj*ndvpn;
-              int gjptr = nj*nsvpn + j*ndvpn;
-              for (int dj = 0; dj < ndvpn; dj++){
-                addElement(mat, nsdof, 
-                           giptr + di, gjptr + dj,
-                           getElement(A, nddof, 
-                                      liptr + di, ljptr + dj));
-              }
-            }
+        // Store (i,j)-th projected Jacobian into stochastic Jacobian
+        int iptr = i*nddof;
+        int jptr = j*nddof;
+        for (int ii = 0; ii < nddof; ii++){
+          for (int jj = 0; jj < nddof; jj++){
+            addElement(mat, nsdof, iptr + ii, jptr + jj,
+                       getElement(A, nddof, ii, jj));
           }
         }
 
@@ -394,7 +380,7 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
   } // end i
 
-  //  printSparsity(mat, nddof*nsterms);
+  // printSparsity(mat, nddof*nsterms);
 
   // clear the heap
   delete [] A;
@@ -405,4 +391,3 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   delete [] zq;
   delete [] yq;
 }
-
