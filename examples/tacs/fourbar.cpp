@@ -9,7 +9,7 @@
 #include "TACSStochasticElement.h"
 #include "TACSElementVerification.h"
 
-void updateBeamAB( TACSElement *elem, TacsScalar *vals ){
+void updateBeam1( TACSElement *elem, TacsScalar *vals ){
   MITC3 *mitc3 = dynamic_cast<MITC3*>(elem);
   if (mitc3 != NULL) {
     TACSTimoshenkoConstitutive *stiff = dynamic_cast<TACSTimoshenkoConstitutive*>(mitc3->getConstitutive());
@@ -20,6 +20,31 @@ void updateBeamAB( TACSElement *elem, TacsScalar *vals ){
       stiff->setProperties(rho, NULL, NULL);
       stiff->decref();
     }
+  } else {
+    printf("Element mismatch while updating...");
+  }
+}
+
+void updateBeam2( TACSElement *elem, TacsScalar *vals ){
+  MITC3 *mitc3 = dynamic_cast<MITC3*>(elem);
+  if (mitc3 != NULL) {
+    TACSTimoshenkoConstitutive *stiff = dynamic_cast<TACSTimoshenkoConstitutive*>(mitc3->getConstitutive());
+    if (stiff){
+      stiff->incref();      TacsScalar rho[4];
+      stiff->getProperties(rho, NULL, NULL);
+      rho[0] = vals[1];
+      stiff->setProperties(rho, NULL, NULL);
+      stiff->decref();
+    }
+  } else {
+    printf("Element mismatch while updating...");
+  }
+}
+
+void updateRevoluteDriver( TACSElement *elem, TacsScalar *vals ){
+  TACSRevoluteDriver *revDriverA = dynamic_cast<TACSRevoluteDriver*>(elem);
+  if (revDriverA != NULL) {
+    revDriverA->setSpeed(vals[2]);
   } else {
     printf("Element mismatch while updating...");
   }
@@ -107,11 +132,17 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar axis_B[] = {0.0, 1.0, 0.0};
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
 
-  ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pmA = factory->createExponentialParameter(mA, 0.1, 3);
+  ParameterFactory *factory  = new ParameterFactory();
+  AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 2);
+  AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 2);
+  AbstractParameter *pOmegaA = factory->createUniformParameter(-0.6, 0.6, 2);
+ 
   ParameterContainer *pc = new ParameterContainer();
-  pc->addParameter(pmA);
+  pc->addParameter(pm1);
+  pc->addParameter(pm2); 
+  pc->addParameter(pOmegaA);  
   pc->initialize();
+  
   int nsterms = pc->getNumBasisTerms();
   printf("nsterms = %d \n", nsterms);
   
@@ -137,10 +168,10 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   MITC3 *beamC = new MITC3(stiffC, gravity);
 
   // Create stochastic elements
-  TACSStochasticElement *sbeamA      = new TACSStochasticElement(beamA, pc, updateBeamAB);
-  TACSStochasticElement *sbeamB      = new TACSStochasticElement(beamB, pc, updateBeamAB);
-  TACSStochasticElement *sbeamC      = new TACSStochasticElement(beamC, pc, NULL);
-  TACSStochasticElement *srevDriverA = new TACSStochasticElement(revDriverA, pc, NULL);
+  TACSStochasticElement *sbeamA      = new TACSStochasticElement(beamA, pc, updateBeam1);
+  TACSStochasticElement *sbeamB      = new TACSStochasticElement(beamB, pc, updateBeam1);
+  TACSStochasticElement *sbeamC      = new TACSStochasticElement(beamC, pc, updateBeam2);
+  TACSStochasticElement *srevDriverA = new TACSStochasticElement(revDriverA, pc, updateRevoluteDriver);
   TACSStochasticElement *srevB       = new TACSStochasticElement(revB, pc, NULL);
   TACSStochasticElement *srevC       = new TACSStochasticElement(revC, pc, NULL);
   TACSStochasticElement *srevD       = new TACSStochasticElement(revD, pc, NULL);
@@ -441,7 +472,7 @@ int main( int argc, char *argv[] ){
     beam->decref();
   } else {
     // Create the finite-element model
-    int nA = 1, nB = 1, nC = 1;
+    int nA = 2, nB = 2, nC = 2;
     TACSAssembler *tacs = four_bar_mechanism(nA, nB, nC);
     tacs->incref();
 
@@ -473,14 +504,10 @@ int main( int argc, char *argv[] ){
     // Integrate the equations of motion forward in time
     integrator->integrate();
 
-    // deactivate post processing for now
+
     /*
     // Set the output options/locations
     int elem[3];
-    // elem[0] = nA/2;
-    // elem[1] = nA + nB/2;
-    // elem[2] = nA + nB + nC/2;
-    // double param[][1] = {{-1.0}, {-1.0}, {-1.0}};
     elem[0] = nA/2;
     elem[1] = nA + nB/2;
     elem[2] = nA + nB + nC/2;
@@ -497,16 +524,20 @@ int main( int argc, char *argv[] ){
       // Write out data from the beams
       TACSBVec *q = NULL;
       for ( int k = 0; k < num_steps+1; k++ ){
-        TacsScalar X[3*3], vars[8*3];
+        TacsScalar X[3*3], vars[8*4*3];
         double time = integrator->getStates(k, &q, NULL, NULL);
         tacs->setVariables(q);
         TACSElement *element = tacs->getElement(elem[pt], X, vars);
 
-//        TacsScalar e[6], s[6];
-//        element->getStrain(e, param[pt], X, vars);
-//        TACSConstitutive *con = element->getConstitutive();
-//        con->calculateStress(param[pt], e, s);
-        TacsScalar s[6];
+        printf("X = %e %e %e \n", X[0], X[1], X[2]);
+        printf("X = %e %e %e \n", X[3], X[4], X[5]);
+        printf("X = %e %e %e \n", X[6], X[7], X[8]);
+        
+        TacsScalar e[6], s[6];
+        element->getStrain(e, param[pt], X, vars);
+        TACSConstitutive *con = element->getConstitutive();
+        con->calculateStress(param[pt], e, s);
+//        TacsScalar s[6];
         s[0] = s[1] = s[2] = s[3] = s[4] = s[5] = 0.0;
 
         fprintf(fp, "%e  %e %e %e  %e %e %e  %e %e %e\n",
@@ -515,8 +546,9 @@ int main( int argc, char *argv[] ){
       }
       fclose(fp);
     }
-    */
 
+    */
+    
     integrator->decref();
     tacs->decref();
   }
