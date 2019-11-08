@@ -12,10 +12,10 @@ PSPACE_LIB = -L${HOME}/git/pspace/cpp/libpspace.so -lpspace
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS = TACSStochasticElement.o smd.o vpl.o ppa.o fourbar.o
+OBJS = TACSStochasticElement.o TACSEnergy.o smd.o vpl.o ppa.o fourbar.o
 
 default: ${OBJS}
-	${CXX} -o smd TACSStochasticElement.o smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
+	${CXX} -o smd TACSStochasticElement.o TACSEnergy.o smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o vpl TACSStochasticElement.o vpl.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o ppa TACSStochasticElement.o ppa.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o fourbar TACSStochasticElement.o fourbar.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
