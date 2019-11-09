@@ -22,7 +22,14 @@ class SMD : public TACSElement{
                     const TacsScalar X[], const TacsScalar v[],
                     const TacsScalar dv[], const TacsScalar ddv[],
                     TacsScalar res[], TacsScalar mat[] );
-
+  int evalPointQuantity( int elemIndex, int quantityType,
+                         double time,
+                         int n, double pt[],
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         TacsScalar *quantity );
   int getVarsPerNode(){
     return 1;
   };
