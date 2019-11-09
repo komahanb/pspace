@@ -6,6 +6,9 @@
 #include "TACSCreator.h"
 #include "smd.h"
 
+#include "TACSFunction.h"
+#include "TACSEnergy.h"
+
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
@@ -50,6 +53,18 @@ void SMD::addJacobian( int elemIndex, double time,
                        TacsScalar res[], TacsScalar mat[] ){
   addResidual(elemIndex, time, X, v, dv, ddv, res);
   mat[0] += gamma*m + beta*c + alpha*k;
+}
+
+int SMD::evalPointQuantity( int elemIndex, int quantityType,
+                            double time,
+                            int n, double pt[],
+                            const TacsScalar Xpts[],
+                            const TacsScalar vars[],
+                            const TacsScalar dvars[],
+                            const TacsScalar ddvars[],
+                            TacsScalar *quantity ){
+  quantity[0] = 0.5*k*vars[0]*vars[0];
+  return 1;
 }
 
 int main( int argc, char *argv[] ){
@@ -110,9 +125,9 @@ int main( int argc, char *argv[] ){
   
   // Create random parameter
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 2);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 3);
+  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 1);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 1);
+  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 1);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
@@ -131,7 +146,7 @@ int main( int argc, char *argv[] ){
   for ( int i = 0 ; i < nelems; i++ ){
     selems[i] = ssmd; 
   }
-  
+
   // Creator object for TACS
   TACSCreator *screator = new TACSCreator(comm, vars_per_node*nsterms);
   screator->incref();
@@ -148,6 +163,12 @@ int main( int argc, char *argv[] ){
   //  ssmd->decref();
   //  smd->decref(); // hold off may be
 
+  const int num_funcs = 1;
+  TACSFunction **funcs = new TACSFunction*[num_funcs];
+  TACSEnergy *penergy = new TACSEnergy(stacs);
+  funcs[0] = penergy;
+  printf("energy is %f \n", penergy->getFunctionValue());
+  
   delete [] X;
   delete [] ptr;
   delete [] eids;

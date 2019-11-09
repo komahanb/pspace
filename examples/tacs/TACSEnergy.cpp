@@ -47,7 +47,7 @@ void TACSEnergy::finalEvaluation( EvaluationType ftype ){
 }
 
 /*
-  Perform the element-wise evaluation of the TACSKSFailure function.
+  Perform the element-wise evaluation of the TACSEnergy function.
 */
 void TACSEnergy::elementWiseEval( EvaluationType ftype,
                                   int elemIndex,
@@ -58,30 +58,15 @@ void TACSEnergy::elementWiseEval( EvaluationType ftype,
                                   const TacsScalar vars[],
                                   const TacsScalar dvars[],
                                   const TacsScalar ddvars[] ){
-  // Retrieve the number of stress components for this element
-  TACSElementBasis *basis = element->getElementBasis();
-
-  if (basis){
-    for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
-      double pt[3];
-      double weight = basis->getQuadraturePoint(i, pt);
-
-      // Evaluate the failure index, and check whether it is an
-      // undefined quantity of interest on this element
-      TacsScalar density = 0.0;
-      int count = element->evalPointQuantity(elemIndex, TACS_ELEMENT_DENSITY,
-                                             time, i, pt,
-                                             Xpts, vars, dvars, ddvars,
-                                             &density);
-
-      if (count >= 1){
-        // Evaluate the determinant of the Jacobian
-        TacsScalar Xd[9], J[9];
-        TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
-        fval += weight*detJ*density;
-      }
-    }
-  }
+  TacsScalar energy = 0.0;
+  double pt[3] = {0.0, 0.0, 0.0};
+  int n = 0;
+  int count = element->evalPointQuantity(elemIndex, 0,
+                                         time,
+                                         n, pt,
+                                         Xpts, vars, dvars, ddvars,
+                                         &energy);
+  fval += energy;
 }
 
 /*
