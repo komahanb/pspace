@@ -406,3 +406,90 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   delete [] yq;
 }
 
+int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType, double time,
+                                                int N, double pt[], const TacsScalar Xpts[],
+                                                const TacsScalar v[], const TacsScalar dv[],
+                                                const TacsScalar ddv[], TacsScalar *quantity ) {
+  const int ndvpn   = delem->getVarsPerNode();
+  const int nsvpn   = this->getVarsPerNode();
+  const int nddof   = delem->getNumVariables();
+  const int nsdof   = this->getNumVariables();
+  const int nsterms = pc->getNumBasisTerms();
+  const int nnodes  = this->getNumNodes();
+
+  // Space for quadrature points and weights
+  const int nsparams = pc->getNumParameters();
+  double *zq = new double[nsparams];
+  double *yq = new double[nsparams];
+  double wq;
+
+  // Create space for fetching deterministic residuals and states
+  TacsScalar *uq    = new TacsScalar[nddof];
+  TacsScalar *udq   = new TacsScalar[nddof];
+  TacsScalar *uddq  = new TacsScalar[nddof];
+  TacsScalar *resq  = new TacsScalar[nddof];
+  TacsScalar *rtmpi = new TacsScalar[nddof];
+
+  const int nqpts = pc->getNumQuadraturePoints();
+
+  for (int i = 0; i < nsterms; i++){
+
+    memset(rtmpi, 0, nddof*sizeof(TacsScalar));
+
+    for (int q = 0; q < nqpts; q++){
+
+      // Get the quadrature points and weights
+      wq = pc->quadrature(q, zq, yq);
+
+      // Set the parameter values into the element
+      updateElement(delem, yq);
+
+      // reset the states and residuals
+      memset(resq, 0, nddof*sizeof(TacsScalar));
+      memset(uq  , 0, nddof*sizeof(TacsScalar));
+      memset(udq , 0, nddof*sizeof(TacsScalar));
+      memset(uddq, 0, nddof*sizeof(TacsScalar));
+
+      // Evaluate the basis at quadrature node and form the state
+      // vectors
+      for (int n = 0; n < nnodes; n++){
+        for (int k = 0; k < nsterms; k++){
+          double psikz = pc->basis(k,zq);
+          int lptr = n*ndvpn;
+          int gptr = n*nsvpn + k*ndvpn;
+          for (int d = 0; d < ndvpn; d++){        
+            uq[lptr+d] += v[gptr+d]*psikz;
+            udq[lptr+d] += dv[gptr+d]*psikz;
+            uddq[lptr+d] += ddv[gptr+d]*psikz;
+          }
+        }
+      }
+
+      // Fetch the deterministic element residual
+      // delem->addResidual(elemIndex, time, X, uq, udq, uddq, resq);
+      int count = this->delem->evalPointQuantity(elemIndex,
+                                                 quantityType,
+                                                 time, N, pt,
+                                                 Xpts, uq, udq, uddq,
+                                                 quantity);
+      
+      //  Project the determinic element residual onto the
+      //  stochastic basis and place in global residual array
+      // double scale = pc->basis(i,zq)*wq;
+      // for (int c = 0; c < nddof; c++){
+      //   rtmpi[c] += resq[c]*scale;
+      // }
+
+    } // quadrature
+
+    // Store i-th projected Residual into stochastic array
+    //   for (int n = 0; n < nnodes; n++){
+    //     int lptr = n*ndvpn;
+    //     int gptr = n*nsvpn + i*ndvpn;
+    //     for (int d = 0; d < ndvpn; d++){        
+    //       res[gptr+d] += rtmpi[lptr+d];
+    //     }
+    //   }
+    
+  }
+}

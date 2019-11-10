@@ -45,7 +45,14 @@ class TACSStochasticElement : public TACSElement {
                     const TacsScalar X[], const TacsScalar v[],
                     const TacsScalar dv[], const TacsScalar ddv[],
                     TacsScalar res[], TacsScalar mat[] );
-
+  /**
+    Evaluate a point-wise quantity of interest.
+  */
+  int evalPointQuantity( int elemIndex, int quantityType, double time,
+                         int n, double pt[], const TacsScalar Xpts[],
+                         const TacsScalar vars[], const TacsScalar dvars[],
+                         const TacsScalar ddvars[], TacsScalar *quantity );
+  
   // Invoke this function to update this element through user supplied callback
   //---------------------------------------------------------------------------
   void updateElement(TACSElement* elem, TacsScalar* vals){

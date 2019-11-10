@@ -58,15 +58,14 @@ void TACSEnergy::elementWiseEval( EvaluationType ftype,
                                   const TacsScalar vars[],
                                   const TacsScalar dvars[],
                                   const TacsScalar ddvars[] ){
+  //todo check evaluation type
   TacsScalar energy = 0.0;
-  double pt[3] = {0.0, 0.0, 0.0};
-  int n = 0;
   int count = element->evalPointQuantity(elemIndex, 0,
-                                         time,
-                                         n, pt,
+                                         time, 0, NULL,
                                          Xpts, vars, dvars, ddvars,
                                          &energy);
-  fval += energy;
+  printf("element wise eval inside %f %f\n", fval, energy);
+  fval += scale*energy;
 }
 
 /*
