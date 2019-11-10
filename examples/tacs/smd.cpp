@@ -36,7 +36,7 @@ void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
 
   // set init conditions
   v[0] = 1.0;
-  dv[0] = -1.0;
+  dv[0] = 0.0;
 }
 
 void SMD::addResidual( int elemIndex, double time,
@@ -55,20 +55,20 @@ void SMD::addJacobian( int elemIndex, double time,
   mat[0] += gamma*m + beta*c + alpha*k;
 }
 
-int SMD::evalPointQuantity( int elemIndex, int quantityType,
-                            double time,
-                            int n, double pt[],
-                            const TacsScalar Xpts[],
-                            const TacsScalar vars[],
-                            const TacsScalar dvars[],
-                            const TacsScalar ddvars[],
-                            TacsScalar *quantity ){
+int SMD :: evalPointQuantity( int elemIndex, int quantityType,
+                              double time,
+                              int n, double pt[],
+                              const TacsScalar Xpts[],
+                              const TacsScalar vars[],
+                              const TacsScalar dvars[],
+                              const TacsScalar ddvars[],
+                              TacsScalar *quantity ){
+  printf("Enetering function call evalPointQuawntiy\n");
   quantity[0] = 0.5*k*vars[0]*vars[0];
   return 1;
 }
 
-int main( int argc, char *argv[] ){
-  
+int main( int argc, char *argv[] ){  
   // Initialize MPI
   MPI_Init(&argc, &argv);
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -76,7 +76,7 @@ int main( int argc, char *argv[] ){
   MPI_Comm_rank(comm, &rank); 
 
   // Create TACS using SMD element
-  SMD *smd = new SMD(2.0, 3.0, 4.0);
+  SMD *smd = new SMD(2.5, 0.2, 5.0); 
   smd->incref();
 
   int nelems = 1;
@@ -144,11 +144,11 @@ int main( int argc, char *argv[] ){
   
   TACSElement **selems = new TACSElement*[ nelems ];
   for ( int i = 0 ; i < nelems; i++ ){
-    selems[i] = ssmd; 
+    selems[i] = smd; 
   }
 
   // Creator object for TACS
-  TACSCreator *screator = new TACSCreator(comm, vars_per_node*nsterms);
+  TACSCreator *screator = new TACSCreator(comm, vars_per_node);
   screator->incref();
   if (rank == 0){    
     screator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
@@ -159,10 +159,7 @@ int main( int argc, char *argv[] ){
   TACSAssembler *stacs = screator->createTACS();
   stacs->incref();
   screator->decref();
-
-  //  ssmd->decref();
-  //  smd->decref(); // hold off may be
-
+  
   const int num_funcs = 1;
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   TACSEnergy *penergy = new TACSEnergy(stacs);
@@ -176,45 +173,22 @@ int main( int argc, char *argv[] ){
   delete [] elems;
 
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 1.0, 10, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 10.0, 1000, 2);
   bdf->incref();
   // bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
   bdf->setAbsTol(1e-7);
-  bdf->setPrintLevel(2);
+  bdf->setPrintLevel(0);
+  bdf->setFunctions(num_funcs, funcs);
   bdf->integrate();
   bdf->writeRawSolution("smd.dat", 1);
 
-  // write solution and test 
+  TacsScalar *ftmp = new TacsScalar[ num_funcs ];
+  bdf->evalFunctions(ftmp);
+  printf("func val is %e\n", ftmp[0]);
+    
+  // write solution and test
   bdf->decref();
-  tacs->decref();
-  
+  tacs->decref();  
   MPI_Finalize();
   return 0;
 }
-
-  // Test Stochastic Jacobian
-  /*
-  int ndof  = nsterms*vars_per_node;
-  TacsScalar *v = new TacsScalar[ndof];
-  TacsScalar *vdot = new TacsScalar[ndof];
-  TacsScalar *vddot = new TacsScalar[ndof];
-  TacsScalar *J = new TacsScalar[ndof*ndof];
-  memset(J, 0, ndof*ndof*sizeof(TacsScalar));
-
-  ssmd->addJacobian( 0.0, J,
-                     0.0, 0.0, 1.0,
-                     NULL,
-                     v,
-                     vdot,
-                     vddot);
-  int ctr = 0;
-  for ( int i = 0 ; i < ndof; i++ ){
-    for ( int j = 0 ; j < ndof; j++ ){
-      printf(" %e ", J[ctr]);
-      ctr ++;
-    }
-    printf("\n");
-  }
-
-  return 0;
-  */
