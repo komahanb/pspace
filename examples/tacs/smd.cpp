@@ -1,14 +1,15 @@
+#include "smd.h"
+#include "TACSEnergy.h"
+
+#include "TACSCreator.h"
 #include "TACSAssembler.h"
 #include "TACSIntegrator.h"
+#include "TACSFunction.h"
+
 #include "ParameterContainer.h"
 #include "ParameterFactory.h"
 #include "TACSStochasticElement.h"
-#include "TACSCreator.h"
-#include "smd.h"
-
-#include "TACSFunction.h"
 #include "TACSStochasticFunction.h"
-#include "TACSEnergy.h"
 
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
@@ -41,9 +42,9 @@ void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
 }
 
 void SMD::addResidual( int elemIndex, double time,
-                         const TacsScalar X[], const TacsScalar v[],
-                         const TacsScalar dv[], const TacsScalar ddv[],
-                         TacsScalar res[] ){
+                       const TacsScalar X[], const TacsScalar v[],
+                       const TacsScalar dv[], const TacsScalar ddv[],
+                       TacsScalar res[] ){
   res[0] += m*ddv[0] + c*dv[0] + k*v[0];
 }
 
@@ -60,13 +61,24 @@ int SMD::evalPointQuantity( int elemIndex, int quantityType,
                             double time,
                             int n, double pt[],
                             const TacsScalar Xpts[],
-                            const TacsScalar vars[],
-                            const TacsScalar dvars[],
-                            const TacsScalar ddvars[],
+                            const TacsScalar v[],
+                            const TacsScalar dv[],
+                            const TacsScalar ddv[],
                             TacsScalar *quantity ){
-  // kinetic energy
-  quantity[0] = 0.5*k*vars[0]*vars[0];
-  return 1;
+  if (quantityType == TACS_KINETIC_ENERGY_FUNCTION){
+    *quantity = 0.5*m*dv[0]*dv[0];
+    return 1;
+  } else  if (quantityType == TACS_POTENTIAL_ENERGY_FUNCTION){
+    *quantity = 0.5*k*v[0]*v[0];
+    return 1;
+  } else  if (quantityType == TACS_DISPLACEMENT_FUNCTION){
+    *quantity = v[0];
+    return 1;
+  } else  if (quantityType == TACS_VELOCITY_FUNCTION){
+    *quantity = dv[0];
+    return 1;
+  }
+  return 0;
 }
 
 int main( int argc, char *argv[] ){  
@@ -80,7 +92,7 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (deterministic = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int deterministic = 0;
+  int deterministic = 1;
 
   //-----------------------------------------------------------------//
   // Define random parameters with distribution functions
@@ -186,11 +198,10 @@ int main( int argc, char *argv[] ){
   bdf->writeRawSolution("smd.dat", 1);
 
   TacsScalar *ftmp = new TacsScalar[ num_funcs ];
-  ftmp[0] = 0.0;
   bdf->evalFunctions(ftmp);
+
   printf("func val is %e\n", ftmp[0]);
     
-  // write solution and test
   bdf->decref();
   assembler->decref();  
   MPI_Finalize();

@@ -97,7 +97,9 @@ class TACSStochasticFunction : public TACSFunction {
   /**
      Get the value of the function
   */
-  virtual TacsScalar getFunctionValue() {}
+  virtual TacsScalar getFunctionValue() {
+    printf("StochasticFunction -- Dummy Impl: getFunctionValue \n");
+  }
 
   /**
      Evaluate the derivative of the function w.r.t. state variables
