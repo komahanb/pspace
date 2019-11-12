@@ -7,6 +7,7 @@
 #include "smd.h"
 
 #include "TACSFunction.h"
+#include "TACSStochasticFunction.h"
 #include "TACSEnergy.h"
 
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
@@ -75,17 +76,54 @@ int main( int argc, char *argv[] ){
   int rank; 
   MPI_Comm_rank(comm, &rank); 
 
-  // Create TACS using SMD element
-  SMD *smd = new SMD(2.5, 0.2, 5.0); 
+  //-----------------------------------------------------------------//
+  // Choose solution mode (deterministic = 0 or 1)
+  //-----------------------------------------------------------------//
+  
+  int deterministic = 0;
+
+  //-----------------------------------------------------------------//
+  // Define random parameters with distribution functions
+  //-----------------------------------------------------------------//
+  
+  ParameterFactory *factory = new ParameterFactory();
+  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 1);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 1);
+  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 1);
+ 
+  ParameterContainer *pc = new ParameterContainer();
+  pc->addParameter(m);
+  pc->addParameter(c);
+  pc->addParameter(k);
+
+  pc->initialize();
+  int nsterms = pc->getNumBasisTerms();
+  printf("nsterms = %d \n", nsterms);
+  
+  //-----------------------------------------------------------------//
+  // Create deterministic and stochastic elements
+  //-----------------------------------------------------------------//
+ 
+  TACSElement *smd = new SMD(2.5, 0.2, 5.0); 
   smd->incref();
+
+  TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc, updateSMD);
+  ssmd->incref();
 
   int nelems = 1;
   int nnodes = 1;  
   int vars_per_node = 1;
+  if (!deterministic){
+    vars_per_node *= nsterms;
+  }
 
   // Array of elements
   TACSElement **elems = new TACSElement*[nelems];
-  elems[0] = smd;
+  if (deterministic){
+    elems[0] = smd;
+  } else{
+    elems[0] = ssmd;
+  }
 
   // Node points array
   TacsScalar *X = new TacsScalar[3*nnodes];
@@ -105,7 +143,7 @@ int main( int argc, char *argv[] ){
   for (int i = 0; i < nelems; i++){
     eids[i] = i;
   }
-
+  
   // Creator object for TACS
   TACSCreator *creator = new TACSCreator(comm, vars_per_node);
   creator->incref();
@@ -115,67 +153,32 @@ int main( int argc, char *argv[] ){
   }
   creator->setElements(nelems, elems);
 
-  TACSAssembler *tacs = creator->createTACS();
-  tacs->incref();  
+  TACSAssembler *assembler = creator->createTACS();
+  assembler->incref();
   creator->decref();
 
-  //-----------------------------------------------------------------//
-  // Create stochastic TACS
-  //-----------------------------------------------------------------//
-  
-  // Create random parameter
-  ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 1);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 1);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 1);
- 
-  ParameterContainer *pc = new ParameterContainer();
-  pc->addParameter(m);
-  pc->addParameter(c);
-  pc->addParameter(k);
-
-  pc->initialize();
-  int nsterms = pc->getNumBasisTerms();
-  printf("nsterms = %d \n", nsterms);
-  
-  // should I copy the element instead?
-  TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc, updateSMD);
-  ssmd->incref();
-  
-  TACSElement **selems = new TACSElement*[ nelems ];
-  for ( int i = 0 ; i < nelems; i++ ){
-    selems[i] = smd; 
-  }
-
-  // Creator object for TACS
-  TACSCreator *screator = new TACSCreator(comm, vars_per_node);
-  screator->incref();
-  if (rank == 0){    
-    screator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
-    screator->setNodes(X);
-  }
-  screator->setElements(nelems, selems);
-
-  TACSAssembler *stacs = screator->createTACS();
-  stacs->incref();
-  screator->decref();
-  
-  const int num_funcs = 1;
-  TACSFunction **funcs = new TACSFunction*[num_funcs];
-  TACSEnergy *penergy = new TACSEnergy(stacs);
-  funcs[0] = penergy;
-  printf("energy is %f \n", penergy->getFunctionValue());
-  
   delete [] X;
   delete [] ptr;
   delete [] eids;
   delete [] conn;
   delete [] elems;
+  
+  // Create deterministic function to evaluate
+  TACSFunction *ke = new TACSEnergy(assembler);
+  TACSFunction *ske = new TACSStochasticFunction(assembler, ke, pc);
 
+  // Create an array of functions for TACS to evaluate
+  const int num_funcs = 1;
+  TACSFunction **funcs = new TACSFunction*[num_funcs];
+  if (deterministic){
+    funcs[0] = ke;
+  } else {
+    funcs[0] = ske;
+  }
+  
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(stacs, 0.0, 10.0, 1000, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 1000, 2);
   bdf->incref();
-  // bdf->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
   bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(0);
   bdf->setFunctions(num_funcs, funcs);
@@ -183,12 +186,13 @@ int main( int argc, char *argv[] ){
   bdf->writeRawSolution("smd.dat", 1);
 
   TacsScalar *ftmp = new TacsScalar[ num_funcs ];
+  ftmp[0] = 0.0;
   bdf->evalFunctions(ftmp);
   printf("func val is %e\n", ftmp[0]);
     
   // write solution and test
   bdf->decref();
-  tacs->decref();  
+  assembler->decref();  
   MPI_Finalize();
   return 0;
 }
