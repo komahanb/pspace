@@ -2,7 +2,7 @@ include ${HOME}/git/tacs/Makefile.in
 include ${HOME}/git/tacs/TACS_Common.mk
 
 PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/
-PSPACE_LIB = -L${HOME}/git/pspace/cpp/libpspace.so -lpspace
+PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
 # This is the one rule that is used to compile all the
 # source code in TACS

@@ -1,5 +1,6 @@
 #include "TACSEnergy.h"
 #include "TACSAssembler.h"
+#include "smd.h"
 
 /*
   Allocate the structural mass TACSEnergy
@@ -58,13 +59,15 @@ void TACSEnergy::elementWiseEval( EvaluationType ftype,
                                   const TacsScalar vars[],
                                   const TacsScalar dvars[],
                                   const TacsScalar ddvars[] ){
-  //todo check evaluation type
+  // todo check evaluation type is integrate
   TacsScalar energy = 0.0;
-  int count = element->evalPointQuantity(elemIndex, 0,
-                                         time, 0, NULL,
+  double pt[3] = {0.0,0.0,0.0};
+  int N = 1;
+  int count = element->evalPointQuantity(elemIndex, 
+                                         TACS_KINETIC_ENERGY_FUNCTION,
+                                         time, N, pt,
                                          Xpts, vars, dvars, ddvars,
                                          &energy);
-  printf("element wise eval inside %f %f\n", fval, energy);
   fval += scale*energy;
 }
 

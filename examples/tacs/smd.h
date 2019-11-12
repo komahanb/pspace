@@ -1,4 +1,7 @@
 #include "TACSElement.h"
+
+static const int TACS_KINETIC_ENERGY_FUNCTION = -1;
+
 class SMD : public TACSElement{  
  public:
   SMD(double m, double c, double k);
