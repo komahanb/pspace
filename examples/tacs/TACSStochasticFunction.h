@@ -6,6 +6,10 @@
 
 class TACSStochasticFunction : public TACSFunction {
  public:
+  TACSStochasticFunction( TACSAssembler *tacs, 
+                          TACSFunction *dfunc, 
+                          ParameterContainer *pc );
+  ~TACSStochasticFunction();
   /**
      Get the object name
   */
@@ -173,8 +177,8 @@ class TACSStochasticFunction : public TACSFunction {
   TACSFunction *dfunc;
   ParameterContainer *pc;
   
-  // Callback function to update the parameters
-  void (*update)(TACSFunction*, TacsScalar*);
+  // Callback function to update the parameters (not sure if we need for functions)
+  // void (*update)(TACSFunction*, TacsScalar*);
 };
 
 #endif

@@ -24,7 +24,6 @@ namespace{
     Place entry into the matrix location
   */
   TacsScalar getElement(TacsScalar *A, int size, int row, int col) {
-    // printf(" local entry %d = ", size * row + col);
     return A[size * row + col];
   };
 
@@ -32,7 +31,6 @@ namespace{
     Add entry into the matrix location
   */
   void addElement(TacsScalar *J, int size, int row, int col, TacsScalar value) {
-    //  printf(" global entry  %d \n", size * row + col);
     J[size * row + col] += value;
   };
 
@@ -76,7 +74,9 @@ TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
 }
 
 TACSStochasticElement::~TACSStochasticElement(){
-  delem->decref();
+  this->delem->decref();
+  this->delem = NULL;
+  this->pc = NULL;
 }
 
 /*
