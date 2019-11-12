@@ -60,7 +60,9 @@ class TACSStochasticFunction : public TACSFunction {
 
      This call is collective on all processors in the assembler.
   */
-  virtual void initEvaluation( EvaluationType ftype ){}
+  virtual void initEvaluation( EvaluationType ftype ){
+    printf("StochasticFunction -- Dummy Impl: initEvaluation \n");
+  }
 
   /**
      Perform an element-wise integration over this element.
@@ -85,14 +87,18 @@ class TACSStochasticFunction : public TACSFunction {
                                 const TacsScalar Xpts[],
                                 const TacsScalar vars[],
                                 const TacsScalar dvars[],
-                                const TacsScalar ddvars[] ){}
+                                const TacsScalar ddvars[] ){
+    printf("StochasticFunction -- Dummy Impl: elementWiseEval \n");
+  }
 
   /**
      Finalize the function evaluation for the specified eval type.
 
      This call is collective on all processors in the assembler.
   */
-  virtual void finalEvaluation( EvaluationType ftype ){}
+  virtual void finalEvaluation( EvaluationType ftype ){
+    printf("StochasticFunction -- Dummy Impl: finalEvaluation \n");
+  }
 
   /**
      Get the value of the function

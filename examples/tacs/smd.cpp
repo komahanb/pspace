@@ -1,5 +1,6 @@
 #include "smd.h"
-#include "TACSEnergy.h"
+#include "TACSKineticEnergy.h"
+#include "TACSPotentialEnergy.h"
 
 #include "TACSCreator.h"
 #include "TACSAssembler.h"
@@ -92,7 +93,7 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (deterministic = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int deterministic = 1;
+  int deterministic = 0;
 
   //-----------------------------------------------------------------//
   // Define random parameters with distribution functions
@@ -176,20 +177,26 @@ int main( int argc, char *argv[] ){
   delete [] elems;
   
   // Create deterministic function to evaluate
-  TACSFunction *ke = new TACSEnergy(assembler);
+  TACSFunction *ke = new TACSKineticEnergy(assembler);
+  TACSFunction *pe = new TACSPotentialEnergy(assembler);
+
+  // stochastic functions
   TACSFunction *ske = new TACSStochasticFunction(assembler, ke, pc);
+  TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
 
   // Create an array of functions for TACS to evaluate
-  const int num_funcs = 1;
+  const int num_funcs = 2;
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   if (deterministic){
     funcs[0] = ke;
+    funcs[1] = pe;    
   } else {
     funcs[0] = ske;
+    funcs[1] = spe;
   }
   
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 1000, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 1.0, 10, 2);
   bdf->incref();
   bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(0);
@@ -199,8 +206,9 @@ int main( int argc, char *argv[] ){
 
   TacsScalar *ftmp = new TacsScalar[ num_funcs ];
   bdf->evalFunctions(ftmp);
-
-  printf("func val is %e\n", ftmp[0]);
+  for (int i = 0; i < num_funcs; i++){
+    printf("func[%d] = %e\n", i, ftmp[i]);
+  }
     
   bdf->decref();
   assembler->decref();  

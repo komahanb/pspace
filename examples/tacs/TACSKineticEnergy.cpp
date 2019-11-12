@@ -59,6 +59,7 @@ void TACSKineticEnergy::elementWiseEval( EvaluationType ftype,
                                          const TacsScalar vars[],
                                          const TacsScalar dvars[],
                                          const TacsScalar ddvars[] ){
+  printf("Elementwise evaluation of kinetic energy \n");
   // todo check evaluation type is integrate
   TacsScalar kenergy = 0.0;
   double pt[3] = {0.0,0.0,0.0};
