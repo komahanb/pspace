@@ -406,16 +406,15 @@ void TACSStochasticElement::addJacobian( int elemIndex,
   delete [] yq;
 }
 
-int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType, double time,
-                                                int N, double pt[], const TacsScalar Xpts[],
-                                                const TacsScalar v[], const TacsScalar dv[],
-                                                const TacsScalar ddv[], TacsScalar *quantity ) {
+int TACSStochasticElement::evalPointQuantity( int elemIndex, int quantityType, double time,
+                                              int N, double pt[], const TacsScalar Xpts[],
+                                              const TacsScalar v[], const TacsScalar dv[],
+                                              const TacsScalar ddv[], TacsScalar *quantity ) {
   const int ndvpn   = delem->getVarsPerNode();
   const int nsvpn   = this->getVarsPerNode();
   const int nddof   = delem->getNumVariables();
-  const int nsdof   = this->getNumVariables();
-  const int nsterms = pc->getNumBasisTerms();
   const int nnodes  = this->getNumNodes();
+  const int nsterms = pc->getNumBasisTerms();
 
   // Space for quadrature points and weights
   const int nsparams = pc->getNumParameters();
@@ -423,24 +422,28 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
   double *yq = new double[nsparams];
   double wq;
   
-  // Create space for fetching deterministic residuals and states
+  // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
   TacsScalar *udq    = new TacsScalar[nddof];
   TacsScalar *uddq   = new TacsScalar[nddof];
   
-  // Num quantities associated with this element
-  // int nquants = delem->getNumQuantities();
-
   // Space to project each function in stochastic space and store
-  const  int nquants = 1; //delem->getNumQuantities();  
-  TacsScalar *ftmpq  = new TacsScalar[nquants];
-  TacsScalar *ftmpi  = new TacsScalar[nquants*nsterms];
-  
+  // const  int ndquants = this->delem->getNumPointQuantities();
+  const int ndquants = this->delem->evalPointQuantity(elemIndex,
+                                                     quantityType,
+                                                     time, N, pt, Xpts, 
+                                                     v, dv, ddv, 
+                                                     uq); // dummy 
+  const int nsquants = nsterms*ndquants;
+
+  TacsScalar *ftmpq  = new TacsScalar[ndquants];
+  TacsScalar *ftmpi  = new TacsScalar[ndquants];  
+
   const int nqpts = pc->getNumQuadraturePoints();
   
   for (int i = 0; i < nsterms; i++){
 
-    memset(ftmpi, 0, nquants*nsterms*sizeof(TacsScalar));
+    memset(ftmpi, 0, ndquants*sizeof(TacsScalar));
 
     for (int q = 0; q < nqpts; q++){
 
@@ -454,7 +457,7 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
       memset(uq   , 0, nddof*sizeof(TacsScalar));
       memset(udq  , 0, nddof*sizeof(TacsScalar));
       memset(uddq , 0, nddof*sizeof(TacsScalar));
-      memset(ftmpq, 0, nquants*sizeof(TacsScalar));
+      memset(ftmpq, 0, ndquants*sizeof(TacsScalar));
 
       // Evaluate the basis at quadrature node and form the state
       // vectors
@@ -472,46 +475,39 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
       }
 
       // Fetch the deterministic element residual
-      // delem->addResidual(elemIndex, time, X, uq, udq, uddq, resq);
       int count = this->delem->evalPointQuantity(elemIndex,
                                                  quantityType,
                                                  time, N, pt,
                                                  Xpts, uq, udq, uddq,
                                                  ftmpq);
       
-      // Project the determinic element residual onto the
-      // stochastic basis and place in global residual array
+      // Project the determinic quantities onto the stochastic basis
+      // and place in stochastic function array
       double scale = pc->basis(i,zq)*wq;
-      for (int c = 0; c < nquants; c++){
+      for (int c = 0; c < ndquants; c++){
         ftmpi[c] += ftmpq[c]*scale;
       }
 
     } // quadrature
 
-    int ptr = i*nsterms;
-    for (int c = 0; c < nquants ; c++){
-      quantity[ptr+c] += ftmpi[c];
+    // Store i-th projected Residual into stochastic array
+    for (int d = 0; d < ndquants; d++){        
+      quantity[d*nsterms+i] = ftmpi[d];
+      // printf("nsterms = %d ndquants = %d, i = %d local [%d]  global[%d] \n", nsterms, ndquants,
+      // i, d, d*nsterms + i);
     }
 
-        
-    // Store i-th projected Residual into stochastic array
-    //   for (int n = 0; n < nnodes; n++){
-    //     int lptr = n*ndvpn;
-    //     int gptr = n*nsvpn + i*ndvpn;
-    //     for (int d = 0; d < ndvpn; d++){        
-    //       res[gptr+d] += rtmpi[lptr+d];
-    //     }
-    //   }
-    
-  }
+  } // nterms
 
   delete [] zq;
   delete [] yq;
+
   delete [] uq;
   delete [] udq;
   delete [] uddq;
+
   delete [] ftmpq;
   delete [] ftmpi;
 
-  return nsterms*nquants;
+  return nsquants;
 }

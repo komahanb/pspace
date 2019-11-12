@@ -55,15 +55,15 @@ void SMD::addJacobian( int elemIndex, double time,
   mat[0] += gamma*m + beta*c + alpha*k;
 }
 
-int SMD :: evalPointQuantity( int elemIndex, int quantityType,
-                              double time,
-                              int n, double pt[],
-                              const TacsScalar Xpts[],
-                              const TacsScalar vars[],
-                              const TacsScalar dvars[],
-                              const TacsScalar ddvars[],
-                              TacsScalar *quantity ){
-  printf("Enetering function call evalPointQuawntiy\n");
+int SMD::evalPointQuantity( int elemIndex, int quantityType,
+                            double time,
+                            int n, double pt[],
+                            const TacsScalar Xpts[],
+                            const TacsScalar vars[],
+                            const TacsScalar dvars[],
+                            const TacsScalar ddvars[],
+                            TacsScalar *quantity ){
+  // kinetic energy
   quantity[0] = 0.5*k*vars[0]*vars[0];
   return 1;
 }
