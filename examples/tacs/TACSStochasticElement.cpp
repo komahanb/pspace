@@ -422,19 +422,25 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
   double *zq = new double[nsparams];
   double *yq = new double[nsparams];
   double wq;
-
+  
   // Create space for fetching deterministic residuals and states
-  TacsScalar *uq    = new TacsScalar[nddof];
-  TacsScalar *udq   = new TacsScalar[nddof];
-  TacsScalar *uddq  = new TacsScalar[nddof];
-  TacsScalar *resq  = new TacsScalar[nddof];
-  TacsScalar *rtmpi = new TacsScalar[nddof];
+  TacsScalar *uq     = new TacsScalar[nddof];
+  TacsScalar *udq    = new TacsScalar[nddof];
+  TacsScalar *uddq   = new TacsScalar[nddof];
+  
+  // Num quantities associated with this element
+  // int nquants = delem->getNumQuantities();
 
+  // Space to project each function in stochastic space and store
+  const  int nquants = 1; //delem->getNumQuantities();  
+  TacsScalar *ftmpq  = new TacsScalar[nquants];
+  TacsScalar *ftmpi  = new TacsScalar[nquants*nsterms];
+  
   const int nqpts = pc->getNumQuadraturePoints();
-
+  
   for (int i = 0; i < nsterms; i++){
 
-    memset(rtmpi, 0, nddof*sizeof(TacsScalar));
+    memset(ftmpi, 0, nquants*nsterms*sizeof(TacsScalar));
 
     for (int q = 0; q < nqpts; q++){
 
@@ -442,13 +448,13 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
       wq = pc->quadrature(q, zq, yq);
 
       // Set the parameter values into the element
-      updateElement(delem, yq);
+      this->updateElement(delem, yq);
 
       // reset the states and residuals
-      memset(resq, 0, nddof*sizeof(TacsScalar));
-      memset(uq  , 0, nddof*sizeof(TacsScalar));
-      memset(udq , 0, nddof*sizeof(TacsScalar));
-      memset(uddq, 0, nddof*sizeof(TacsScalar));
+      memset(uq   , 0, nddof*sizeof(TacsScalar));
+      memset(udq  , 0, nddof*sizeof(TacsScalar));
+      memset(uddq , 0, nddof*sizeof(TacsScalar));
+      memset(ftmpq, 0, nquants*sizeof(TacsScalar));
 
       // Evaluate the basis at quadrature node and form the state
       // vectors
@@ -471,17 +477,23 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
                                                  quantityType,
                                                  time, N, pt,
                                                  Xpts, uq, udq, uddq,
-                                                 quantity);
+                                                 ftmpq);
       
-      //  Project the determinic element residual onto the
-      //  stochastic basis and place in global residual array
-      // double scale = pc->basis(i,zq)*wq;
-      // for (int c = 0; c < nddof; c++){
-      //   rtmpi[c] += resq[c]*scale;
-      // }
+      // Project the determinic element residual onto the
+      // stochastic basis and place in global residual array
+      double scale = pc->basis(i,zq)*wq;
+      for (int c = 0; c < nquants; c++){
+        ftmpi[c] += ftmpq[c]*scale;
+      }
 
     } // quadrature
 
+    int ptr = i*nsterms;
+    for (int c = 0; c < nquants ; c++){
+      quantity[ptr+c] += ftmpi[c];
+    }
+
+        
     // Store i-th projected Residual into stochastic array
     //   for (int n = 0; n < nnodes; n++){
     //     int lptr = n*ndvpn;
@@ -492,4 +504,14 @@ int TACSStochasticElement :: evalPointQuantity( int elemIndex, int quantityType,
     //   }
     
   }
+
+  delete [] zq;
+  delete [] yq;
+  delete [] uq;
+  delete [] udq;
+  delete [] uddq;
+  delete [] ftmpq;
+  delete [] ftmpi;
+
+  return nsterms*nquants;
 }
