@@ -100,9 +100,9 @@ int main( int argc, char *argv[] ){
   //-----------------------------------------------------------------//
   
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 1);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 1);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 1);
+  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 0);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 0);
+  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 0);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
@@ -185,14 +185,14 @@ int main( int argc, char *argv[] ){
   TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
 
   // Create an array of functions for TACS to evaluate
-  const int num_funcs = 2;
+  const int num_funcs = 1;
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   if (deterministic){
     funcs[0] = ke;
-    funcs[1] = pe;    
+    //    funcs[1] = pe;    
   } else {
     funcs[0] = ske;
-    funcs[1] = spe;
+    //    funcs[1] = spe;
   }
   
   // Create the integrator class
