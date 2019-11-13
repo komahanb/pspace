@@ -88,7 +88,30 @@ class TACSStochasticFunction : public TACSFunction {
                                 const TacsScalar vars[],
                                 const TacsScalar dvars[],
                                 const TacsScalar ddvars[] ){
+
+
+    //
+    // Use deterministic element and project
+    // 
+
+
     printf("StochasticFunction -- Dummy Impl: elementWiseEval \n");
+    const int nsterms = this->pc->getNumBasisTerms();
+
+    TacsScalar vals[nsterms];
+    double pt[3] = {0.0,0.0,0.0}; // fix
+    int N = 1; 
+    int count = element->evalPointQuantity(elemIndex, 
+                                           -1,
+                                           time, N, pt,
+                                           Xpts, vars, dvars, ddvars,
+                                           vals);
+    printf("count = %d \n", count);
+    // Accumulate the contributions of this element
+    for (int i = 0; i < nsterms; i++){
+      fval[i] += scale*vals[i];
+      printf("%e %e \n", fval[i], vals[i]);
+    }
   }
 
   /**
@@ -184,7 +207,11 @@ class TACSStochasticFunction : public TACSFunction {
  protected:  
   TACSFunction *dfunc;
   ParameterContainer *pc;
-  
+
+ private:
+  // Store function values
+  TacsScalar *fval;
+
   // Callback function to update the parameters (not sure if we need for functions)
   // void (*update)(TACSFunction*, TacsScalar*);
 };
