@@ -18,7 +18,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
     smd->m = vals[0];
     smd->c = vals[1];
     smd->k = vals[2];
-    //    printf("%e %e %e \n", smd->m, smd->c, smd->k);
+    // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
   }
@@ -178,11 +178,15 @@ int main( int argc, char *argv[] ){
   
   // Create deterministic function to evaluate
   TACSFunction *ke = new TACSKineticEnergy(assembler);
-  TACSFunction *pe = new TACSPotentialEnergy(assembler);
+  //TACSFunction *pe = new TACSPotentialEnergy(assembler);
 
   // stochastic functions
-  TACSFunction *ske = new TACSStochasticFunction(assembler, ke, pc);
-  TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
+  double ksweight = 100000;
+  int quantityType = TACS_KINETIC_ENERGY_FUNCTION;
+  TACSFunction *ske = new TACSStochasticFunction(assembler, quantityType,
+                                                 ksweight, ke, pc);
+  
+  //TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
 
   // Create an array of functions for TACS to evaluate
   const int num_funcs = 1;
@@ -196,7 +200,7 @@ int main( int argc, char *argv[] ){
   }
   
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 1.0, 10, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 0.1, 5, 2);
   bdf->incref();
   bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(0);

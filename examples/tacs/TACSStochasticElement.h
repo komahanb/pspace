@@ -61,6 +61,10 @@ class TACSStochasticElement : public TACSElement {
     }
   }
 
+  TACSElement* getDeterministicElement(){
+    return this->delem;
+  };
+  
  protected:
   TACSElement *delem;
   ParameterContainer *pc;
