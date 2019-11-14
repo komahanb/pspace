@@ -6,7 +6,9 @@
 
 class TACSStochasticFunction : public TACSFunction {
  public:
-  TACSStochasticFunction( TACSAssembler *tacs, 
+  TACSStochasticFunction( TACSAssembler *tacs,
+                          int quantityType,
+                          double ksweight,
                           TACSFunction *dfunc, 
                           ParameterContainer *pc );
   ~TACSStochasticFunction();
@@ -60,9 +62,7 @@ class TACSStochasticFunction : public TACSFunction {
 
      This call is collective on all processors in the assembler.
   */
-  virtual void initEvaluation( EvaluationType ftype ){
-    printf("StochasticFunction -- Dummy Impl: initEvaluation \n");
-  }
+  void initEvaluation( EvaluationType ftype );
 
   /**
      Perform an element-wise integration over this element.
@@ -80,59 +80,31 @@ class TACSStochasticFunction : public TACSFunction {
      @param dvars The first time derivatives of the element DOF
      @param ddvars The second time derivatives of the element DOF
   */
-  virtual void elementWiseEval( EvaluationType ftype,
-                                int elemIndex, TACSElement *element,
-                                double time,
-                                TacsScalar scale,
-                                const TacsScalar Xpts[],
-                                const TacsScalar vars[],
-                                const TacsScalar dvars[],
-                                const TacsScalar ddvars[] ){
-
-
-    //
-    // Use deterministic element and project
-    // 
-
-
-    printf("StochasticFunction -- Dummy Impl: elementWiseEval \n");
-    const int nsterms = this->pc->getNumBasisTerms();
-
-    TacsScalar vals[nsterms];
-    double pt[3] = {0.0,0.0,0.0}; // fix
-    int N = 1; 
-    int count = element->evalPointQuantity(elemIndex, 
-                                           -1,
-                                           time, N, pt,
-                                           Xpts, vars, dvars, ddvars,
-                                           vals);
-    printf("count = %d \n", count);
-    // Accumulate the contributions of this element
-    for (int i = 0; i < nsterms; i++){
-      fval[i] += scale*vals[i];
-      printf("%e %e \n", fval[i], vals[i]);
-    }
-  }
-
+  void elementWiseEval( EvaluationType ftype,
+                        int elemIndex, TACSElement *element,
+                        double time,
+                        TacsScalar scale,
+                        const TacsScalar Xpts[],
+                        const TacsScalar vars[],
+                        const TacsScalar dvars[],
+                        const TacsScalar ddvars[] );
+  
   /**
      Finalize the function evaluation for the specified eval type.
-
+     
      This call is collective on all processors in the assembler.
   */
-  virtual void finalEvaluation( EvaluationType ftype ){
-    printf("StochasticFunction -- Dummy Impl: finalEvaluation \n");
-  }
-
+  void finalEvaluation( EvaluationType ftype );
+  
+  
   /**
      Get the value of the function
   */
-  virtual TacsScalar getFunctionValue() {
-    printf("StochasticFunction -- Dummy Impl: getFunctionValue \n");
-  }
+  TacsScalar getFunctionValue();
 
   /**
      Evaluate the derivative of the function w.r.t. state variables
-
+     
      @param elemIndex The local element index
      @param element The TACSElement object
      @param time The simulation time
@@ -210,7 +182,30 @@ class TACSStochasticFunction : public TACSFunction {
 
  private:
   // Store function values
-  TacsScalar *fval;
+  TacsScalar fval;
+
+  // The name of the function
+  static const char *funcName;
+
+  // The direction
+  TacsScalar dir[3];
+
+  // The value of the KS weight
+  double ksWeight;
+
+  // Intermediate values in the functional evaluation
+  TacsScalar ksSum;
+  TacsScalar maxValue;
+
+  int quantityType;
+  
+  // Set the type of constraint aggregate
+  // KSDisplacementType ksType;
+
+  // The max number of nodes
+  int maxNumNodes;
+
+  MPI_Comm tacs_comm;
 
   // Callback function to update the parameters (not sure if we need for functions)
   // void (*update)(TACSFunction*, TacsScalar*);
