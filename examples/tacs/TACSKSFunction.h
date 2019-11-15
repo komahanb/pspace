@@ -1,15 +1,15 @@
-#ifndef TACS_STOCHASTIC_FUNCTION
-#define TACS_STOCHASTIC_FUNCTION
+#ifndef TACS_KS_FUNCTION
+#define TACS_KS_FUNCTION
 
 #include "TACSFunction.h"
 #include "ParameterContainer.h"
 
-class TACSStochasticFunction : public TACSFunction {
+class TACSKSFunction : public TACSFunction {
  public:
-  TACSStochasticFunction( TACSAssembler *tacs,
-                          TACSFunction *dfunc, 
-                          ParameterContainer *pc );
-  ~TACSStochasticFunction();
+  TACSKSFunction( TACSAssembler *tacs,
+                  int quantityType,
+                  double ksweight );
+  ~TACSKSFunction();
   /**
      Get the object name
   */
@@ -86,15 +86,6 @@ class TACSStochasticFunction : public TACSFunction {
                         const TacsScalar vars[],
                         const TacsScalar dvars[],
                         const TacsScalar ddvars[] );
-
-  void elementWiseEval2( EvaluationType ftype,
-                         int elemIndex, TACSElement *element,
-                         double time,
-                         TacsScalar scale,
-                         const TacsScalar Xpts[],
-                         const TacsScalar vars[],
-                         const TacsScalar dvars[],
-                         const TacsScalar ddvars[] );
   
   /**
      Finalize the function evaluation for the specified eval type.
@@ -188,34 +179,13 @@ class TACSStochasticFunction : public TACSFunction {
   ParameterContainer *pc;
 
  private:
-  // Store function values
-  TacsScalar fval;
-
-  // The name of the function
   static const char *funcName;
-
-  // The direction
-  TacsScalar dir[3];
-
-  // The value of the KS weight
   double ksWeight;
-
-  // Intermediate values in the functional evaluation
-  TacsScalar ksSum;
-  TacsScalar maxValue;
-
   int quantityType;
-  
-  // Set the type of constraint aggregate
-  // KSDisplacementType ksType;
-
-  // The max number of nodes
-  int maxNumNodes;
-
   MPI_Comm tacs_comm;
 
-  // Callback function to update the parameters (not sure if we need for functions)
-  // void (*update)(TACSFunction*, TacsScalar*);
+  TacsScalar ksSum;
+  TacsScalar maxValue;
 };
 
 #endif
