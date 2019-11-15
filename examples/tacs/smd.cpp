@@ -11,6 +11,7 @@
 #include "ParameterFactory.h"
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
+#include "TACSKSFunction.h"
 
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
@@ -93,14 +94,14 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (deterministic = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int deterministic = 0;
+  int deterministic = 1;
 
   //-----------------------------------------------------------------//
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
   
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 0);
+  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 7);
   AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 0);
   AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 0);
  
@@ -177,30 +178,31 @@ int main( int argc, char *argv[] ){
   delete [] elems;
   
   // Create deterministic function to evaluate
-  TACSFunction *ke = new TACSKineticEnergy(assembler);
-  //TACSFunction *pe = new TACSPotentialEnergy(assembler);
+  double ksweight = 1000;
+  TACSFunction *kske = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
+  TACSFunction *kspe = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+  TACSFunction *ksdisp = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
+  TACSFunction *ksvel = new TACSKSFunction(assembler, TACS_VELOCITY_FUNCTION, ksweight);
 
   // stochastic functions
-  double ksweight = 100000;
-  int quantityType = TACS_KINETIC_ENERGY_FUNCTION;
-  TACSFunction *ske = new TACSStochasticFunction(assembler, quantityType,
-                                                 ksweight, ke, pc);
-  
-  //TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
+  // TACSFunction *ske = new TACSStochasticFunction(assembler, quantityType, ksweight, ke, pc);  
+  // TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
 
   // Create an array of functions for TACS to evaluate
-  const int num_funcs = 1;
+  const int num_funcs = 4;
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   if (deterministic){
-    funcs[0] = ke;
-    //    funcs[1] = pe;    
+    funcs[0] = kske;
+    funcs[1] = kspe;    
+    funcs[2] = ksdisp;
+    funcs[3] = ksvel;
   } else {
-    funcs[0] = ske;
-    //    funcs[1] = spe;
+    // funcs[0] = ske;
+    // funcs[1] = spe;
   }
   
   // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 0.1, 5, 2);
+  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
   bdf->incref();
   bdf->setAbsTol(1e-7);
   bdf->setPrintLevel(0);
