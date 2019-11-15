@@ -58,64 +58,105 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
                                               const TacsScalar ddv[] ){
   // Access evaluate point quatity of deterministic element
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
+  if (!selem){    
+    printf("Casting failed \n");
+    exit(-1);
+  }
   TACSElement *delem = selem->getDeterministicElement();
 
-  // Stochastic Integration
-  { 
-
-    // for each quadrature point in Y domain
-
-    //       update the deterministic element
-    
-     // Spatial integration
-
-    {
-
-      // Get the number of quadrature points for this element
-      const int numGauss = 1; //delem->getNumGaussPts();
-      const int numDisps = delem->getNumVariables();
-      const int numNodes = delem->getNumNodes();
+  const int nsterms  = pc->getNumBasisTerms();
+  const int nqpts    = pc->getNumQuadraturePoints();
+  const int nsparams = pc->getNumParameters();
+  const int ndvpn    = delem->getVarsPerNode();
+  const int nsvpn    = selem->getVarsPerNode();
+  const int nddof    = delem->getNumVariables();
+  const int nnodes   = selem->getNumNodes();  
   
-      for ( int i = 0; i < numGauss; i++ ){
-    
-        // Get the Gauss points one at a time
-        double weight = 1.0; //delem->getGaussWtsPts(i, pt);
-        double pt[3] = {0.0,0.0,0.0};
-        const int n = 1;
-        //  delem->getShapeFunctions(pt, ctx->N);
-    
-        // Evaluate the dot-product with the displacements
-        //const double *N = ctx->N;
-        const TacsScalar *d = v;
-        TacsScalar energy = 0.0;
-        delem->evalPointQuantity(elemIndex,
-                                 this->quantityType, time, n, pt,
-                                 Xpts, v, dv, ddv, &energy);        
-        TacsScalar value = tscale*energy;
-        
-        if (evalType == TACSFunction::INITIALIZE){
+  // Space for quadrature points and weights
+  double *zq = new double[nsparams];
+  double *yq = new double[nsparams];
+  double wq;
+  
+  // Create space for deterministic states at each quadrature node in y
+  TacsScalar *uq     = new TacsScalar[nddof];
+  TacsScalar *udq    = new TacsScalar[nddof];
+  TacsScalar *uddq   = new TacsScalar[nddof];
+  
+  // Stochastic Integration
+  for (int q = 0; q < nqpts; q++){
 
-          printf("initialization \n");
-          // Reset maxvalue if needed
-          if (TacsRealPart(value) > TacsRealPart(maxValue)){
-            printf("Updating maxvalue from %e to %e\n", maxValue, value);
-            maxValue = value;
-          }
+    // Get the quadrature points and weights
+    wq = pc->quadrature(q, zq, yq);
+    double wt = pc->basis(0,zq)*wq;
+    
+    // Set the parameter values into the element
+    selem->updateElement(delem, yq);
 
-          printf("Skip Updating maxvalue from %e to %e\n", maxValue, value);
-              
-        } else {
-          printf("evaluaation %e %e %e %e\n", value, energy, tscale, ksSum);
-          // Add up the contribution from the quadrature
-          TacsScalar h = 1.0; //delem->getDetJacobian(pt, Xpts);
-          ksSum += h*weight*exp(ksWeight*(value - maxValue));
-        }      
+    // reset the states and residuals
+    memset(uq   , 0, nddof*sizeof(TacsScalar));
+    memset(udq  , 0, nddof*sizeof(TacsScalar));
+    memset(uddq , 0, nddof*sizeof(TacsScalar));
+    
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+          udq[lptr+d] += dv[gptr+d]*psikz;
+          uddq[lptr+d] += ddv[gptr+d]*psikz;
+        }
       }
+    }
     
-    } // spatial integration
+    // Spatial integration
+    // Get the number of quadrature points for this element
+    const int numGauss = 1; //delem->getNumGaussPts();
+    const int numDisps = delem->getNumVariables();
+    const int numNodes = delem->getNumNodes();
+  
+    for ( int i = 0; i < numGauss; i++ ){
+    
+      // Get the Gauss points one at a time
+      double weight = 1.0*wt; //delem->getGaussWtsPts(i, pt);
+      double pt[3] = {0.0,0.0,0.0};
+      const int n = 1;
+      //  delem->getShapeFunctions(pt, ctx->N);
+    
+      // Evaluate the dot-product with the displacements
+      //const double *N = ctx->N;
+      const TacsScalar *d = v; //uq[0]; //v;
+      TacsScalar energy = 0.0;
+      delem->evalPointQuantity(elemIndex,
+                               this->quantityType, time, n, pt,
+                               Xpts, v, dv, ddv, &energy);        
+      TacsScalar value = tscale*energy;
+        
+      if (evalType == TACSFunction::INITIALIZE){
 
-    // use the weights
+        printf("initialization \n");
+        // Reset maxvalue if needed
+        if (TacsRealPart(value) > TacsRealPart(maxValue)){
+          printf("Updating maxvalue from %e to %e\n", maxValue, value);
+          maxValue = value;
+        }
+
+        printf("Skip Updating maxvalue from %e to %e\n", maxValue, value);
+              
+      } else {
+        printf("evaluaation %e %e %e %e\n", value, energy, tscale, ksSum);
+        // Add up the contribution from the quadrature
+        TacsScalar h = 1.0; //delem->getDetJacobian(pt, Xpts);
+        ksSum += h*weight*exp(ksWeight*(value - maxValue));
+      }      
+    }
     
+    // spatial integration
+
+ 
   } // Stochastic integration
   
 }
