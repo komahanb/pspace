@@ -1,11 +1,11 @@
-#include "TACSKineticEnergy.h"
+#include "TACSEnergy.h"
 #include "TACSAssembler.h"
 #include "smd.h"
 
 /*
-  Allocate the structural mass TACSKineticEnergy
+  Allocate the structural mass TACSEnergy
 */
-TACSKineticEnergy::TACSKineticEnergy( TACSAssembler *_assembler ):
+TACSEnergy::TACSEnergy( TACSAssembler *_assembler ):
   TACSFunction(_assembler){
   fval = 0.0;
 }
@@ -13,78 +13,77 @@ TACSKineticEnergy::TACSKineticEnergy( TACSAssembler *_assembler ):
 /*
   Destructor for the structural mass
 */
-TACSKineticEnergy::~TACSKineticEnergy(){}
+TACSEnergy::~TACSEnergy(){}
 
-const char *TACSKineticEnergy::funcName = "Energy";
+const char *TACSEnergy::funcName = "Energy";
 
 /*
   The structural mass function name
 */
-const char* TACSKineticEnergy::getObjectName(){
+const char* TACSEnergy::getObjectName(){
   return funcName;
 }
 
 /*
   Get the function name
 */
-TacsScalar TACSKineticEnergy::getFunctionValue(){
+TacsScalar TACSEnergy::getFunctionValue(){
   return fval;
 }
 
 /*
   Initialize the mass to zero
 */
-void TACSKineticEnergy::initEvaluation( EvaluationType ftype ){
+void TACSEnergy::initEvaluation( EvaluationType ftype ){
   fval = 0.0;
 }
 
 /*
   Sum the mass across all MPI processes
 */
-void TACSKineticEnergy::finalEvaluation( EvaluationType ftype ){
+void TACSEnergy::finalEvaluation( EvaluationType ftype ){
   TacsScalar temp = fval;
   MPI_Allreduce(&temp, &fval, 1, TACS_MPI_TYPE,
                 MPI_SUM, assembler->getMPIComm());
 }
 
 /*
-  Perform the element-wise evaluation of the TACSKineticEnergy function.
+  Perform the element-wise evaluation of the TACSEnergy function.
 */
-void TACSKineticEnergy::elementWiseEval( EvaluationType ftype,
-                                         int elemIndex,
-                                         TACSElement *element,
-                                         double time,
-                                         TacsScalar scale,
-                                         const TacsScalar Xpts[],
-                                         const TacsScalar vars[],
-                                         const TacsScalar dvars[],
-                                         const TacsScalar ddvars[] ){
-  printf("Elementwise evaluation of kinetic energy \n");
+void TACSEnergy::elementWiseEval( EvaluationType ftype,
+                                  int elemIndex,
+                                  TACSElement *element,
+                                  double time,
+                                  TacsScalar scale,
+                                  const TacsScalar Xpts[],
+                                  const TacsScalar vars[],
+                                  const TacsScalar dvars[],
+                                  const TacsScalar ddvars[] ){
   // todo check evaluation type is integrate
-  TacsScalar kenergy = 0.0;
+  TacsScalar energy = 0.0;
   double pt[3] = {0.0,0.0,0.0};
   int N = 1;
   int count = element->evalPointQuantity(elemIndex, 
                                          TACS_KINETIC_ENERGY_FUNCTION,
                                          time, N, pt,
                                          Xpts, vars, dvars, ddvars,
-                                         &kenergy);
-  fval += scale*kenergy;
+                                         &energy);
+  fval += scale*energy;
 }
 
 /*
   Determine the derivative of the mass w.r.t. the element nodal
   locations.
 */
-void TACSKineticEnergy::getElementXptSens( int elemIndex,
-                                           TACSElement *element,
-                                           double time,
-                                           TacsScalar scale,
-                                           const TacsScalar Xpts[],
-                                           const TacsScalar vars[],
-                                           const TacsScalar dvars[],
-                                           const TacsScalar ddvars[],
-                                           TacsScalar dfdXpts[] ){
+void TACSEnergy::getElementXptSens( int elemIndex,
+                                    TACSElement *element,
+                                    double time,
+                                    TacsScalar scale,
+                                    const TacsScalar Xpts[],
+                                    const TacsScalar vars[],
+                                    const TacsScalar dvars[],
+                                    const TacsScalar ddvars[],
+                                    TacsScalar dfdXpts[] ){
   // Zero the derivative of the function w.r.t. the node locations
   int numNodes = element->getNumNodes();
   memset(dfdXpts, 0, 3*numNodes*sizeof(TacsScalar));
@@ -121,15 +120,15 @@ void TACSKineticEnergy::getElementXptSens( int elemIndex,
   Determine the derivative of the mass w.r.t. the material
   design variables
 */
-void TACSKineticEnergy::addElementDVSens( int elemIndex,
-                                          TACSElement *element,
-                                          double time,
-                                          TacsScalar scale,
-                                          const TacsScalar Xpts[],
-                                          const TacsScalar vars[],
-                                          const TacsScalar dvars[],
-                                          const TacsScalar ddvars[],
-                                          int dvLen, TacsScalar dfdx[] ){
+void TACSEnergy::addElementDVSens( int elemIndex,
+                                   TACSElement *element,
+                                   double time,
+                                   TacsScalar scale,
+                                   const TacsScalar Xpts[],
+                                   const TacsScalar vars[],
+                                   const TacsScalar dvars[],
+                                   const TacsScalar ddvars[],
+                                   int dvLen, TacsScalar dfdx[] ){
   // Get the element basis class
   TACSElementBasis *basis = element->getElementBasis();
 
