@@ -1,5 +1,5 @@
-#ifndef TACS_ENERGY_H
-#define TACS_ENERGY_H
+#ifndef TACS_DISPLACMENT_H
+#define TACS_DISPLACMENT_H
 
 /*
   Compute the structural mass
@@ -10,10 +10,10 @@
 /*
   Evaluate the structural mass of the structure
 */
-class TACSEnergy : public TACSFunction {
+class TACSDisplacement : public TACSFunction {
  public:
-  TACSEnergy( TACSAssembler * _assembler );
-  ~TACSEnergy();
+  TACSDisplacement( TACSAssembler * _assembler );
+  ~TACSDisplacement();
 
   const char *getObjectName();
 
