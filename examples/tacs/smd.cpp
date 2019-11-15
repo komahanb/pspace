@@ -1,6 +1,4 @@
 #include "smd.h"
-#include "TACSKineticEnergy.h"
-#include "TACSPotentialEnergy.h"
 
 #include "TACSCreator.h"
 #include "TACSAssembler.h"
@@ -9,16 +7,23 @@
 
 #include "ParameterContainer.h"
 #include "ParameterFactory.h"
+
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
+
 #include "TACSKSFunction.h"
+
+#include "TACSKineticEnergy.h"
+#include "TACSPotentialEnergy.h"
+#include "TACSDisplacement.h"
+#include "TACSVelocity.h"
 
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
     smd->m = vals[0];
-    smd->c = vals[1];
-    smd->k = vals[2];
+    // smd->c = vals[1];
+    // smd->k = vals[2];
     // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
@@ -84,6 +89,7 @@ int SMD::evalPointQuantity( int elemIndex, int quantityType,
 }
 
 int main( int argc, char *argv[] ){  
+
   // Initialize MPI
   MPI_Init(&argc, &argv);
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -91,133 +97,197 @@ int main( int argc, char *argv[] ){
   MPI_Comm_rank(comm, &rank); 
 
   //-----------------------------------------------------------------//
-  // Choose solution mode (deterministic = 0 or 1)
+  // Choose solution mode (sampling = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int deterministic = 1;
+  int sampling = 1;
+  int ks = 1; 
 
   //-----------------------------------------------------------------//
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
-  
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(1.0, 0.25, 7);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 0);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 0);
+  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.25, 9);
+  // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 4);
+  // AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
-  pc->addParameter(c);
-  pc->addParameter(k);
-
-  pc->initialize();
-  int nsterms = pc->getNumBasisTerms();
-  printf("nsterms = %d \n", nsterms);
+  // pc->addParameter(c);
+  // pc->addParameter(k);
   
-  //-----------------------------------------------------------------//
-  // Create deterministic and stochastic elements
-  //-----------------------------------------------------------------//
- 
-  TACSElement *smd = new SMD(2.5, 0.2, 5.0); 
-  smd->incref();
-
-  TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc, updateSMD);
-  ssmd->incref();
-
-  int nelems = 1;
-  int nnodes = 1;  
-  int vars_per_node = 1;
-  if (!deterministic){
-    vars_per_node *= nsterms;
-  }
-
-  // Array of elements
-  TACSElement **elems = new TACSElement*[nelems];
-  if (deterministic){
-    elems[0] = smd;
-  } else{
-    elems[0] = ssmd;
-  }
-
-  // Node points array
-  TacsScalar *X = new TacsScalar[3*nnodes];
-  memset(X, 0, nnodes*sizeof(TacsScalar));
-
-  // Connectivity array
-  int *conn = new int[1];
-  conn[0] = 0;
-
-  // Connectivity pointer array
-  int *ptr = new int[2];
-  ptr[0] = 0;
-  ptr[1] = 1;
-
-  // Element Ids array
-  int *eids = new int[nelems];
-  for (int i = 0; i < nelems; i++){
-    eids[i] = i;
-  }
-  
-  // Creator object for TACS
-  TACSCreator *creator = new TACSCreator(comm, vars_per_node);
-  creator->incref();
-  if (rank == 0){    
-    creator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
-    creator->setNodes(X);
-  }
-  creator->setElements(nelems, elems);
-
-  TACSAssembler *assembler = creator->createTACS();
-  assembler->incref();
-  creator->decref();
-
-  delete [] X;
-  delete [] ptr;
-  delete [] eids;
-  delete [] conn;
-  delete [] elems;
-  
-  // Create deterministic function to evaluate
-  double ksweight = 1000;
-  TACSFunction *kske = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
-  TACSFunction *kspe = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
-  TACSFunction *ksdisp = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
-  TACSFunction *ksvel = new TACSKSFunction(assembler, TACS_VELOCITY_FUNCTION, ksweight);
-
-  // stochastic functions
-  // TACSFunction *ske = new TACSStochasticFunction(assembler, quantityType, ksweight, ke, pc);  
-  // TACSFunction *spe = new TACSStochasticFunction(assembler, pe, pc);
-
-  // Create an array of functions for TACS to evaluate
-  const int num_funcs = 4;
-  TACSFunction **funcs = new TACSFunction*[num_funcs];
-  if (deterministic){
-    funcs[0] = kske;
-    funcs[1] = kspe;    
-    funcs[2] = ksdisp;
-    funcs[3] = ksvel;
+  if (sampling){
+    printf("initializing quadrature\n");
+    int nqpts[3] = {9, 9, 9};
+    pc->initializeQuadrature(nqpts);
   } else {
-    // funcs[0] = ske;
-    // funcs[1] = spe;
+    pc->initialize();
   }
   
-  // Create the integrator class
-  TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
-  bdf->incref();
-  bdf->setAbsTol(1e-7);
-  bdf->setPrintLevel(0);
-  bdf->setFunctions(num_funcs, funcs);
-  bdf->integrate();
-  bdf->writeRawSolution("smd.dat", 1);
+  int nsterms = pc->getNumBasisTerms();
+  if (!sampling){
+    printf("nsterms = %d \n", nsterms);
+  }
+  
+  const int num_funcs = 4;
+  TacsScalar *fmean = new TacsScalar[ num_funcs ];
+  memset(fmean, 0, num_funcs*sizeof(TacsScalar));
 
   TacsScalar *ftmp = new TacsScalar[ num_funcs ];
-  bdf->evalFunctions(ftmp);
-  for (int i = 0; i < num_funcs; i++){
-    printf("func[%d] = %e\n", i, ftmp[i]);
-  }
+  memset(ftmp, 0, num_funcs*sizeof(TacsScalar));
+  
+  int nqpoints = pc->getNumQuadraturePoints();
+  const int nvars = pc->getNumParameters();
+
+  if (!sampling) nqpoints = 1;
+  
+  double *zq = new double[nvars];
+  double *yq = new double[nvars];
+  double wq;
+
+  //-----------------------------------------------------------------//
+  // Create sampling and stochastic elements
+  //-----------------------------------------------------------------//
+  
+  for (int q = 0; q < nqpoints; q++){
+
+    wq = pc->quadrature(q, zq, yq);
+   
+    TACSElement *smd = new SMD(2.5, 0.2, 5.0); 
+    smd->incref();
+
+    TACSStochasticElement *ssmd = new TACSStochasticElement(smd, pc, updateSMD);
+    ssmd->incref();
+
+    int nelems = 1;
+    int nnodes = 1;  
+    int vars_per_node = 1;
+    if (!sampling){
+      vars_per_node *= nsterms;
+    }
+
+    // Array of elements
+    TACSElement **elems = new TACSElement*[nelems];
+    if (sampling){
+      elems[0] = smd;
+    } else{
+      elems[0] = ssmd;
+    }
+
+    if (sampling){
+      updateSMD(smd, yq);
+    }
+  
+    // Node points array
+    TacsScalar *X = new TacsScalar[3*nnodes];
+    memset(X, 0, nnodes*sizeof(TacsScalar));
+
+    // Connectivity array
+    int *conn = new int[1];
+    conn[0] = 0;
+
+    // Connectivity pointer array
+    int *ptr = new int[2];
+    ptr[0] = 0;
+    ptr[1] = 1;
+
+    // Element Ids array
+    int *eids = new int[nelems];
+    for (int i = 0; i < nelems; i++){
+      eids[i] = i;
+    }
+  
+    // Creator object for TACS
+    TACSCreator *creator = new TACSCreator(comm, vars_per_node);
+    creator->incref();
+    if (rank == 0){    
+      creator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
+      creator->setNodes(X);
+    }
+    creator->setElements(nelems, elems);
+
+    TACSAssembler *assembler = creator->createTACS();
+    assembler->incref();
+    creator->decref();
+
+    delete [] X;
+    delete [] ptr;
+    delete [] eids;
+    delete [] conn;
+    delete [] elems;
+  
+    // Deterministic Functions
+    TACSFunction *ke, *pe, *disp, *vel;    
+    if (ks){
+      double ksweight = 50000;    
+      ke    = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
+      pe    = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+      disp  = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
+      vel   = new TACSKSFunction(assembler, TACS_VELOCITY_FUNCTION, ksweight);      
+    } else {
+      ke    = new TACSKineticEnergy(assembler); 
+      pe    = new TACSPotentialEnergy(assembler); 
+      disp  = new TACSDisplacement(assembler); 
+      vel   = new TACSVelocity(assembler); 
+    }
     
-  bdf->decref();
-  assembler->decref();  
+    // stochastic functions
+    TACSFunction *ske   = new TACSStochasticFunction(assembler, ke, pc);  
+    TACSFunction *spe   = new TACSStochasticFunction(assembler, pe, pc);
+    TACSFunction *sdisp = new TACSStochasticFunction(assembler, disp, pc);
+    TACSFunction *svel  = new TACSStochasticFunction(assembler, vel, pc);
+
+    // Create an array of functions for TACS to evaluate
+    TACSFunction **funcs = new TACSFunction*[num_funcs];
+    if (sampling){
+      // Sample deterministic functions to evaluate moments
+      funcs[0] = ke;
+      funcs[1] = pe;    
+      funcs[2] = disp;
+      funcs[3] = vel;
+    } else {
+      // decompose stochastuc functions to evaluate moments      
+      funcs[0] = ske;
+      funcs[1] = spe;
+      funcs[2] = sdisp;
+      funcs[3] = svel;
+    }
+
+    //---------------------------------------------------------------//
+    // Create the integrator class
+    //---------------------------------------------------------------//
+    
+    TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
+    bdf->incref();
+    bdf->setAbsTol(1e-7);
+    bdf->setPrintLevel(0);
+    bdf->setFunctions(num_funcs, funcs);
+    bdf->integrate();
+    bdf->evalFunctions(ftmp);
+
+    if (sampling){
+      for (int i = 0; i < num_funcs; i++){
+        printf("f = %e\n", ftmp[i]);
+        fmean[i] += wq*ftmp[i];
+      }      
+    }
+    
+    bdf->decref();
+    assembler->decref();    
+
+  } // end qloop
+
+  if (sampling){
+    for (int i = 0; i < num_funcs; i++){
+      printf("sampling  E[f] = %e\n", fmean[i]);
+    }
+  } else {
+    for (int i = 0; i < num_funcs; i++){
+      printf("projection E[f] = %e\n", ftmp[i]);
+    }
+
+  }
+  
   MPI_Finalize();
   return 0;
 }

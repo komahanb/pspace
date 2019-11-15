@@ -176,6 +176,7 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
     w[9] = 7.640432855232641e-06;
   } else {
     printf("Error: Implement Hermite quadrature points\n");
+    exit(-1);
   }
 
   // Return points in appropriate domains
@@ -335,6 +336,7 @@ void GaussianQuadrature::legendreQuadrature(int npoints,
     w[9] = 0.06667134430868807;
   } else {
     printf("Error: Implement Legendre quadrature points\n");
+    exit(-1);
   }
 
   // Return points in appropriate domains
@@ -496,6 +498,7 @@ void GaussianQuadrature::laguerreQuadrature(int npoints,
     w[9] = 9.91182721960906e-13;
   } else {
     printf("Error: Implement Laguerre quadrature points\n");
+    exit(-1);        
   }
 
   // Return points in appropriate domains
