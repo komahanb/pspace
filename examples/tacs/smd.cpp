@@ -100,14 +100,14 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (sampling = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int sampling = 1;
+  int sampling = 0;
   int ks = 1; 
 
   //-----------------------------------------------------------------//
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.25, 9);
+  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.25, 5);
   // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 4);
   // AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  

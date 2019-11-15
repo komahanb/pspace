@@ -94,6 +94,5 @@ void TACSKSFunction::finalEvaluation( EvaluationType evalType )
    Get the value of the function
 */
 TacsScalar TACSKSFunction::getFunctionValue() {
-  printf("maxvalue = %e weight = %e \n", maxValue, ksWeight);
   return maxValue + log(ksSum)/ksWeight;
 }
