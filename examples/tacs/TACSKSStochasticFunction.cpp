@@ -67,9 +67,6 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
                                                 const TacsScalar dv[],
                                                 const TacsScalar ddv[] )
 {
-
-  return;
-
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
@@ -83,6 +80,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
 
   const int ndvpn    = delem->getVarsPerNode();
   const int nsvpn    = selem->getVarsPerNode();
+
   const int nddof    = delem->getNumVariables();
   const int nnodes   = selem->getNumNodes();  
   
@@ -126,36 +124,31 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
       }
     }
 
-    // Call Deterministic function with modified time weight
-    // double scale = wt*tscale;
-    // this->dfunc->elementWiseEval(evalType, elemIndex, delem,
-    //                              time, scale,
-    //                              Xpts, uq, udq, uddq);
     // Find out maxValue[q] if INITIALIZE
     // Find out ksSum[q] if INTEGRATE
 
-    // Get the number of quadrature points for this element
-    const int numGauss = 1; //element->getNumGaussPts();
-    const int numDisps = element->getNumVariables();
-    const int numNodes = element->getNumNodes();
+    // Get the number of quadrature points for this delem
+    const int numGauss = 1; //delem->getNumGaussPts();
+    const int numDisps = delem->getNumVariables();
+    const int numNodes = delem->getNumNodes();
 
     for ( int i = 0; i < numGauss; i++ ){
       
       // Get the Gauss points one at a time
-      double weight = 1.0; //element->getGaussWtsPts(i, pt);
+      double weight = 1.0; //delem->getGaussWtsPts(i, pt);
       double pt[3] = {0.0,0.0,0.0};
       const int n = 1;
-      //  element->getShapeFunctions(pt, ctx->N);
+      //  delem->getShapeFunctions(pt, ctx->N);
     
       // Evaluate the dot-product with the displacements
       //const double *N = ctx->N;
       TacsScalar quantity = 0.0;
-      element->evalPointQuantity(elemIndex,
-                                 this->quantityType,
-                                 time, n, pt,
-                                 Xpts, uq, udq, uddq,
-                                 &quantity);        
-      TacsScalar value = wt*tscale*quantity;
+      delem->evalPointQuantity(elemIndex,
+                               this->quantityType,
+                               time, n, pt,
+                               Xpts, uq, udq, uddq,
+                               &quantity);        
+      TacsScalar value = quantity;
       //      TacsScalar value = quantity;
     
       if (evalType == TACSFunction::INITIALIZE){      
@@ -165,7 +158,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
         }      
       } else {
         // Add up the contribution from the quadrature
-        //element->getDetJacobian(pt, Xpts);
+        //delem->getDetJacobian(pt, Xpts);
         TacsScalar h = 1.0;
         ksSum[q] += h*weight*exp(ksWeight*(value - maxValue[q]));
       }      
@@ -204,7 +197,8 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
 /**
    Get the value of the function
 */
-TacsScalar TACSKSStochasticFunction::getFunctionValue() {
+TacsScalar TACSKSStochasticFunction::getFunctionValue(){
+  printf("Getting functionvalue \n");
   TacsScalar fmean = 0.0;
   const int nsparams = pc->getNumParameters();
   double *zq = new double[nsparams];
@@ -213,11 +207,13 @@ TacsScalar TACSKSStochasticFunction::getFunctionValue() {
   for (int k = 0; k < 1; k++){
     for (int q = 0; q < nsqpts; q++){
       double wq = pc->quadrature(q, zq, yq);
+      printf("maxValue[%d/%d] = %e, ksSum = %e, weight = %e \n", q, nsqpts, maxValue[q], ksSum[q], wq);
       fmean += wq*(maxValue[q] + log(ksSum[q])/ksWeight);
     }
   }
   delete [] zq;
   delete [] yq;
+
   return fmean;
 
   //  return maxValue + log(ksSum)/ksWeight;
