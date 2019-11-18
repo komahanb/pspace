@@ -11,6 +11,9 @@
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
 
+
+#include "TACSKSStochasticFunction.h"
+
 #include "TACSKSFunction.h"
 
 #include "TACSKineticEnergy.h"
@@ -218,8 +221,8 @@ int main( int argc, char *argv[] ){
   
     // Deterministic Functions
     TACSFunction *ke, *pe, *disp, *vel;    
+    double ksweight = 50000;    
     if (ks){
-      double ksweight = 50000;    
       ke    = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
       pe    = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
       disp  = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
@@ -232,10 +235,17 @@ int main( int argc, char *argv[] ){
     }
     
     // stochastic functions
+    /*
     TACSFunction *ske   = new TACSStochasticFunction(assembler, ke, pc);  
     TACSFunction *spe   = new TACSStochasticFunction(assembler, pe, pc);
     TACSFunction *sdisp = new TACSStochasticFunction(assembler, disp, pc);
     TACSFunction *svel  = new TACSStochasticFunction(assembler, vel, pc);
+    */
+
+    TACSFunction *ske   = new TACSKSStochasticFunction( ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc);  
+    TACSFunction *spe   = new TACSKSStochasticFunction( pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc);
+    TACSFunction *sdisp = new TACSKSStochasticFunction( disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc);
+    TACSFunction *svel  = new TACSKSStochasticFunction( vel, TACS_VELOCITY_FUNCTION, ksweight, pc);
 
     // Create an array of functions for TACS to evaluate
     TACSFunction **funcs = new TACSFunction*[num_funcs];
