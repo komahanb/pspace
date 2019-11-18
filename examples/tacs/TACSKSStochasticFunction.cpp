@@ -100,7 +100,8 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
     // Get the quadrature points and weights for mean
     wq = pc->quadrature(q, zq, yq);
     double wt = pc->basis(0,zq)*wq;
-    
+    double scale = tscale*wt;
+   
     // Set the parameter values into the element
     selem->updateElement(delem, yq);
 
@@ -160,7 +161,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
         // Add up the contribution from the quadrature
         //delem->getDetJacobian(pt, Xpts);
         TacsScalar h = 1.0;
-        ksSum[q] += h*weight*exp(ksWeight*(value - maxValue[q]));
+        ksSum[q] += scale*exp(ksWeight*(value - maxValue[q]));
       }      
     }
 

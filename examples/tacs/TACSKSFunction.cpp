@@ -69,7 +69,7 @@ void TACSKSFunction::elementWiseEval( EvaluationType evalType,
       // Add up the contribution from the quadrature
       //element->getDetJacobian(pt, Xpts);
       TacsScalar h = 1.0;
-      ksSum += h*weight*exp(ksWeight*(value - maxValue));
+      ksSum += tscale*exp(ksWeight*(value - maxValue));
     }      
   }
 }
