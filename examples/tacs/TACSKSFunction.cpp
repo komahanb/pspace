@@ -57,8 +57,8 @@ void TACSKSFunction::elementWiseEval( EvaluationType evalType,
                                time, n, pt,
                                Xpts, v, dv, ddv,
                                &quantity);        
-    //    TacsScalar value = tscale*quantity;
     TacsScalar value = quantity;
+    //TacsScalar value = quantity;
     
     if (evalType == TACSFunction::INITIALIZE){      
       // Reset maxvalue if needed
