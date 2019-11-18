@@ -89,7 +89,7 @@ print "\n"
 fmean = np.full_like(flist[0], 0)
 for i in quadmap.keys():
     wq = quadmap[i]['W']
-    fmean   += wq*flist[i]
+    fmean += wq*flist[i]
 print "E[f_ks^max] = ", fmean
 
 # Find variance

@@ -182,9 +182,6 @@ class TACSKSStochasticFunction : public TACSFunction {
 
  private:
 
-  // store the mean and std dev values
-  TacsScalar fmean, fstd;
-
   // The name of the function
   static const char *funcName;
 
@@ -197,11 +194,13 @@ class TACSKSStochasticFunction : public TACSFunction {
   // Intermediate values in the functional evaluation
   TacsScalar *ksSum;
   TacsScalar *maxValue;
+  TacsScalar *fvals;
 
   int moment_type;
 
   // number of stochastic quadrature points
   int nsqpts;
+  int nsterms;
 
   MPI_Comm tacs_comm;
 };
