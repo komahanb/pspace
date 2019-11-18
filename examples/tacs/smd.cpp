@@ -236,13 +236,13 @@ int main( int argc, char *argv[] ){
     
     // stochastic functions
     /*
-    TACSFunction *ske   = new TACSStochasticFunction(assembler, ke, pc);  
-    TACSFunction *spe   = new TACSStochasticFunction(assembler, pe, pc);
-    TACSFunction *sdisp = new TACSStochasticFunction(assembler, disp, pc);
-    TACSFunction *svel  = new TACSStochasticFunction(assembler, vel, pc);
+      TACSFunction *ske   = new TACSStochasticFunction(assembler, ke, pc);  
+      TACSFunction *spe   = new TACSStochasticFunction(assembler, pe, pc);
+      TACSFunction *sdisp = new TACSStochasticFunction(assembler, disp, pc);
+      TACSFunction *svel  = new TACSStochasticFunction(assembler, vel, pc);
     */
 
-    TACSFunction *ske   = new TACSKSStochasticFunction( ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc);  
+    TACSFunction *ske   = new TACSKSStochasticFunction( ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc);
     TACSFunction *spe   = new TACSKSStochasticFunction( pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc);
     TACSFunction *sdisp = new TACSKSStochasticFunction( disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc);
     TACSFunction *svel  = new TACSKSStochasticFunction( vel, TACS_VELOCITY_FUNCTION, ksweight, pc);
