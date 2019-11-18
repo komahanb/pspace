@@ -190,7 +190,7 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
     for (int q = 0; q < nsterms*nsqpts; q++){
       temp = ksSum[q];
       MPI_Allreduce(&temp, &ksSum[q], 1, TACS_MPI_TYPE, MPI_SUM, this->tacs_comm);
-    }        
+    }
   }
 }
 
@@ -200,25 +200,34 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
 TacsScalar TACSKSStochasticFunction::getFunctionValue(){
   printf("Getting functionvalue \n");
 
-  TacsScalar fmean = 0.0;
+
   const int nsparams = pc->getNumParameters();
 
   double *zq = new double[nsparams];
   double *yq = new double[nsparams];
   double wq;
 
-  for (int k = 0; k < 1; k++){
+  // Finish up the projection
+  for (int k = 0; k < nsterms; k++){
     for (int q = 0; q < nsqpts; q++){
       double wq = pc->quadrature(q, zq, yq);
-      // printf("maxValue[%d/%d] = %e, ksSum = %e, weight = %e \n", q, nsqpts, maxValue[q], ksSum[q], wq);
-      fmean += wq*(maxValue[q] + log(ksSum[q])/ksWeight);
+      fvals[k] += wq*pc->basis(k,zq)*(maxValue[q] + log(ksSum[q])/ksWeight);
+    }
+  }
+
+  // Compute moments
+  TacsScalar fmean = fvals[0];
+  TacsScalar fvar = 0.0;
+  for (int k = 1; k < nsterms; k++){
+    for (int q = 0; q < nsqpts; q++){
+      fvar += fvals[k]*fvals[k];
     }
   }
 
   delete [] zq;
   delete [] yq;
 
-  return fmean;
+  return fvar;
 
   //  return maxValue + log(ksSum)/ksWeight;
   /*
