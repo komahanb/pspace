@@ -50,6 +50,44 @@ namespace{
       printf("\n");
     }
   }
+
+  void getDeterministicStates( ParameterContainer *pc, 
+                               TACSElement *delem,
+                               TACSElement *selem, 
+                               const TacsScalar v[],
+                               const TacsScalar dv[],
+                               const TacsScalar ddv[], 
+                               double *zq,
+                               TacsScalar *uq,
+                               TacsScalar *udq,
+                               TacsScalar *uddq
+                               ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+    memset(udq , 0, nddof*sizeof(TacsScalar));
+    memset(uddq, 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+          udq[lptr+d] += dv[gptr+d]*psikz;
+          uddq[lptr+d] += ddv[gptr+d]*psikz;
+        }
+      }
+    }
+  }  
 }
 
 TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
@@ -224,24 +262,11 @@ void TACSStochasticElement::addResidual( int elemIndex,
 
       // reset the states and residuals
       memset(resq, 0, nddof*sizeof(TacsScalar));
-      memset(uq  , 0, nddof*sizeof(TacsScalar));
-      memset(udq , 0, nddof*sizeof(TacsScalar));
-      memset(uddq, 0, nddof*sizeof(TacsScalar));
 
       // Evaluate the basis at quadrature node and form the state
       // vectors
-      for (int n = 0; n < nnodes; n++){
-        for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
-          int lptr = n*ndvpn;
-          int gptr = n*nsvpn + k*ndvpn;
-          for (int d = 0; d < ndvpn; d++){        
-            uq[lptr+d] += v[gptr+d]*psikz;
-            udq[lptr+d] += dv[gptr+d]*psikz;
-            uddq[lptr+d] += ddv[gptr+d]*psikz;
-          }
-        }
-      }
+      getDeterministicStates(pc, delem, this, v, dv, ddv, zq, 
+                             uq, udq, uddq);
 
       // Fetch the deterministic element residual
       delem->addResidual(elemIndex, time, X, uq, udq, uddq, resq);
@@ -340,25 +365,11 @@ void TACSStochasticElement::addJacobian( int elemIndex,
           // Set the parameter values into the element
           this->updateElement(this->delem, yq);
 
-          // reset the states
-          memset(uq  , 0, nddof*sizeof(TacsScalar));
-          memset(udq , 0, nddof*sizeof(TacsScalar));
-          memset(uddq, 0, nddof*sizeof(TacsScalar));
-
           // Evaluate the basis at quadrature node and form the state
           // vectors
-          for (int n = 0; n < nnodes; n++){
-            for (int k = 0; k < nsterms; k++){
-              double psikz = pc->basis(k,zq);
-              int lptr = n*ndvpn;
-              int gptr = n*nsvpn + k*ndvpn;
-              for (int d = 0; d < ndvpn; d++){  
-                uq[lptr+d] += v[gptr+d]*psikz;
-                udq[lptr+d] += dv[gptr+d]*psikz;
-                uddq[lptr+d] += ddv[gptr+d]*psikz;      
-              }
-            }
-          }
+          getDeterministicStates(pc, delem, this, v, dv, ddv, zq, 
+                                 uq, udq, uddq);
+
 
           // Fetch the deterministic element residual
           double scale = pc->basis(i,zq)*pc->basis(j,zq)*wq;
@@ -454,25 +465,12 @@ int TACSStochasticElement::evalPointQuantity( int elemIndex, int quantityType, d
       this->updateElement(delem, yq);
 
       // reset the states and residuals
-      memset(uq   , 0, nddof*sizeof(TacsScalar));
-      memset(udq  , 0, nddof*sizeof(TacsScalar));
-      memset(uddq , 0, nddof*sizeof(TacsScalar));
       memset(ftmpq, 0, ndquants*sizeof(TacsScalar));
 
       // Evaluate the basis at quadrature node and form the state
       // vectors
-      for (int n = 0; n < nnodes; n++){
-        for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
-          int lptr = n*ndvpn;
-          int gptr = n*nsvpn + k*ndvpn;
-          for (int d = 0; d < ndvpn; d++){        
-            uq[lptr+d] += v[gptr+d]*psikz;
-            udq[lptr+d] += dv[gptr+d]*psikz;
-            uddq[lptr+d] += ddv[gptr+d]*psikz;
-          }
-        }
-      }
+      getDeterministicStates(pc, delem, this, v, dv, ddv, zq, 
+                             uq, udq, uddq);
 
       // Fetch the deterministic element residual
       int count = this->delem->evalPointQuantity(elemIndex,
