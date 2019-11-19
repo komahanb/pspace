@@ -71,30 +71,29 @@ void TACSDisplacement::elementWiseEval( EvaluationType ftype,
   fval += scale*quantity;
 }
 
-/*
-  Determine the derivative of the mass w.r.t. the element nodal
-  locations.
-*/
-void TACSDisplacement::getElementXptSens( int elemIndex,
-                                           TACSElement *element,
-                                           double time,
-                                           TacsScalar scale,
-                                           const TacsScalar Xpts[],
-                                           const TacsScalar vars[],
-                                           const TacsScalar dvars[],
-                                           const TacsScalar ddvars[],
-                                          TacsScalar dfdXpts[] ){}
+void TACSDisplacement::getElementSVSens( int elemIndex, TACSElement *element,
+                                         double time,
+                                         TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
+                                         const TacsScalar Xpts[],
+                                         const TacsScalar v[],
+                                         const TacsScalar dv[],
+                                         const TacsScalar ddv[],
+                                         TacsScalar dfdu[] ){
+  // zero the values
+  int numVars = element->getNumVariables();
+  memset(dfdu, 0, numVars*sizeof(TacsScalar));
 
-/*
-  Determine the derivative of the mass w.r.t. the material
-  design variables
-*/
-void TACSDisplacement::addElementDVSens( int elemIndex,
-                                          TACSElement *element,
-                                          double time,
-                                          TacsScalar scale,
-                                          const TacsScalar Xpts[],
-                                          const TacsScalar vars[],
-                                          const TacsScalar dvars[],
-                                          const TacsScalar ddvars[],
-                                          int dvLen, TacsScalar dfdx[] ){}
+  //Call the underlying element and get the state variable sensitivities
+  double pt[3] = {0.0,0.0,0.0};
+  int N = 1;
+  TacsScalar _dfdq = 1.0;
+  element->addPointQuantitySVSens( elemIndex, 
+                                   TACS_DISPLACEMENT_FUNCTION,
+                                   time, alpha, beta, gamma,
+                                   N, pt,
+                                   Xpts, v, dv, ddv, &_dfdq, 
+                                   dfdu);
+
+  printf("displacement dfdu = %e\n", dfdu[0]);
+
+}

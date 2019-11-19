@@ -40,6 +40,30 @@ class SMD : public TACSElement{
                          const TacsScalar vars[], const TacsScalar dvars[],
                          const TacsScalar ddvars[], TacsScalar *quantity );
 
+  void addPointQuantitySVSens( int elemIndex, int quantityType,
+                               double time,
+                               TacsScalar alpha,
+                               TacsScalar beta,
+                               TacsScalar gamma,
+                               int n, double pt[],
+                               const TacsScalar Xpts[],
+                               const TacsScalar vars[],
+                               const TacsScalar dvars[],
+                               const TacsScalar ddvars[],
+                               const TacsScalar dfdq[],
+                               TacsScalar dfdu[] );
+  void addPointQuantityDVSens( int elemIndex, int quantityType,
+                               double time,
+                               TacsScalar scale,
+                               int n, double pt[],
+                               const TacsScalar Xpts[],
+                               const TacsScalar vars[],
+                               const TacsScalar dvars[],
+                               const TacsScalar ddvars[],
+                               const TacsScalar dfdq[],
+                               int dvLen,
+                               TacsScalar dfdx[] );
+
   int getVarsPerNode(){
     return 1;
   };

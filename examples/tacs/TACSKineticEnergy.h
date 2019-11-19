@@ -36,20 +36,32 @@ class TACSKineticEnergy : public TACSFunction {
   /**
      Add the derivative of the function w.r.t. the design variables
   */
+  /*
   void addElementDVSens( int elemIndex, TACSElement *element,
                          double time, TacsScalar scale,
                          const TacsScalar Xpts[], const TacsScalar vars[],
                          const TacsScalar dvars[], const TacsScalar ddvars[],
                          int dvLen, TacsScalar dfdx[] );
+  */
 
   /**
      Evaluate the derivative of the function w.r.t. the node locations
   */
+  /*
   void getElementXptSens( int elemIndex, TACSElement *element,
                           double time, TacsScalar scale,
                           const TacsScalar Xpts[], const TacsScalar vars[],
                           const TacsScalar dvars[], const TacsScalar ddvars[],
                           TacsScalar fXptSens[] );
+  */
+  void getElementSVSens( int elemIndex, TACSElement *element,
+                         double time,
+                         TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         TacsScalar dfdu[] );
 
  private:
   // The total mass of all elements in the specified domain
