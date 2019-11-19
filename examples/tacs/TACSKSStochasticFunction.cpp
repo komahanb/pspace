@@ -219,9 +219,7 @@ TacsScalar TACSKSStochasticFunction::getFunctionValue(){
   TacsScalar fmean = fvals[0];
   TacsScalar fvar = 0.0;
   for (int k = 1; k < nsterms; k++){
-    for (int q = 0; q < nsqpts; q++){
-      fvar += fvals[k]*fvals[k];
-    }
+    fvar += fvals[k]*fvals[k];
   }
 
   delete [] zq;
