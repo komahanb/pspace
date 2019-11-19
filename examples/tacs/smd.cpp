@@ -10,10 +10,7 @@
 
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
-
-
 #include "TACSKSStochasticFunction.h"
-
 #include "TACSKSFunction.h"
 
 #include "TACSKineticEnergy.h"
@@ -25,7 +22,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
     smd->m = vals[0];
-    // smd->c = vals[1];
+    smd->c = vals[1];
     // smd->k = vals[2];
     // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
@@ -110,13 +107,13 @@ int main( int argc, char *argv[] ){
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.25, 5);
-  // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 4);
+  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.0, 3);
+  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
   // AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
-  // pc->addParameter(c);
+  pc->addParameter(c);
   // pc->addParameter(k);
   
   if (sampling){
@@ -133,16 +130,21 @@ int main( int argc, char *argv[] ){
   }
   
   const int num_funcs = 4;
+  int nqpoints = pc->getNumQuadraturePoints();
+  const int nvars = pc->getNumParameters();
+  if (!sampling) nqpoints = 1;
+
   TacsScalar *fmean = new TacsScalar[ num_funcs ];
   memset(fmean, 0, num_funcs*sizeof(TacsScalar));
 
-  TacsScalar *ftmp = new TacsScalar[ num_funcs ];
-  memset(ftmp, 0, num_funcs*sizeof(TacsScalar));
-  
-  int nqpoints = pc->getNumQuadraturePoints();
-  const int nvars = pc->getNumParameters();
+  TacsScalar *fvals = new TacsScalar[ num_funcs*nqpoints ];
+  memset(fvals, 0, num_funcs*nqpoints*sizeof(TacsScalar));
 
-  if (!sampling) nqpoints = 1;
+  TacsScalar *fvar = new TacsScalar[ num_funcs ];
+  memset(fvar, 0, num_funcs*sizeof(TacsScalar));
+
+  TacsScalar *ftmp = new TacsScalar[ num_funcs ];
+  memset(ftmp, 0, num_funcs*sizeof(TacsScalar));  
   
   double *zq = new double[nvars];
   double *yq = new double[nvars];
@@ -221,31 +223,38 @@ int main( int argc, char *argv[] ){
   
     // Deterministic Functions
     TACSFunction *ke, *pe, *disp, *vel;    
-    double ksweight = 50000;    
+    TACSFunction *ske, *spe, *sdisp, *svel;    
+    double ksweight = 50000.0;    
+
     if (ks){
+
       ke    = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
       pe    = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
       disp  = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
       vel   = new TACSKSFunction(assembler, TACS_VELOCITY_FUNCTION, ksweight);      
+
+      if (!sampling){
+        ske   = new TACSKSStochasticFunction(ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc, 0);
+        spe   = new TACSKSStochasticFunction(pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc, 0);
+        sdisp = new TACSKSStochasticFunction(disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc, 0);
+        svel  = new TACSKSStochasticFunction(vel, TACS_VELOCITY_FUNCTION, ksweight, pc, 0);
+      }
+
     } else {
+
       ke    = new TACSKineticEnergy(assembler); 
       pe    = new TACSPotentialEnergy(assembler); 
       disp  = new TACSDisplacement(assembler); 
       vel   = new TACSVelocity(assembler); 
-    }
-    
-    // stochastic functions
-    /*
-      TACSFunction *ske   = new TACSStochasticFunction(assembler, ke, pc);  
-      TACSFunction *spe   = new TACSStochasticFunction(assembler, pe, pc);
-      TACSFunction *sdisp = new TACSStochasticFunction(assembler, disp, pc);
-      TACSFunction *svel  = new TACSStochasticFunction(assembler, vel, pc);
-    */
 
-    TACSFunction *ske   = new TACSKSStochasticFunction(ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc);
-    TACSFunction *spe   = new TACSKSStochasticFunction(pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc);
-    TACSFunction *sdisp = new TACSKSStochasticFunction(disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc);
-    TACSFunction *svel  = new TACSKSStochasticFunction(vel, TACS_VELOCITY_FUNCTION, ksweight, pc);
+      if (!sampling){
+        ske   = new TACSStochasticFunction(assembler, ke, pc);  
+        spe   = new TACSStochasticFunction(assembler, pe, pc);
+        sdisp = new TACSStochasticFunction(assembler, disp, pc);
+        svel  = new TACSStochasticFunction(assembler, vel, pc);
+      }
+
+    }
 
     // Create an array of functions for TACS to evaluate
     TACSFunction **funcs = new TACSFunction*[num_funcs];
@@ -256,7 +265,7 @@ int main( int argc, char *argv[] ){
       funcs[2] = disp;
       funcs[3] = vel;
     } else {
-      // decompose stochastuc functions to evaluate moments      
+      // decompose stochastic functions to evaluate moments      
       funcs[0] = ske;
       funcs[1] = spe;
       funcs[2] = sdisp;
@@ -269,17 +278,25 @@ int main( int argc, char *argv[] ){
     
     TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
     bdf->incref();
-    bdf->setAbsTol(1e-7);
+    bdf->setAbsTol(1e-12);
     bdf->setPrintLevel(0);
     bdf->setFunctions(num_funcs, funcs);
     bdf->integrate();
     bdf->evalFunctions(ftmp);
 
+    // Store function values for computing moments
+    if (sampling){
+      int ptr = q*num_funcs;
+      for (int i = 0; i < num_funcs; i++){
+        fvals[ptr+i] = ftmp[i];
+      }      
+    }
+
     if (sampling){
       for (int i = 0; i < num_funcs; i++){
         printf("f = %e\n", ftmp[i]);
         fmean[i] += wq*ftmp[i];
-      }      
+      }
     }
     
     bdf->decref();
@@ -288,10 +305,26 @@ int main( int argc, char *argv[] ){
   } // end qloop
 
   if (sampling){
+    
     for (int i = 0; i < num_funcs; i++){
       printf("sampling  E[f] = %e\n", fmean[i]);
     }
+
+    // Compute variance
+    for (int q = 0; q < nqpoints; q++){
+      wq = pc->quadrature(q, zq, yq);
+      for (int i = 0; i < num_funcs; i++){
+        fvar[i] += wq*(fmean[i]-fvals[q*num_funcs+i])*(fmean[i]-fvals[q*num_funcs+i]);
+      }
+    }
+
+    printf("\n");
+    for (int i = 0; i < num_funcs; i++){
+      printf("sampling  V[f] = %e\n", fvar[i]);
+    }
+
   } else {
+
     for (int i = 0; i < num_funcs; i++){
       printf("projection E[f] = %e\n", ftmp[i]);
     }
