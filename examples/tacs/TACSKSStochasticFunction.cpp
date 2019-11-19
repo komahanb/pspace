@@ -226,35 +226,27 @@ TacsScalar TACSKSStochasticFunction::getFunctionValue(){
   delete [] yq;
 
   return fvar;
-
-  //  return maxValue + log(ksSum)/ksWeight;
-  /*
-    const int nsparams = pc->getNumParameters();
-    double *zq = new double[nsparams];
-    double *yq = new double[nsparams];
-    double wq;
-
-    // Do integration in probabilistic domain finally
-    if (moment_type == 0){
-    TacsScalar fmean = 0.0;
-    for (int k = 0; k < 1; k++){
-    for (int q = 0; q < nsqpts; q++){
-    wq = pc->quadrature(q, zq, yq);
-    fmean += wq*pc->basis(k,zq)*(maxValue[q] + log(ksSum[q])/ksWeight);
-    }
-    }
-    return fmean;
-    } else {
-    // Compute standard deviation
-    TacsScalar fvar = 0.0;
-    const int nsterms = pc->getNumBasisTerms();
-    for (int k = 1; k < nsterms; k++){
-    for (int q = 0; q < nsqpts; q++){
-    wq = pc->quadrature(q, zq, yq);
-    fvar += wq*pc->basis(k,zq)*(maxValue[q] + log(ksSum[q])/ksWeight);
-    }
-    }
-    return fvar;
-    }
-  */
 }
+
+void getElementSVSens( int elemIndex, TACSElement *element,
+                       double time,
+                       TacsScalar alpha, TacsScalar beta,
+                       TacsScalar gamma,
+                       const TacsScalar Xpts[],
+                       const TacsScalar vars[],
+                       const TacsScalar dvars[],
+                       const TacsScalar ddvars[],
+                       TacsScalar dfdu[] ){
+  int numVars = element->getNumVariables();
+  memset(dfdu, 0, numVars*sizeof(TacsScalar));
+}
+
+void addElementDVSens( int elemIndex, TACSElement *element,
+                       double time, TacsScalar scale,
+                       const TacsScalar Xpts[],
+                       const TacsScalar vars[],
+                       const TacsScalar dvars[],
+                       const TacsScalar ddvars[],
+                       int dvLen,
+                       TacsScalar dfdx[] ){}
+

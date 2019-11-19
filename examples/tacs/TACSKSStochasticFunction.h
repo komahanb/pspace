@@ -115,18 +115,15 @@ class TACSKSStochasticFunction : public TACSFunction {
      @param dvars The first time derivatives of the element DOF
      @param ddvars The second time derivatives of the element DOF
   */
-  virtual void getElementSVSens( int elemIndex, TACSElement *element,
-                                 double time,
-                                 TacsScalar alpha, TacsScalar beta,
-                                 TacsScalar gamma,
-                                 const TacsScalar Xpts[],
-                                 const TacsScalar vars[],
-                                 const TacsScalar dvars[],
-                                 const TacsScalar ddvars[],
-                                 TacsScalar dfdu[] ){
-    int numVars = element->getNumVariables();
-    memset(dfdu, 0, numVars*sizeof(TacsScalar));
-  }
+  void getElementSVSens( int elemIndex, TACSElement *element,
+                         double time,
+                         TacsScalar alpha, TacsScalar beta,
+                         TacsScalar gamma,
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         TacsScalar dfdu[] );
 
   /**
      Add the derivative of the function w.r.t. the design variables
@@ -143,15 +140,14 @@ class TACSKSStochasticFunction : public TACSFunction {
      @param dvars The first time derivatives of the element DOF
      @param ddvars The second time derivatives of the element DOF
   */
-  virtual void addElementDVSens( int elemIndex, TACSElement *element,
-                                 double time, TacsScalar scale,
-                                 const TacsScalar Xpts[],
-                                 const TacsScalar vars[],
-                                 const TacsScalar dvars[],
-                                 const TacsScalar ddvars[],
-                                 int dvLen,
-                                 TacsScalar dfdx[] ){}
-
+  void addElementDVSens( int elemIndex, TACSElement *element,
+                         double time, TacsScalar scale,
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         int dvLen,
+                         TacsScalar dfdx[] );
   /**
      Evaluate the derivative of the function w.r.t. the node locations
 
