@@ -22,7 +22,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
     smd->m = vals[0];
-    smd->c = vals[1];
+    //    smd->c = vals[1];
     // smd->k = vals[2];
     // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
@@ -88,6 +88,51 @@ int SMD::evalPointQuantity( int elemIndex, int quantityType,
   return 0;
 }
 
+void SMD::addPointQuantitySVSens( int elemIndex, int quantityType,
+                                  double time,
+                                  TacsScalar alpha,
+                                  TacsScalar beta,
+                                  TacsScalar gamma,
+                                  int n, double pt[],
+                                  const TacsScalar Xpts[],
+                                  const TacsScalar v[],
+                                  const TacsScalar dv[],
+                                  const TacsScalar ddv[],
+                                  const TacsScalar dfdq[],
+                                  TacsScalar dfdu[] ){
+  if (quantityType == TACS_KINETIC_ENERGY_FUNCTION){
+    dfdu[0] += beta*m*dv[0];
+  } else  if (quantityType == TACS_POTENTIAL_ENERGY_FUNCTION){
+    dfdu[0] += alpha*k*v[0];
+  } else  if (quantityType == TACS_DISPLACEMENT_FUNCTION){
+    dfdu[0] += alpha;
+  } else  if (quantityType == TACS_VELOCITY_FUNCTION){
+    dfdu[0] += beta;
+  }
+}
+
+void SMD::addPointQuantityDVSens( int elemIndex, int quantityType,
+                                  double time,
+                                  TacsScalar scale,
+                                  int n, double pt[],
+                                  const TacsScalar Xpts[],
+                                  const TacsScalar v[],
+                                  const TacsScalar dv[],
+                                  const TacsScalar ddv[],
+                                  const TacsScalar dfdq[],
+                                  int dvLen,
+                                  TacsScalar dfdx[] ){
+  if (quantityType == TACS_KINETIC_ENERGY_FUNCTION){
+    // dfdx[0] += beta*m*dv[0];
+  } else  if (quantityType == TACS_POTENTIAL_ENERGY_FUNCTION){
+    // dfdx[0] += alpha*k*v[0];
+  } else  if (quantityType == TACS_DISPLACEMENT_FUNCTION){
+    // dfdx[0] += alpha;
+  } else  if (quantityType == TACS_VELOCITY_FUNCTION){
+    // dfdx[0] += beta;
+  }
+}
+
 int main( int argc, char *argv[] ){  
 
   // Initialize MPI
@@ -100,25 +145,25 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (sampling = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int sampling = 0;
-  int ks = 1; 
+  int sampling = 1;
+  int ks = 0; 
 
-  //-----------------------------------------------------------------//
+  //-------------------------------------------------1----------------//
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
   ParameterFactory *factory = new ParameterFactory();
   AbstractParameter *m = factory->createExponentialParameter(2.5, 0.0, 3);
-  AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
+  // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
   // AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(m);
-  pc->addParameter(c);
+  // pc->addParameter(c);
   // pc->addParameter(k);
   
   if (sampling){
     printf("initializing quadrature\n");
-    int nqpts[3] = {9, 9, 9};
+    int nqpts[3] = {1, 9, 9};
     pc->initializeQuadrature(nqpts);
   } else {
     pc->initialize();
@@ -129,7 +174,7 @@ int main( int argc, char *argv[] ){
     printf("nsterms = %d \n", nsterms);
   }
   
-  const int num_funcs = 4;
+  const int num_funcs = 2;
   int nqpoints = pc->getNumQuadraturePoints();
   const int nvars = pc->getNumParameters();
   if (!sampling) nqpoints = 1;
@@ -224,34 +269,25 @@ int main( int argc, char *argv[] ){
     // Deterministic Functions
     TACSFunction *ke, *pe, *disp, *vel;    
     TACSFunction *ske, *spe, *sdisp, *svel;    
+
     double ksweight = 50000.0;    
-
     if (ks){
-
-      ke    = new TACSKSFunction(assembler, TACS_KINETIC_ENERGY_FUNCTION, ksweight);
       pe    = new TACSKSFunction(assembler, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
       disp  = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
-      vel   = new TACSKSFunction(assembler, TACS_VELOCITY_FUNCTION, ksweight);      
 
       if (!sampling){
-        ske   = new TACSKSStochasticFunction(ke, TACS_KINETIC_ENERGY_FUNCTION, ksweight, pc, 0);
         spe   = new TACSKSStochasticFunction(pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc, 0);
         sdisp = new TACSKSStochasticFunction(disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc, 0);
-        svel  = new TACSKSStochasticFunction(vel, TACS_VELOCITY_FUNCTION, ksweight, pc, 0);
       }
 
     } else {
 
-      ke    = new TACSKineticEnergy(assembler); 
       pe    = new TACSPotentialEnergy(assembler); 
       disp  = new TACSDisplacement(assembler); 
-      vel   = new TACSVelocity(assembler); 
 
       if (!sampling){
-        ske   = new TACSStochasticFunction(assembler, ke, pc);  
         spe   = new TACSStochasticFunction(assembler, pe, pc);
         sdisp = new TACSStochasticFunction(assembler, disp, pc);
-        svel  = new TACSStochasticFunction(assembler, vel, pc);
       }
 
     }
@@ -260,16 +296,12 @@ int main( int argc, char *argv[] ){
     TACSFunction **funcs = new TACSFunction*[num_funcs];
     if (sampling){
       // Sample deterministic functions to evaluate moments
-      funcs[0] = ke;
-      funcs[1] = pe;    
-      funcs[2] = disp;
-      funcs[3] = vel;
+      funcs[0] = pe;
+      funcs[1] = disp;    
     } else {
-      // decompose stochastic functions to evaluate moments      
-      funcs[0] = ske;
-      funcs[1] = spe;
-      funcs[2] = sdisp;
-      funcs[3] = svel;
+      // Decompose stochastic functions to evaluate moments      
+      funcs[0] = spe;
+      funcs[1] = sdisp;
     }
 
     //---------------------------------------------------------------//
@@ -283,6 +315,16 @@ int main( int argc, char *argv[] ){
     bdf->setFunctions(num_funcs, funcs);
     bdf->integrate();
     bdf->evalFunctions(ftmp);
+    bdf->integrateAdjoint();
+
+    TACSBVec *dfdx1 = assembler->createDesignVec();
+    bdf->getGradient(1, &dfdx1);
+
+    TacsScalar *dfdx1vals;
+    dfdx1->getArray(&dfdx1vals);
+    printf("dfdx1 = %e \n", dfdx1vals[0]);
+
+    //    virtual void getGradient( int func_num, TACSBVec **_dfdx ){
 
     // Store function values for computing moments
     if (sampling){
