@@ -22,8 +22,8 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
     //smd->m = vals[0];
-    //    smd->c = vals[1];
-    smd->k = vals[0];
+    smd->c = vals[0];
+    // smd->k = vals[0];
     // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
@@ -111,6 +111,9 @@ void SMD::addPointQuantitySVSens( int elemIndex, int quantityType,
   }
 }
 
+/*
+  Implementation for dFdx
+*/
 void SMD::addPointQuantityDVSens( int elemIndex, int quantityType,
                                   double time,
                                   TacsScalar scale,
@@ -122,14 +125,19 @@ void SMD::addPointQuantityDVSens( int elemIndex, int quantityType,
                                   const TacsScalar dfdq[],
                                   int dvLen,
                                   TacsScalar dfdx[] ){
+  // assuming 'm' as the design variable 0 and 'k' as design variable 1
   if (quantityType == TACS_KINETIC_ENERGY_FUNCTION){
-    // dfdx[0] += beta*m*dv[0];
+    dfdx[0] += scale*0.5*dv[0]*dv[0];
+    dfdx[1] += 0.0;
   } else  if (quantityType == TACS_POTENTIAL_ENERGY_FUNCTION){
-    // dfdx[0] += alpha*k*v[0];
+    dfdx[0] += 0.0;
+    dfdx[1] += scale*0.5*v[0]*v[0];
   } else  if (quantityType == TACS_DISPLACEMENT_FUNCTION){
-    // dfdx[0] += alpha;
+    dfdx[0] += 0.0;
+    dfdx[1] += 0.0;
   } else  if (quantityType == TACS_VELOCITY_FUNCTION){
-    // dfdx[0] += beta;
+    dfdx[0] += 0.0;
+    dfdx[1] += 0.0;
   }
 }
 
@@ -153,13 +161,13 @@ int main( int argc, char *argv[] ){
   //-----------------------------------------------------------------//
   ParameterFactory *factory = new ParameterFactory();
   //AbstractParameter *m = factory->createExponentialParameter(2.5, 0.5, 8);
-  // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
-  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
+  AbstractParameter *c = factory->createNormalParameter(0.2, 0.01, 4);
+  //AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  
   ParameterContainer *pc = new ParameterContainer();
   //pc->addParameter(m);
-  // pc->addParameter(c);
-  pc->addParameter(k);
+  pc->addParameter(c);
+  //pc->addParameter(k);
   
   if (sampling){
     printf("initializing quadrature\n");
@@ -318,23 +326,23 @@ int main( int argc, char *argv[] ){
     bdf->integrateAdjoint();
     
     TACSBVec *dfdx1 = assembler->createDesignVec();
-    bdf->getGradient(1, &dfdx1);
-
+    bdf->getGradient(0, &dfdx1);
     TacsScalar *dfdx1vals;
     dfdx1->getArray(&dfdx1vals);
-    printf("dfdx1 = %e \n", dfdx1vals[0]);
+    printf("d{pe}dm = %e %e \n", dfdx1vals[0], dfdx1vals[1]);
 
-    //    virtual void getGradient( int func_num, TACSBVec **_dfdx ){
+    TACSBVec *dfdx2 = assembler->createDesignVec();
+    bdf->getGradient(1, &dfdx2);
+    TacsScalar *dfdx2vals;
+    dfdx2->getArray(&dfdx2vals);
+    printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
 
-    // Store function values for computing moments
+    // store function values for computing moments
     if (sampling){
       int ptr = q*num_funcs;
       for (int i = 0; i < num_funcs; i++){
         fvals[ptr+i] = ftmp[i];
-      }      
-    }
-
-    if (sampling){
+      }
       for (int i = 0; i < num_funcs; i++){
         printf("f = %e\n", ftmp[i]);
         fmean[i] += wq*ftmp[i];
@@ -342,7 +350,7 @@ int main( int argc, char *argv[] ){
     }
     
     bdf->decref();
-    assembler->decref();    
+    assembler->decref();
 
   } // end qloop
 
