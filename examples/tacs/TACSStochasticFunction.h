@@ -8,7 +8,8 @@ class TACSStochasticFunction : public TACSFunction {
  public:
   TACSStochasticFunction( TACSAssembler *tacs,
                           TACSFunction *dfunc, 
-                          ParameterContainer *pc );
+                          ParameterContainer *pc,
+                          int quantityType);
   ~TACSStochasticFunction();
   /**
      Get the object name
@@ -123,18 +124,15 @@ class TACSStochasticFunction : public TACSFunction {
      @param dvars The first time derivatives of the element DOF
      @param ddvars The second time derivatives of the element DOF
   */
-  virtual void getElementSVSens( int elemIndex, TACSElement *element,
-                                 double time,
-                                 TacsScalar alpha, TacsScalar beta,
-                                 TacsScalar gamma,
-                                 const TacsScalar Xpts[],
-                                 const TacsScalar vars[],
-                                 const TacsScalar dvars[],
-                                 const TacsScalar ddvars[],
-                                 TacsScalar dfdu[] ){
-    int numVars = element->getNumVariables();
-    memset(dfdu, 0, numVars*sizeof(TacsScalar));
-  }
+  void getElementSVSens( int elemIndex, TACSElement *element,
+                         double time,
+                         TacsScalar alpha, TacsScalar beta,
+                         TacsScalar gamma,
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         TacsScalar dfdu[] );
 
   /**
      Add the derivative of the function w.r.t. the design variables

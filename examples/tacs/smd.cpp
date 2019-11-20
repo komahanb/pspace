@@ -21,9 +21,9 @@
 void updateSMD( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
-    smd->m = vals[0];
+    //smd->m = vals[0];
     //    smd->c = vals[1];
-    // smd->k = vals[2];
+    smd->k = vals[0];
     // printf("%e %e %e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
@@ -145,21 +145,21 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (sampling = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int sampling = 1;
+  int sampling = 0;
   int ks = 0; 
 
   //-------------------------------------------------1----------------//
   // Define random parameters with distribution functions
   //-----------------------------------------------------------------//
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *m = factory->createExponentialParameter(2.5, 0.0, 3);
+  //AbstractParameter *m = factory->createExponentialParameter(2.5, 0.5, 8);
   // AbstractParameter *c = factory->createUniformParameter(0.2, 0.5, 3);
-  // AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
+  AbstractParameter *k = factory->createNormalParameter(5.0, 0.1, 4);
  
   ParameterContainer *pc = new ParameterContainer();
-  pc->addParameter(m);
+  //pc->addParameter(m);
   // pc->addParameter(c);
-  // pc->addParameter(k);
+  pc->addParameter(k);
   
   if (sampling){
     printf("initializing quadrature\n");
@@ -286,8 +286,8 @@ int main( int argc, char *argv[] ){
       disp  = new TACSDisplacement(assembler); 
 
       if (!sampling){
-        spe   = new TACSStochasticFunction(assembler, pe, pc);
-        sdisp = new TACSStochasticFunction(assembler, disp, pc);
+        spe   = new TACSStochasticFunction(assembler, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION);
+        sdisp = new TACSStochasticFunction(assembler, disp, pc, TACS_DISPLACEMENT_FUNCTION);
       }
 
     }
@@ -311,12 +311,12 @@ int main( int argc, char *argv[] ){
     TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
     bdf->incref();
     bdf->setAbsTol(1e-12);
-    bdf->setPrintLevel(0);
+    bdf->setPrintLevel(2);
     bdf->setFunctions(num_funcs, funcs);
     bdf->integrate();
     bdf->evalFunctions(ftmp);
     bdf->integrateAdjoint();
-
+    
     TACSBVec *dfdx1 = assembler->createDesignVec();
     bdf->getGradient(1, &dfdx1);
 
