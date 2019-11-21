@@ -152,6 +152,38 @@ class SMD : public TACSElement{
     return 2;
   }
 
+  /**
+     Add the derivative of the adjoint-residual product to the output vector
+
+     This adds the contribution scaled by an input factor as follows:
+
+     dvSens += scale*d(psi^{T}*(res))/dx
+
+     By default the code is not implemented, but is not required so that
+     analysis can be performed. Correct derivatives require a specific
+     implementation.
+
+     @param elemIndex The local element index
+     @param time The simulation time
+     @param scale The coefficient for the derivative result
+     @param psi The element adjoint variables
+     @param Xpts The element node locations
+     @param vars The values of the element degrees of freedom
+     @param dvars The first time derivative of the element DOF
+     @param ddvars The second time derivative of the element DOF
+     @param dvLen The length of the design variable vector
+     @param dvSens The derivative vector
+  */
+  void addAdjResProduct( int elemIndex, double time,
+                         TacsScalar scale,
+                         const TacsScalar psi[],
+                         const TacsScalar Xpts[],
+                         const TacsScalar vars[],
+                         const TacsScalar dvars[],
+                         const TacsScalar ddvars[],
+                         int dvLen,
+                         TacsScalar dfdx[] );
+
   int getVarsPerNode(){
     return 1;
   };

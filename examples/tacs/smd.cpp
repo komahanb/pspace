@@ -125,6 +125,7 @@ void SMD::addPointQuantityDVSens( int elemIndex, int quantityType,
                                   const TacsScalar dfdq[],
                                   int dvLen,
                                   TacsScalar dfdx[] ){
+  //  printf("addPointQuantityDVSens \n");
   // assuming 'm' as the design variable 0 and 'k' as design variable 1
   if (quantityType == TACS_KINETIC_ENERGY_FUNCTION){
     dfdx[0] += scale*0.5*dv[0]*dv[0];
@@ -141,6 +142,27 @@ void SMD::addPointQuantityDVSens( int elemIndex, int quantityType,
   }
 }
 
+/*
+  Adjoint residual product
+*/
+void SMD::addAdjResProduct( int elemIndex, double time,
+                            TacsScalar scale,
+                            const TacsScalar psi[],
+                            const TacsScalar Xpts[],
+                            const TacsScalar v[],
+                            const TacsScalar dv[],
+                            const TacsScalar ddv[],
+                            int dvLen, 
+                            TacsScalar dfdx[] ){
+  // printf("enters addAdjResProduct \n");
+  // printf("adjoint is = %e \n", psi[0]);
+  // printf("dvlen is = %d \n", dvLen);
+
+  dfdx[0] += scale*psi[0]*ddv[0];
+  dfdx[1] += scale*psi[0]*v[0];
+ 
+}
+
 int main( int argc, char *argv[] ){  
 
   // Initialize MPI
@@ -153,7 +175,7 @@ int main( int argc, char *argv[] ){
   // Choose solution mode (sampling = 0 or 1)
   //-----------------------------------------------------------------//
   
-  int sampling = 0;
+  int sampling = 1;
   int ks = 0; 
 
   //-------------------------------------------------1----------------//
@@ -319,7 +341,7 @@ int main( int argc, char *argv[] ){
     TACSIntegrator *bdf = new TACSBDFIntegrator(assembler, 0.0, 10.0, 100, 2);
     bdf->incref();
     bdf->setAbsTol(1e-12);
-    bdf->setPrintLevel(2);
+    bdf->setPrintLevel(0);
     bdf->setFunctions(num_funcs, funcs);
     bdf->integrate();
     bdf->evalFunctions(ftmp);

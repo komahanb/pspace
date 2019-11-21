@@ -93,7 +93,22 @@ void TACSDisplacement::getElementSVSens( int elemIndex, TACSElement *element,
                                    N, pt,
                                    Xpts, v, dv, ddv, &_dfdq, 
                                    dfdu);
+  //  printf("displacement dfdu = %e\n", dfdu[0]);
+}
 
-  printf("displacement dfdu = %e\n", dfdu[0]);
-
+void TACSDisplacement::addElementDVSens( int elemIndex, TACSElement *element,
+                                         double time, TacsScalar scale,
+                                         const TacsScalar Xpts[], const TacsScalar v[],
+                                         const TacsScalar dv[], const TacsScalar ddv[],
+                                         int dvLen, TacsScalar dfdx[] ){
+  // printf("entering dv sens in displacment\n");
+  double pt[3] = {0.0,0.0,0.0};
+  int N = 1;
+  TacsScalar _dfdq = 1.0; 
+  element->addPointQuantityDVSens( elemIndex, 
+                                   TACS_DISPLACEMENT_FUNCTION,
+                                   time, scale,
+                                   N, pt,
+                                   Xpts, v, dv, ddv, &_dfdq, 
+                                   dvLen, dfdx );
 }

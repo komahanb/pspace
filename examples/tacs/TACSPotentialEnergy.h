@@ -28,14 +28,12 @@ class TACSPotentialEnergy : public TACSFunction {
 
   /**
      Add the derivative of the function w.r.t. the design variables
-  */
-  /*
+  */ 
   void addElementDVSens( int elemIndex, TACSElement *element,
                          double time, TacsScalar scale,
                          const TacsScalar Xpts[], const TacsScalar vars[],
                          const TacsScalar dvars[], const TacsScalar ddvars[],
                          int dvLen, TacsScalar dfdx[] );
-  */
 
   /**
      Evaluate the derivative of the function w.r.t. the node locations
@@ -47,6 +45,7 @@ class TACSPotentialEnergy : public TACSFunction {
                           const TacsScalar dvars[], const TacsScalar ddvars[],
                           TacsScalar fXptSens[] );
   */
+
   void getElementSVSens( int elemIndex, TACSElement *element,
                          double time,
                          TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
@@ -55,7 +54,6 @@ class TACSPotentialEnergy : public TACSFunction {
                          const TacsScalar dvars[],
                          const TacsScalar ddvars[],
                          TacsScalar dfdu[] );
-
  private:
   // The total mass of all elements in the specified domain
   TacsScalar fval;
