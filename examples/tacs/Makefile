@@ -14,6 +14,9 @@ PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
 OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o vpl.o ppa.o fourbar.o
 
+library: ${OBJS}
+	ar rcs libtacsuq.a  TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o
+
 default: ${OBJS}
 	${CXX} -o smd TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o vpl TACSStochasticElement.o vpl.o ${TACS_LD_FLAGS} ${PSPACE_LIB}

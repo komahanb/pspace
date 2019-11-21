@@ -56,7 +56,7 @@ namespace{
                                 TACSElement *selem, 
                                 const TacsScalar v[],
                                 double *zq,
-                                TacsScalar *uq,
+                                TacsScalar *uq
                                 ){
     int ndvpn   = delem->getVarsPerNode();
     int nsvpn   = selem->getVarsPerNode();
@@ -553,11 +553,13 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
                                               const TacsScalar dv[],
                                               const TacsScalar ddv[],
                                               int dvLen, 
-                                              TacsScalar dfdx[] ){ 
+                                              TacsScalar dfdx[] ){
+  /*
   getDeterministicStates(pc, delem, this, v, dv, ddv, zq, uq, udq, uddq);
   getDeterministicAdjoint(pc, delem, this, psi, zq, psiq);
   delem->addAdjResProduct(elemIndex, time, wq*scale,
                           psiq, Xpts, uq, udq, uddq,
                           dvLen, dfdxj);
+  */
   // place dfdxj in stochastic dfdx
 }
