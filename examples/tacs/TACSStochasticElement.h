@@ -53,6 +53,16 @@ class TACSStochasticElement : public TACSElement {
                          const TacsScalar vars[], const TacsScalar dvars[],
                          const TacsScalar ddvars[], TacsScalar *quantity );
   
+  void addAdjResProduct( int elemIndex, double time,
+                         TacsScalar scale,
+                         const TacsScalar psi[],
+                         const TacsScalar Xpts[],
+                         const TacsScalar v[],
+                         const TacsScalar dv[],
+                         const TacsScalar ddv[],
+                         int dvLen, 
+                         TacsScalar dfdx[] );
+ 
   // Invoke this function to update this element through user supplied callback
   //---------------------------------------------------------------------------
   void updateElement(TACSElement* elem, TacsScalar* vals){
