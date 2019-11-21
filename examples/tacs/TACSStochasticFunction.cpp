@@ -224,3 +224,110 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
   delete [] udq;
   delete [] uddq;
 }
+
+void TACSPotentialEnergy::addElementDVSens( int elemIndex, TACSElement *element,
+                                            double time, TacsScalar scale,
+                                            const TacsScalar Xpts[], const TacsScalar v[],
+                                            const TacsScalar dv[], const TacsScalar ddv[],
+                                            int dvLen, TacsScalar dfdx[] ){
+
+  int numDesVars = element->getNumDesignVariables();
+
+  TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
+  if (!selem) {
+    printf("Casting to stochastic element failed; skipping elemenwiseEval");
+  };
+  
+  TACSElement *delem = selem->getDeterministicElement();
+  const int nsterms  = pc->getNumBasisTerms();
+  const int nqpts    = pc->getNumQuadraturePoints();
+  const int nsparams = pc->getNumParameters();
+  const int ndvpn    = delem->getVarsPerNode();
+  const int nsvpn    = selem->getVarsPerNode();
+  const int nddof    = delem->getNumVariables();
+  const int nnodes   = selem->getNumNodes();  
+
+  // j-th projection of dfdx array
+  TacsScalar *dfdxj  = new TacsScalar[numDesVars];
+  
+  // Space for quadrature points and weights
+  double *zq = new double[nsparams];
+  double *yq = new double[nsparams];
+  double wq;
+  
+  // Create space for deterministic states at each quadrature node in y
+  TacsScalar *uq     = new TacsScalar[nddof];
+  TacsScalar *udq    = new TacsScalar[nddof];
+  TacsScalar *uddq   = new TacsScalar[nddof];
+
+  for (int j = 0; j < nsterms; j++){
+
+    memset(dfdxj, 0, nddof*sizeof(TacsScalar));
+    
+    // Stochastic Integration
+    for (int q = 0; q < nqpts; q++){
+
+      // Get the quadrature points and weights for mean
+      wq = pc->quadrature(q, zq, yq);
+      double wt = pc->basis(j,zq)*wq;
+    
+      // Set the parameter values into the element
+      selem->updateElement(delem, yq);
+
+      // reset the states and residuals
+      memset(uq   , 0, nddof*sizeof(TacsScalar));
+      memset(udq  , 0, nddof*sizeof(TacsScalar));
+      memset(uddq , 0, nddof*sizeof(TacsScalar));
+    
+      // Evaluate the basis at quadrature node and form the state
+      // vectors
+      for (int n = 0; n < nnodes; n++){
+        for (int k = 0; k < nsterms; k++){
+          double psikz = pc->basis(k,zq);
+          int lptr = n*ndvpn;
+          int gptr = n*nsvpn + k*ndvpn;
+          for (int d = 0; d < ndvpn; d++){        
+            uq[lptr+d] += v[gptr+d]*psikz;
+            udq[lptr+d] += dv[gptr+d]*psikz;
+            uddq[lptr+d] += ddv[gptr+d]*psikz;
+          }
+        }
+      }
+
+      // Call the underlying element and get the state variable sensitivities
+      double pt[3] = {0.0,0.0,0.0};
+      int N = 1;
+      TacsScalar _dfdq = 1.0; 
+      element->addPointQuantityDVSens( elemIndex, 
+                                       this->quantityType,
+                                       time, wt*scale,
+                                       N, pt,
+                                       Xpts,  uq, udq, uddq, &_dfdq, 
+                                       dvLen, dfdxj );   
+    } // end yloop
+
+
+    // check size of dffdxj
+
+    for (int n = 0; n < nddof; n++){
+      printf("term %d dfdx[%d]=%e\n", j, n, dfdxj[n]);
+    }
+    
+    // Store j-th projected sv sens into stochastic array
+    for (int n = 0; n < nnodes; n++){
+      int lptr = n*ndvpn;
+      int gptr = n*nsvpn + j*ndvpn;
+      for (int d = 0; d < ndvpn; d++){        
+        dfdu[gptr+d] = dfduj[lptr+d];
+      }
+    }
+
+  } // end nsterms
+
+  // clear allocated heap
+  delete [] zq;
+  delete [] yq;
+  delete [] uq;
+  delete [] udq;
+  delete [] uddq;
+}

@@ -51,6 +51,36 @@ namespace{
     }
   }
 
+  void getDeterministicAdjoint( ParameterContainer *pc, 
+                                TACSElement *delem,
+                                TACSElement *selem, 
+                                const TacsScalar v[],
+                                double *zq,
+                                TacsScalar *uq,
+                                ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+    
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+        }
+      }
+    }
+  } 
+
   void getDeterministicStates( ParameterContainer *pc, 
                                TACSElement *delem,
                                TACSElement *selem, 
@@ -87,7 +117,9 @@ namespace{
         }
       }
     }
-  }  
+  } 
+
+ 
 }
 
 TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
@@ -508,4 +540,24 @@ int TACSStochasticElement::evalPointQuantity( int elemIndex, int quantityType, d
   delete [] ftmpi;
 
   return nsquants;
+}
+
+/*
+  Stochastic Adjoint residual product implementation
+*/
+void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
+                                              TacsScalar scale,
+                                              const TacsScalar psi[],
+                                              const TacsScalar Xpts[],
+                                              const TacsScalar v[],
+                                              const TacsScalar dv[],
+                                              const TacsScalar ddv[],
+                                              int dvLen, 
+                                              TacsScalar dfdx[] ){ 
+  getDeterministicStates(pc, delem, this, v, dv, ddv, zq, uq, udq, uddq);
+  getDeterministicAdjoint(pc, delem, this, psi, zq, psiq);
+  delem->addAdjResProduct(elemIndex, time, wq*scale,
+                          psiq, Xpts, uq, udq, uddq,
+                          dvLen, dfdxj);
+  // place dfdxj in stochastic dfdx
 }
