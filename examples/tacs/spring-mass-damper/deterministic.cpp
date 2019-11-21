@@ -8,17 +8,14 @@
 #include "TACSPotentialEnergy.h"
 #include "TACSDisplacement.h"
 
-int main( int argc, char *argv[] ){
-  // Initialize MPI
-  MPI_Init(&argc, &argv);
-  MPI_Comm comm = MPI_COMM_WORLD;
+void deterministic_solve( MPI_Comm comm,
+                          TacsScalar *p,
+                          TacsScalar *fvals,
+                          TacsScalar **dfdxvals ){
   int rank; 
   MPI_Comm_rank(comm, &rank); 
 
-  TacsScalar mass = 2.5;
-  TacsScalar damping = 0.2;
-  TacsScalar stiffness = 5.0;
-  TACSElement *smd = new SMD(mass, damping, stiffness); 
+  TACSElement *smd = new SMD(p[0], p[1], p[2]); 
   smd->incref();
 
   // Assembler information to create TACS  
@@ -68,15 +65,12 @@ int main( int argc, char *argv[] ){
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  pe    = new TACSPotentialEnergy(tacs); 
-  disp  = new TACSDisplacement(tacs); 
+  pe    = new TACSPotentialEnergy(tacs); pe->incref();
+  disp  = new TACSDisplacement(tacs); disp->incref();
 
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = pe;
   funcs[1] = disp;    
-
-  TacsScalar *fvals = new TacsScalar[ num_funcs ];
-  memset(fvals, 0, num_funcs*sizeof(TacsScalar));  
 
   TACSBVec *dfdx1 = tacs->createDesignVec();  dfdx1->incref();
   TACSBVec *dfdx2 = tacs->createDesignVec();  dfdx2->incref();
@@ -98,24 +92,64 @@ int main( int argc, char *argv[] ){
   bdf->integrateAdjoint();
   
   bdf->evalFunctions(fvals);
-  printf("pe = %e, u = %e \n", fvals[0], fvals[1]);
   bdf->getGradient(0, &dfdx1);
   bdf->getGradient(1, &dfdx2);
-  
+
   TacsScalar *dfdx1vals;
-  dfdx1->getArray(&dfdx1vals);
-  printf("d{pe}dm = %e %e \n", dfdx1vals[0], dfdx1vals[1]);
-
   TacsScalar *dfdx2vals;
+  dfdx1->getArray(&dfdx1vals);
   dfdx2->getArray(&dfdx2vals);
-  printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
 
+  const int num_dvars = 2;
+  dfdxvals[0][0] = dfdx1vals[0];
+  dfdxvals[0][1] = dfdx1vals[1];
+
+  dfdxvals[1][0] = dfdx2vals[0];
+  dfdxvals[1][1] = dfdx2vals[1];
+  
   // clear allocated heap
+  delete [] X;
+  delete [] ptr;
+  delete [] eids;
+  delete [] conn;
+  delete [] elems;
   delete [] funcs;
+
+  pe->decref();
+  disp->decref();  
   dfdx1->decref();
   dfdx2->decref();  
   smd->decref();
-  MPI_Finalize();
-  
+}
+
+int main( int argc, char *argv[] ){
+  MPI_Init(&argc, &argv);
+  MPI_Comm comm = MPI_COMM_WORLD;
+  int rank; 
+  MPI_Comm_rank(comm, &rank); 
+
+  TacsScalar mass = 2.5;
+  TacsScalar damping = 0.2;
+  TacsScalar stiffness = 5.0;
+  TacsScalar parameters[3] = {mass, damping, stiffness}; 
+
+  const int num_funcs = 2;
+  const int num_dvars = 2;
+  TacsScalar *fvals = new TacsScalar[num_funcs];
+
+  TacsScalar **dfdxvals = new TacsScalar*[num_funcs];
+  dfdxvals[0] = new TacsScalar[num_dvars];
+  dfdxvals[1] = new TacsScalar[num_dvars];
+
+  deterministic_solve( comm,
+                       parameters,
+                       fvals,
+                       dfdxvals);
+    
+  printf("pe = %e, u = %e \n", fvals[0], fvals[1]);
+  printf("d{pe}dm = %e %e \n", dfdxvals[0][0], dfdxvals[0][1]);
+  printf("d{u}dm  = %e %e \n", dfdxvals[1][0], dfdxvals[1][1]);    
+
+  MPI_Finalize();  
   return 0;
 }
