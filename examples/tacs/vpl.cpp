@@ -67,7 +67,7 @@ int main( int argc, char *argv[] ){
 
   // Node points array
   TacsScalar *X = new TacsScalar[3*nnodes];
-  memset(X, 0, nnodes*sizeof(TacsScalar));
+  memset(X, 0, 3*nnodes*sizeof(TacsScalar));
 
   // Connectivity array
   int *conn = new int[1];
