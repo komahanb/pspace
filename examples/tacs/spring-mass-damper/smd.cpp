@@ -24,7 +24,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
     //smd->m = vals[0];
     smd->c = vals[0];
     // smd->k = vals[0];
-    // printf("%e %e %e \n", smd->m, smd->c, smd->k);
+    printf("smd parameters are %e %e %e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
   }
