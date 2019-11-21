@@ -86,7 +86,7 @@ void deterministic_solve( MPI_Comm comm,
   TACSIntegrator *bdf = new TACSBDFIntegrator(tacs, tinit, tfinal, nsteps, time_order);
   bdf->incref();
   bdf->setAbsTol(1e-12);
-  bdf->setPrintLevel(2);
+  bdf->setPrintLevel(0);
   bdf->setFunctions(num_funcs, funcs);
   bdf->integrate();  
   bdf->integrateAdjoint();
@@ -135,21 +135,33 @@ int main( int argc, char *argv[] ){
 
   const int num_funcs = 2;
   const int num_dvars = 2;
-  TacsScalar *fvals = new TacsScalar[num_funcs];
-
+  TacsScalar *fvals = new TacsScalar[num_funcs];  
   TacsScalar **dfdxvals = new TacsScalar*[num_funcs];
   dfdxvals[0] = new TacsScalar[num_dvars];
   dfdxvals[1] = new TacsScalar[num_dvars];
 
-  deterministic_solve( comm,
-                       parameters,
-                       fvals,
-                       dfdxvals);
+  deterministic_solve(comm, parameters, fvals, dfdxvals);
     
   printf("pe = %e, u = %e \n", fvals[0], fvals[1]);
   printf("d{pe}dm = %e %e \n", dfdxvals[0][0], dfdxvals[0][1]);
-  printf("d{u}dm  = %e %e \n", dfdxvals[1][0], dfdxvals[1][1]);    
+  printf("d{u}dm  = %e %e \n", dfdxvals[1][0], dfdxvals[1][1]);
 
+  // Finite difference derivative check
+  TacsScalar *fhvals = new TacsScalar[num_funcs]; 
+  const TacsScalar dh = 1.0e-8;
+  
+  TacsScalar dh1_parameters[3] = {mass+dh, damping, stiffness};
+  deterministic_solve(comm, dh1_parameters, fhvals, dfdxvals);
+
+  printf("df1dm %e \n", (fhvals[0]-fvals[0])/dh);
+  printf("df2dm %e \n", (fhvals[1]-fvals[1])/dh);
+
+  TacsScalar dh2_parameters[3] = {mass, damping, stiffness+dh};
+  deterministic_solve(comm, dh2_parameters, fhvals, dfdxvals);
+
+  printf("df1dk %e \n", (fhvals[0]-fvals[0])/dh);
+  printf("df2dk %e \n", (fhvals[1]-fvals[1])/dh);
+  
   MPI_Finalize();  
   return 0;
 }
