@@ -129,6 +129,7 @@ int main( int argc, char *argv[] ){
   bdf->evalFunctions(ftmp);
   bdf->integrateAdjoint();
   
+  // Post processing to get moments
   for (int i = 0; i < num_funcs; i++){
     printf("projection E[f] = %e\n", ftmp[i]);
   }
@@ -143,6 +144,11 @@ int main( int argc, char *argv[] ){
   dfdx2->getArray(&dfdx2vals);
   printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
 
+
+
+  printf("Get mean derivative \n");
+  printf("Get variance and variance derivative \n");
+  printf("ks implementation \n");
   MPI_Finalize();  
   return 0;
 }
