@@ -75,6 +75,69 @@ class TACSStochasticElement : public TACSElement {
     return this->delem;
   };
   
+  /**
+     Get the number of design variables per node.
+     
+     The value defaults to one, unless over-ridden by the model
+  */
+  int getDesignVarsPerNode(){
+    return this->delem->getDesignVarsPerNode();
+  }
+  
+  /**
+     Retrieve the global design variable numbers associated with this element
+
+     Note when the dvNums argument is NULL, then the result is a query
+     on the number of design variables and the array is not set.
+
+     @param dvLen The length of the array dvNums
+     @param dvNums An array of the design variable numbers for this element
+     @return The number of design variable numbers defined by the element
+  */
+  int getDesignVarNums( int elemIndex, int dvLen, int dvNums[] ){
+    return this->delem->getDesignVarNums(elemIndex, dvLen, dvNums);
+  }
+
+  /**
+     Get the element design variables values
+
+     @param elemIndex The local element index
+     @param dvLen The length of the design array
+     @param dvs The design variable values
+     @return The number of design variable numbers defined by the element
+  */
+  int getDesignVars( int elemIndex, int dvLen, TacsScalar dvs[] ){
+    return this->delem->getDesignVars(elemIndex, dvLen, dvs);
+  }
+
+  /**
+     Set the element design variables from the design vector
+
+     @param elemIndex The local element index
+     @param dvLen The length of the design array
+     @param dvs The design variable values
+     @return The number of design variable numbers defined by the element
+  */
+  int setDesignVars( int elemIndex,
+                     int dvLen, const TacsScalar dvs[] ){
+    return this->delem->setDesignVars(elemIndex, dvLen, dvs);
+  }
+
+  /**
+     Get the lower and upper bounds for the design variable values
+
+     @param elemIndex The local element index
+     @param dvLen The length of the design array
+     @param lowerBound The design variable lower bounds
+     @param lowerBound The design variable upper bounds
+     @return The number of design variable numbers defined by the element
+  */
+  int getDesignVarRange( int elemIndex, int dvLen,
+                         TacsScalar lowerBound[],
+                         TacsScalar upperBound[] ){
+    this->delem->getDesignVarRange(elemIndex, dvLen, lowerBound, upperBound);
+  }
+
  protected:
   TACSElement *delem;
   ParameterContainer *pc;

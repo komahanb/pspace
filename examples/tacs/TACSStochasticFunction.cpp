@@ -1,6 +1,77 @@
 #include "TACSStochasticFunction.h"
 #include "TACSStochasticElement.h"
 
+namespace{
+
+  void getDeterministicAdjoint( ParameterContainer *pc, 
+                                TACSElement *delem,
+                                TACSElement *selem, 
+                                const TacsScalar v[],
+                                double *zq,
+                                TacsScalar *uq
+                                ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+    
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+        }
+      }
+    }
+  } 
+
+  void getDeterministicStates( ParameterContainer *pc, 
+                               TACSElement *delem,
+                               TACSElement *selem, 
+                               const TacsScalar v[],
+                               const TacsScalar dv[],
+                               const TacsScalar ddv[], 
+                               double *zq,
+                               TacsScalar *uq,
+                               TacsScalar *udq,
+                               TacsScalar *uddq
+                               ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+    memset(udq , 0, nddof*sizeof(TacsScalar));
+    memset(uddq, 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+          udq[lptr+d] += dv[gptr+d]*psikz;
+          uddq[lptr+d] += ddv[gptr+d]*psikz;
+        }
+      }
+    }
+  } 
+}
+
 TACSStochasticFunction::TACSStochasticFunction( TACSAssembler *tacs,
                                                 TACSFunction *dfunc, 
                                                 ParameterContainer *pc,
@@ -124,6 +195,8 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
   int numVars = element->getNumVariables();
   memset(dfdu, 0, numVars*sizeof(TacsScalar));
 
+  printf("TACSStochasticFunction::addElementSVSens \n");
+
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
@@ -218,6 +291,7 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
   } // end nsterms
 
   // clear allocated heap
+  delete [] dfduj;
   delete [] zq;
   delete [] yq;
   delete [] uq;
@@ -230,14 +304,13 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
                                                const TacsScalar Xpts[], const TacsScalar v[],
                                                const TacsScalar dv[], const TacsScalar ddv[],
                                                int dvLen, TacsScalar dfdx[] ){
-  int numDesVars = element->getNumDesignVariables();
-
+  printf("TACSStochasticFunction::addElementDVSens \n");
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
   };
-  
   TACSElement *delem = selem->getDeterministicElement();
+
   const int nsterms  = pc->getNumBasisTerms();
   const int nqpts    = pc->getNumQuadraturePoints();
   const int nsparams = pc->getNumParameters();
@@ -247,7 +320,7 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
   const int nnodes   = selem->getNumNodes();  
 
   // j-th projection of dfdx array
-  TacsScalar *dfdxj  = new TacsScalar[numDesVars];
+  TacsScalar *dfdxj  = new TacsScalar[dvLen];
   
   // Space for quadrature points and weights
   double *zq = new double[nsparams];
@@ -259,9 +332,9 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
   TacsScalar *udq    = new TacsScalar[nddof];
   TacsScalar *uddq   = new TacsScalar[nddof];
 
-  for (int j = 0; j < nsterms; j++){
+  for (int j = 0; j < 1; j++){ // nsterms
 
-    memset(dfdxj, 0, nddof*sizeof(TacsScalar));
+    memset(dfdxj, 0, dvLen*sizeof(TacsScalar));
     
     // Stochastic Integration
     for (int q = 0; q < nqpts; q++){
@@ -273,53 +346,36 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
 
-      // reset the states and residuals
-      memset(uq   , 0, nddof*sizeof(TacsScalar));
-      memset(udq  , 0, nddof*sizeof(TacsScalar));
-      memset(uddq , 0, nddof*sizeof(TacsScalar));
-    
-      // Evaluate the basis at quadrature node and form the state
-      // vectors
-      for (int n = 0; n < nnodes; n++){
-        for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
-          int lptr = n*ndvpn;
-          int gptr = n*nsvpn + k*ndvpn;
-          for (int d = 0; d < ndvpn; d++){        
-            uq[lptr+d] += v[gptr+d]*psikz;
-            udq[lptr+d] += dv[gptr+d]*psikz;
-            uddq[lptr+d] += ddv[gptr+d]*psikz;
-          }
-        }
-      }
+      // form deterministic states      
+      getDeterministicStates(pc, delem, selem, v, dv, ddv, zq, uq, udq, uddq);
 
       // Call the underlying element and get the state variable sensitivities
       double pt[3] = {0.0,0.0,0.0};
       int N = 1;
       TacsScalar _dfdq = 1.0; 
-      element->addPointQuantityDVSens( elemIndex, 
-                                       this->quantityType,
-                                       time, wt*scale,
-                                       N, pt,
-                                       Xpts,  uq, udq, uddq, &_dfdq, 
-                                       dvLen, dfdxj );   
+      delem->addPointQuantityDVSens( elemIndex, 
+                                     this->quantityType,
+                                     time, wt*scale,
+                                     N, pt,
+                                     Xpts, uq, udq, uddq, &_dfdq, 
+                                     dvLen, dfdxj ); 
     } // end yloop
 
-
-    // check size of dffdxj
-
-    for (int n = 0; n < nddof; n++){
-      printf("term %d dfdx[%d]=%e\n", j, n, dfdxj[n]);
+    // need to be careful with nodewise placement of dvs
+    for (int n = 0; n < dvLen; n++){
+      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      dfdx[n] += dfdxj[n];
     }
     
-    // Store j-th projected sv sens into stochastic array
-    for (int n = 0; n < nnodes; n++){
-      int lptr = n*ndvpn;
-      int gptr = n*nsvpn + j*ndvpn;
-      for (int d = 0; d < ndvpn; d++){        
-        dfdu[gptr+d] = dfduj[lptr+d];
-      }
-    }
+    // // check this
+    // // Store j-th projected sv sens into stochastic array
+    // for (int n = 0; n < nnodes; n++){
+    //   int lptr = n*ndvpn;
+    //   int gptr = n*nsvpn + j*ndvpn;
+    //   for (int d = 0; d < ndvpn; d++){        
+    //     dfdx[gptr+d] = dfdxj[lptr+d];
+    //   }
+    // }
 
   } // end nsterms
 
@@ -329,4 +385,5 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
   delete [] uq;
   delete [] udq;
   delete [] uddq;
+  delete [] dfdxj;
 }
