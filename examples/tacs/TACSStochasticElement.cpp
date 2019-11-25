@@ -554,6 +554,9 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
                                               const TacsScalar ddv[],
                                               int dvLen,
                                               TacsScalar dfdx[] ){
+
+  printf("TACSStochasticElement::addAdjResProduct \n");
+
   const int ndvpn   = delem->getVarsPerNode();
   const int nsvpn   = this->getVarsPerNode();
   const int nddof   = delem->getNumVariables();
@@ -570,12 +573,12 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
   TacsScalar *uq     = new TacsScalar[nddof];
   TacsScalar *udq    = new TacsScalar[nddof];
   TacsScalar *uddq   = new TacsScalar[nddof];
-
+  TacsScalar *psiq   = new TacsScalar[nddof];
   TacsScalar *dfdxj  = new TacsScalar[dvLen]; // check if this is one function at a time
 
   const int nqpts = pc->getNumQuadraturePoints();
   
-  for (int j = 0; j < nsterms; j++){
+  for (int j = 0; j < 1; j++){
 
     memset(dfdxj, 0, dvLen*sizeof(TacsScalar));
 
@@ -584,7 +587,7 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
       // Get the quadrature points and weights
       wq = pc->quadrature(q, zq, yq);
 
-      double wscale = pc->basis(j,zq)*wq*scale;
+      double wt = pc->basis(j,zq)*wq;
 
       // Set the parameter values into the element
       this->updateElement(delem, yq);
@@ -593,29 +596,42 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
       getDeterministicStates(pc, delem, this, v, dv, ddv, zq, uq, udq, uddq);
       getDeterministicAdjoint(pc, delem, this, psi, zq, psiq);
 
-      delem->addAdjResProduct(elemIndex, time, wscale,
+      delem->addAdjResProduct(elemIndex, time, wt*scale,
                               psiq, Xpts, uq, udq, uddq,
                               dvLen, dfdxj);
 
     } // end quadrature
 
+    // need to be careful with nodewise placement of dvs
+    for (int n = 0; n < dvLen; n++){
+      dfdx[n] += dfdxj[n];
+    }
+    
     // should we store design variablewise or stochastic termwise
-
+    /*
     // Termwise storage of dfdxj in to dfdx
     for (int i = 0; i < dvLen; i++){
-      dfdx[j*nsterms+i] +=  dfdxj[i];
+    dfdx[j*nsterms+i] +=  dfdxj[i];
     }
-
+    
     // fix
     // Design variablewise storage of projected dfdx
     for (int i = 0; i < dvLen; i++){
       dfdx[i*nsterms+j] +=  dfdxj[i];
     }
-    
+    */
   } // nsterms
 
   // fix
   // how is 'dfdx' bigger for stochastic element? are we multiplying
   // the nsterms with num det design variables?
 
+  // free up heap
+  delete [] zq;
+  delete [] yq;
+  delete [] uq;
+  delete [] udq;
+  delete [] uddq;
+  delete [] psiq;
+  delete [] dfdxj;
 }

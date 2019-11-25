@@ -146,9 +146,10 @@ int main( int argc, char *argv[] ){
 
 
 
-  printf("Get mean derivative \n");
-  printf("Get variance and variance derivative \n");
-  printf("ks implementation \n");
+  printf("[c] Get mean derivative \n");
+  printf("[ ] Get variance \n");
+  printf("[ ] Get variance derivative \n");
+  printf("[ ] ks implementation \n");
   MPI_Finalize();  
   return 0;
 }
