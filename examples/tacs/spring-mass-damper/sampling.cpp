@@ -125,12 +125,13 @@ void deterministic_solve( MPI_Comm comm,
   smd->decref();
 }
 
-int main( int argc, char *argv[] ){
 
-  MPI_Init(&argc, &argv);
-  MPI_Comm comm = MPI_COMM_WORLD;
-  int rank; 
-  MPI_Comm_rank(comm, &rank); 
+void sampling_solve(MPI_Comm comm,
+                    TacsScalar mass, TacsScalar stiffness, 
+                    TacsScalar *fmvals,
+                    TacsScalar *fvvals,
+                    TacsScalar *fmeanderiv=NULL, 
+                    TacsScalar *fvarderiv=NULL){
 
   const int num_funcs = 2;
   const int num_dvars = 2;
@@ -162,15 +163,11 @@ int main( int argc, char *argv[] ){
   double *zq = new double[nvars];
   double *yq = new double[nvars];
   double wq;
- 
-  TacsScalar mass = 2.5;
-  TacsScalar damping = 0.2;
-  TacsScalar stiffness = 5.0;
 
   for (int q = 0; q < nqpoints; q++){
     wq = pc->quadrature(q, zq, yq);
     printf("deterministic solve %d at c = %e\n", q, yq[0]);
-    damping = yq[0];
+    TacsScalar damping = yq[0];
     TacsScalar params[3] = {mass, damping, stiffness};
     deterministic_solve(comm, params, f[q], dfdx[q]);
     printf("\t disp = %e energy = %e \n", f[q][0], f[q][1]);
@@ -186,6 +183,10 @@ int main( int argc, char *argv[] ){
   TacsScalar *fvar = new TacsScalar[num_funcs];  
   memset(fvar, 0, num_funcs*sizeof(TacsScalar));  
 
+  // E[F*F] used to compute variance
+  TacsScalar *f2mean = new TacsScalar[num_funcs];  
+  memset(f2mean, 0, num_funcs*sizeof(TacsScalar));
+
   // Derivative values
   TacsScalar **dfdxmean = new TacsScalar*[num_funcs];
   for (int j = 0; j < num_funcs; j++){
@@ -198,13 +199,22 @@ int main( int argc, char *argv[] ){
     memset(dfdxvar[j], 0, num_dvars*sizeof(TacsScalar));
   }
 
+  // Used for variance derivative
+  TacsScalar **E2ffprime = new TacsScalar*[num_funcs];
+  for (int j = 0; j < num_funcs; j++){
+    E2ffprime[j] = new TacsScalar[num_dvars];  
+    memset(E2ffprime[j], 0, num_dvars*sizeof(TacsScalar));
+  }
+
   // Compute mean of function and derivatives
   for (int q = 0; q < nqpoints; q++){
     wq = pc->quadrature(q, zq, yq);
     for (int i = 0; i < num_funcs; i++){
-      fmean[i] += wq*f[q][i];
+      fmean[i] += wq*f[q][i]; // E[F]
+      f2mean[i] += wq*f[q][i]*f[q][i]; // E[F*F]
       for (int j = 0; j < num_dvars; j++){
-        dfdxmean[i][j] += wq*dfdx[q][i][j];
+        dfdxmean[i][j] += wq*dfdx[q][i][j]; // E[dfdx]
+        E2ffprime[i][j] += wq*2.0*f[q][i]*dfdx[q][i][j]; // E[2*F*dfdx]
       }
     }
   }
@@ -212,41 +222,125 @@ int main( int argc, char *argv[] ){
   // Print output expectation
   for (int i = 0; i < num_funcs; i++){
     printf("E[f%d] = %e \n", i, fmean[i]);
+    fmvals[i] = fmean[i];
   }  
+  int idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("E[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
       printf("%e ", dfdxmean[i][j]);
+      if (fmeanderiv){ fmeanderiv[idx] = dfdxmean[i][j]; }
+      idx++;
     }
     printf("\n");
   }
     
-  // Compute variance of function and derivatives
-  for (int q = 0; q < nqpoints; q++){
-    wq = pc->quadrature(q, zq, yq);
-    for (int i = 0; i < num_funcs; i++){
-      fvar[i] += wq*(fmean[i]-f[q][i])*(fmean[i]-f[q][i]);      
-      for (int j = 0; j < num_dvars; j++){
-        dfdxvar[i][j] += wq*(dfdxmean[i][j]-dfdx[q][i][j])*(dfdxmean[i][j]-dfdx[q][i][j]);
-      }
+  // Compute variance of function
+  for (int i = 0; i < num_funcs; i++){      
+    fvar[i] = f2mean[i] - fmean[i]*fmean[i];
+  }    
+  // Compute variance derivatives
+  for (int i = 0; i < num_funcs; i++){
+    for (int j = 0; j < num_dvars; j++){
+      dfdxvar[i][j] = E2ffprime[i][j] - 2.0*fmean[i]*dfdxmean[i][j];
     }
   }
 
-  // Print output variance
+  // Print output variance and variance derivative
   for (int i = 0; i < num_funcs; i++){
     printf("V[f%d] = %e \n", i, fvar[i]);
+    fvvals[i] = fvar[i];
   }  
+  idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("V[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
-      printf("%e ", dfdxmean[i][j]);
+      printf("%e ", dfdxvar[i][j]);
+      if (fvarderiv){ fvarderiv[idx] = dfdxvar[i][j]; }
+      idx++;
     }
     printf("\n");
   }
 
   delete [] zq;
   delete [] yq;
-    
+   
+}
+
+int main( int argc, char *argv[] ){
+  MPI_Init(&argc, &argv);
+  MPI_Comm comm = MPI_COMM_WORLD;
+  int rank; 
+  MPI_Comm_rank(comm, &rank); 
+
+  TacsScalar mass = 2.5;
+  TacsScalar stiffness = 5.0;
+  TacsScalar *fvals;           
+  TacsScalar **dfdxvals;
+
+  // Function values
+  int num_funcs = 2; 
+  int num_dvs = 2;
+
+  TacsScalar *fmean = new TacsScalar[num_funcs];  
+  memset(fmean, 0, num_funcs*sizeof(TacsScalar));
+  TacsScalar *fvar = new TacsScalar[num_funcs];  
+  memset(fvar, 0, num_funcs*sizeof(TacsScalar));  
+
+  TacsScalar *fmeanderiv = new TacsScalar[num_funcs*num_dvs];  
+  memset(fmeanderiv, 0, num_dvs*num_funcs*sizeof(TacsScalar));
+  TacsScalar *fvarderiv = new TacsScalar[num_funcs*num_dvs];
+  memset(fvarderiv, 0, num_dvs*num_funcs*sizeof(TacsScalar));
+
+  double dh = 1.0e-8;
+
+  // FD Derivative of E[F] wrt mass
+  TacsScalar *fmeanmtmp = new TacsScalar[num_funcs];  
+  memset(fmeanmtmp, 0, num_funcs*sizeof(TacsScalar));
+  TacsScalar *fvarmtmp = new TacsScalar[num_funcs];  
+  memset(fvarmtmp, 0, num_funcs*sizeof(TacsScalar));  
+  sampling_solve(comm, mass + dh, stiffness, fmeanmtmp, fvarmtmp);
+
+  // FD Derivative of E[F] wrt stiffness
+  TacsScalar *fmeanktmp = new TacsScalar[num_funcs];  
+  memset(fmeanktmp, 0, num_funcs*sizeof(TacsScalar));
+  TacsScalar *fvarktmp = new TacsScalar[num_funcs];  
+  memset(fvarktmp, 0, num_funcs*sizeof(TacsScalar));  
+  sampling_solve(comm, mass, stiffness + dh, fmeanktmp, fvarktmp);
+  
+  // Baseline solution
+  sampling_solve(comm, mass, stiffness, fmean, fvar, fmeanderiv, fvarderiv);
+
+  printf("Derivative of Expectation\n");
+  int ctr = 0;
+  for (int i = 0; i < num_funcs; i++){
+    for (int j = 0; j < num_dvs; j++){
+      if (i == 0){
+        printf("%d fd = %e actual = %e error = %e \n", i, (fmeanmtmp[j] - fmean[j])/dh, fmeanderiv[i+j*num_dvs], 
+               ((fmeanmtmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+      } else { 
+        printf("%d fd = %e actual = %e error = %e \n", i, (fmeanktmp[j] - fmean[j])/dh, fmeanderiv[i+j*num_dvs], 
+               ((fmeanktmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+      } 
+      ctr++;
+    }
+  }
+  
+  printf("Derivative of Variance\n");
+  ctr = 0;
+  for (int i = 0; i < num_funcs; i++){
+    for (int j = 0; j < num_dvs; j++){
+      if (i == 0){
+        printf("%d fd = %e actual = %e error = %e \n", i, (fvarmtmp[j] - fvar[j])/dh, fvarderiv[i+j*num_dvs], 
+               ((fvarmtmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
+      } else { 
+        printf("%d fd = %e actual = %e error = %e \n", i, (fvarktmp[j] - fvar[j])/dh, fvarderiv[i+j*num_dvs], 
+               ((fvarktmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
+      } 
+      ctr++;
+    }
+  }
+
   MPI_Finalize();  
   return 0;
 }
