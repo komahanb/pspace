@@ -226,12 +226,10 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
 }
 
 void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *element,
-                                            double time, TacsScalar scale,
-                                            const TacsScalar Xpts[], const TacsScalar v[],
-                                            const TacsScalar dv[], const TacsScalar ddv[],
-                                            int dvLen, TacsScalar dfdx[] ){
-
-  /*
+                                               double time, TacsScalar scale,
+                                               const TacsScalar Xpts[], const TacsScalar v[],
+                                               const TacsScalar dv[], const TacsScalar ddv[],
+                                               int dvLen, TacsScalar dfdx[] ){
   int numDesVars = element->getNumDesignVariables();
 
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
@@ -331,6 +329,4 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
   delete [] uq;
   delete [] udq;
   delete [] uddq;
-  */
-  
 }
