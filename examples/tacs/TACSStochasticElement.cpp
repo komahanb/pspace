@@ -473,10 +473,10 @@ int TACSStochasticElement::evalPointQuantity( int elemIndex, int quantityType, d
   // Space to project each function in stochastic space and store
   // const  int ndquants = this->delem->getNumPointQuantities();
   const int ndquants = this->delem->evalPointQuantity(elemIndex,
-                                                     quantityType,
-                                                     time, N, pt, Xpts, 
-                                                     v, dv, ddv, 
-                                                     uq); // dummy 
+                                                      quantityType,
+                                                      time, N, pt, Xpts, 
+                                                      v, dv, ddv, 
+                                                      uq); // dummy 
   const int nsquants = nsterms*ndquants;
 
   TacsScalar *ftmpq  = new TacsScalar[ndquants];
@@ -552,14 +552,70 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
                                               const TacsScalar v[],
                                               const TacsScalar dv[],
                                               const TacsScalar ddv[],
-                                              int dvLen, 
+                                              int dvLen,
                                               TacsScalar dfdx[] ){
-  /*
-  getDeterministicStates(pc, delem, this, v, dv, ddv, zq, uq, udq, uddq);
-  getDeterministicAdjoint(pc, delem, this, psi, zq, psiq);
-  delem->addAdjResProduct(elemIndex, time, wq*scale,
-                          psiq, Xpts, uq, udq, uddq,
-                          dvLen, dfdxj);
-  */
-  // place dfdxj in stochastic dfdx
+  const int ndvpn   = delem->getVarsPerNode();
+  const int nsvpn   = this->getVarsPerNode();
+  const int nddof   = delem->getNumVariables();
+  const int nnodes  = this->getNumNodes();
+  const int nsterms = pc->getNumBasisTerms();
+
+  // Space for quadrature points and weights
+  const int nsparams = pc->getNumParameters();
+  double *zq = new double[nsparams];
+  double *yq = new double[nsparams];
+  double wq;
+  
+  // Create space for deterministic states at each quadrature node in y
+  TacsScalar *uq     = new TacsScalar[nddof];
+  TacsScalar *udq    = new TacsScalar[nddof];
+  TacsScalar *uddq   = new TacsScalar[nddof];
+
+  TacsScalar *dfdxj  = new TacsScalar[dvLen]; // check if this is one function at a time
+
+  const int nqpts = pc->getNumQuadraturePoints();
+  
+  for (int j = 0; j < nsterms; j++){
+
+    memset(dfdxj, 0, dvLen*sizeof(TacsScalar));
+
+    for (int q = 0; q < nqpts; q++){
+
+      // Get the quadrature points and weights
+      wq = pc->quadrature(q, zq, yq);
+
+      double wscale = pc->basis(j,zq)*wq*scale;
+
+      // Set the parameter values into the element
+      this->updateElement(delem, yq);
+
+      // Form deterministi states and adjoint vectors from global array
+      getDeterministicStates(pc, delem, this, v, dv, ddv, zq, uq, udq, uddq);
+      getDeterministicAdjoint(pc, delem, this, psi, zq, psiq);
+
+      delem->addAdjResProduct(elemIndex, time, wscale,
+                              psiq, Xpts, uq, udq, uddq,
+                              dvLen, dfdxj);
+
+    } // end quadrature
+
+    // should we store design variablewise or stochastic termwise
+
+    // Termwise storage of dfdxj in to dfdx
+    for (int i = 0; i < dvLen; i++){
+      dfdx[j*nsterms+i] +=  dfdxj[i];
+    }
+
+    // fix
+    // Design variablewise storage of projected dfdx
+    for (int i = 0; i < dvLen; i++){
+      dfdx[i*nsterms+j] +=  dfdxj[i];
+    }
+    
+  } // nsterms
+
+  // fix
+  // how is 'dfdx' bigger for stochastic element? are we multiplying
+  // the nsterms with num det design variables?
+
 }
