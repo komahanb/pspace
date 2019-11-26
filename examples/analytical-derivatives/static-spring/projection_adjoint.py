@@ -335,6 +335,7 @@ nddof = 1
 nterms = sspr.nterms
 
 dFdX = np.zeros((nsdof))
+e2ffprime = np.zeros((nsdof))
 for i in range(nterms):
 
     # Determine num quadrature point required for k-th
@@ -346,7 +347,8 @@ for i in range(nterms):
         )
     
     # Loop through quadrature points
-    fitmp = 0.0
+    dfdxi = 0.0
+    e2ffprimetmp = 0.0
     for q in pc.quadrature_map.keys():
         # Quadrature node and weight
         yq = pc.Y(q,'name')
@@ -366,20 +368,24 @@ for i in range(nterms):
                     
         # Evaluate function
         dfdxq = dspr.getAdjointDeriv(uq, lamq)
-
+        fq    = dspr.F(uq)
+        
         # Project the determinic initial conditions onto the
         # stochastic basis
         psiziw = wq*pc.evalOrthoNormalBasis(i,q)
-        fitmp += dfdxq*psiziw
+        dfdxi += dfdxq*psiziw
+        e2ffprimetmp += 2.0*fq*dfdxq*psiziw
 
     # Set into the force vector
-    dFdX[i] = fitmp
+    dFdX[i] = dfdxi
+    e2ffprime[i] = e2ffprimetmp
 
 fmeanprime = dFdX[0]
 fvarprime = np.sum(2*E[1:]*dFdX[1:])
+fvarprime2 = e2ffprime[0] - 2.0*fmean*fmeanprime
 fstdprime = fvarprime/(2.0*np.sqrt(fvar))
 
 print('stochastic galerkin adjoint')
 print("fmean : %15.14f" % fmean, "fmeanprime : %15.14f" % fmeanprime)
-print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f" % fvarprime)
+print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f %15.14f" % (fvarprime, fvarprime2))
 print("fstd  : %15.14f" % fstd , "fstd prime : %15.14f" % fstdprime)
