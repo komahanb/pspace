@@ -7,9 +7,10 @@
 class TACSStochasticVarianceFunction : public TACSFunction {
  public:
   TACSStochasticVarianceFunction( TACSAssembler *tacs,
-                          TACSFunction *dfunc, 
-                          ParameterContainer *pc,
-                          int quantityType);
+                                  TACSFunction *dfunc, 
+                                  ParameterContainer *pc,
+                                  int quantityType, 
+                                  int moment_type = 0);
   ~TACSStochasticVarianceFunction();
   /**
      Get the object name
@@ -180,14 +181,17 @@ class TACSStochasticVarianceFunction : public TACSFunction {
     int numNodes = element->getNumNodes();
     memset(dfdXpts, 0, 3*numNodes*sizeof(TacsScalar));
   }
-
+ 
+  TacsScalar getExpectation();
+  TacsScalar getVariance();
+  
  protected:  
   TACSFunction *dfunc;
   ParameterContainer *pc;
 
  private:
   // Store function values
-  TacsScalar fval;
+  TacsScalar *fvals;
 
   // The name of the function
   static const char *funcName;
@@ -203,6 +207,7 @@ class TACSStochasticVarianceFunction : public TACSFunction {
   TacsScalar maxValue;
 
   int quantityType;
+  int moment_type;
   
   // Set the type of constraint aggregate
   // KSDisplacementType ksType;
@@ -211,6 +216,9 @@ class TACSStochasticVarianceFunction : public TACSFunction {
   int maxNumNodes;
 
   MPI_Comm tacs_comm;
+
+  int nsterms;
+  int nsqpts;
 
   // Callback function to update the parameters (not sure if we need for functions)
   // void (*update)(TACSFunction*, TacsScalar*);

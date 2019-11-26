@@ -13,6 +13,7 @@
 
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
+#include "TACSStochasticVarianceFunction.h"
 
 void updateElement( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
@@ -98,9 +99,9 @@ int main( int argc, char *argv[] ){
   pe    = new TACSPotentialEnergy(tacs); 
   disp  = new TACSDisplacement(tacs); 
 
-  TACSFunction *spe, *sdisp;
-  spe   = new TACSStochasticFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION);
-  sdisp = new TACSStochasticFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION);
+  TACSStochasticVarianceFunction *spe, *sdisp;
+  spe   = new TACSStochasticVarianceFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, 1);
+  sdisp = new TACSStochasticVarianceFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, 1);
 
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = spe;
@@ -133,7 +134,9 @@ int main( int argc, char *argv[] ){
   for (int i = 0; i < num_funcs; i++){
     printf("projection E[f] = %e\n", ftmp[i]);
   }
-  
+  printf("potential energy E = %e V = %e \n", spe->getExpectation(), spe->getVariance());
+  printf("displacement     E = %e V = %e \n", sdisp->getExpectation(), sdisp->getVariance());
+
   bdf->getGradient(0, &dfdx1);
   TacsScalar *dfdx1vals;
   dfdx1->getArray(&dfdx1vals);
