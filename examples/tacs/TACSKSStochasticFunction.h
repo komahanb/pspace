@@ -13,6 +13,11 @@ class TACSKSStochasticFunction : public TACSFunction {
                             int moment_type,
                             double ksWeight );
   ~TACSKSStochasticFunction();
+
+  // New functions
+  TacsScalar getExpectation();
+  TacsScalar getVariance();
+
   /**
      Get the object name
   */

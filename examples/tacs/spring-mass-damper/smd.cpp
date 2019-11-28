@@ -163,6 +163,7 @@ void SMD::addAdjResProduct( int elemIndex, double time,
  
 }
 
+/*
 int main2( int argc, char *argv[] ){  
 
   // Initialize MPI
@@ -406,3 +407,5 @@ int main2( int argc, char *argv[] ){
   MPI_Finalize();
   return 0;
 }
+
+*/

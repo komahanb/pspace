@@ -41,16 +41,10 @@ void TACSKSFunction::elementWiseEval( EvaluationType evalType,
   const int numDisps = element->getNumVariables();
   const int numNodes = element->getNumNodes();
   
-  for ( int i = 0; i < numGauss; i++ ){
-      
-    // Get the Gauss points one at a time
-    double weight = 1.0; //element->getGaussWtsPts(i, pt);
-    double pt[3] = {0.0,0.0,0.0};
-    const int n = 1;
-    //  element->getShapeFunctions(pt, ctx->N);
-    
-    // Evaluate the dot-product with the displacements
-    //const double *N = ctx->N;
+  for ( int i = 0; i < numGauss; i++ ){      
+    double weight       = 1.0; //element->getGaussWtsPts(i, pt);
+    double pt[3]        = {0.0,0.0,0.0};
+    const int n         = 1;
     TacsScalar quantity = 0.0;
     element->evalPointQuantity(elemIndex,
                                this->quantityType,
@@ -58,17 +52,12 @@ void TACSKSFunction::elementWiseEval( EvaluationType evalType,
                                Xpts, v, dv, ddv,
                                &quantity);        
     TacsScalar value = quantity;
-    //TacsScalar value = quantity;
     
     if (evalType == TACSFunction::INITIALIZE){      
-      // Reset maxvalue if needed
       if (TacsRealPart(value) > TacsRealPart(maxValue)){
         maxValue = value;
-      }      
+      }
     } else {
-      // Add up the contribution from the quadrature
-      //element->getDetJacobian(pt, Xpts);
-      TacsScalar h = 1.0;
       ksSum += tscale*exp(ksWeight*(value - maxValue));
     }      
   }
