@@ -1,56 +1,120 @@
-#include "TACSKSStochasticFunction.h"
 #include "TACSAssembler.h"
-#include "smd.h"
+#include "TACSKSStochasticFunction.h"
 #include "TACSStochasticElement.h"
-TACSKSStochasticFunction::TACSKSStochasticFunction( TACSFunction *dfunc, 
+
+namespace {
+
+  void getDeterministicAdjoint( ParameterContainer *pc, 
+                                TACSElement *delem,
+                                TACSElement *selem, 
+                                const TacsScalar v[],
+                                double *zq,
+                                TacsScalar *uq
+                                ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+    
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+        }
+      }
+    }
+  } 
+
+  void getDeterministicStates( ParameterContainer *pc, 
+                               TACSElement *delem,
+                               TACSElement *selem, 
+                               const TacsScalar v[],
+                               const TacsScalar dv[],
+                               const TacsScalar ddv[], 
+                               double *zq,
+                               TacsScalar *uq,
+                               TacsScalar *udq,
+                               TacsScalar *uddq
+                               ){
+    int ndvpn   = delem->getVarsPerNode();
+    int nsvpn   = selem->getVarsPerNode();
+    int nddof   = delem->getNumVariables();
+    int nsdof   = selem->getNumVariables();
+    int nsterms = pc->getNumBasisTerms();
+    int nnodes  = selem->getNumNodes();
+
+    memset(uq  , 0, nddof*sizeof(TacsScalar));
+    memset(udq , 0, nddof*sizeof(TacsScalar));
+    memset(uddq, 0, nddof*sizeof(TacsScalar));
+
+    // Evaluate the basis at quadrature node and form the state
+    // vectors
+    for (int n = 0; n < nnodes; n++){
+      for (int k = 0; k < nsterms; k++){
+        double psikz = pc->basis(k,zq);
+        int lptr = n*ndvpn;
+        int gptr = n*nsvpn + k*ndvpn;
+        for (int d = 0; d < ndvpn; d++){        
+          uq[lptr+d] += v[gptr+d]*psikz;
+          udq[lptr+d] += dv[gptr+d]*psikz;
+          uddq[lptr+d] += ddv[gptr+d]*psikz;
+        }
+      }
+    }
+  } 
+}
+
+TACSKSStochasticFunction::TACSKSStochasticFunction( TACSAssembler *tacs,
+                                                    TACSFunction *dfunc,
+                                                    ParameterContainer *pc,
                                                     int quantityType,
-                                                    double ksWeight,
-                                                    ParameterContainer *pc, 
-                                                    int moment_type ) 
+                                                    int moment_type,
+                                                    double ksWeight )
   : TACSFunction(dfunc->getAssembler(), 
                  dfunc->getDomainType(), 
                  dfunc->getStageType(),
                  0)
 { 
-  // Store pointers 
-  this->quantityType = quantityType;
-  this->ksWeight = ksWeight;
+  this->tacs_comm = tacs->getMPIComm();
+  this->dfunc = dfunc;
+  this->dfunc->incref();
   this->pc = pc;
-  this->moment_type = moment_type; // mean or std. deviation
-
-  // Memory allocation stuff
-  this->tacs_comm = dfunc->getAssembler()->getMPIComm();
-
+  this->quantityType = quantityType;
+  this->moment_type = moment_type;
+  this->ksWeight = ksWeight;
   this->nsqpts  = pc->getNumQuadraturePoints();
   this->nsterms = pc->getNumBasisTerms();
-
-  this->ksSum = new TacsScalar[nsterms*nsqpts];
-  memset(this->ksSum, 0 , nsterms*nsqpts*sizeof(TacsScalar*));
-
+  this->fvals    = new TacsScalar[nsterms*nsqpts];
+  this->ksSum    = new TacsScalar[nsterms*nsqpts];
   this->maxValue = new TacsScalar[nsterms*nsqpts];
-  memset(this->maxValue, 0 , nsterms*nsqpts*sizeof(TacsScalar*));
-
-  this->fvals = new TacsScalar[nsterms*nsqpts];
-  memset(this->fvals, 0 , nsterms*nsqpts*sizeof(TacsScalar*));
 }
 
-TACSKSStochasticFunction::~TACSKSStochasticFunction(){
+TACSKSStochasticFunction::~TACSKSStochasticFunction()
+{
   delete [] this->ksSum;
   delete [] this->maxValue;
   delete [] this->fvals;
+  delete [] this->ksSum;
+  delete [] this->maxValue;
 }
 
 void TACSKSStochasticFunction::initEvaluation( EvaluationType ftype )
 {
+  memset(this->fvals, 0, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
   if (ftype == TACSFunction::INITIALIZE){
-    for ( int q = 0; q < nsterms*nsqpts; q++){
-      maxValue[q] = -1e20;
-    }
+    memset(this->maxValue, -1e20, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
   }
   else if (ftype == TACSFunction::INTEGRATE){
-    for ( int q = 0; q < nsterms*nsqpts; q++){
-      ksSum[q] = 0.0;
-    }
+    memset(this->ksSum, 0.0, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
   }
 }
 
@@ -64,19 +128,17 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
                                                 const TacsScalar dv[],
                                                 const TacsScalar ddv[] )
 {
+  printf("TACSStochasticVarianceFunction::elementWiseEval %d\n", elemIndex);
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
   };
   
   TACSElement *delem = selem->getDeterministicElement();
-
   const int nqpts    = pc->getNumQuadraturePoints();
   const int nsparams = pc->getNumParameters();
-
   const int ndvpn    = delem->getVarsPerNode();
   const int nsvpn    = selem->getVarsPerNode();
-
   const int nddof    = delem->getNumVariables();
   const int nnodes   = selem->getNumNodes();  
   
@@ -99,33 +161,28 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
       wq = pc->quadrature(q, zq, yq);
       double wt = pc->basis(j,zq)*wq;
       double scale = tscale*wt;
-   
+
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
 
-      // reset the states and residuals
-      memset(uq, 0, nddof*sizeof(TacsScalar));
-      memset(udq, 0, nddof*sizeof(TacsScalar));
-      memset(uddq, 0, nddof*sizeof(TacsScalar));
-    
-      // Evaluate the basis at quadrature node and form the state
-      // vectors
-      for (int n = 0; n < nnodes; n++){
-        for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
-          int lptr = n*ndvpn;
-          int gptr = n*nsvpn + k*ndvpn;
-          for (int d = 0; d < ndvpn; d++){        
-            uq[lptr+d] += v[gptr+d]*psikz;
-            udq[lptr+d] += dv[gptr+d]*psikz;
-            uddq[lptr+d] += ddv[gptr+d]*psikz;
-          }
-        }
-      }
+      // Form the state vectors
+      getDeterministicStates(pc, delem, selem, 
+                             v, dv, ddv, zq, 
+                             uq, udq, uddq);
 
-      // Find out maxValue[q] if INITIALIZE
-      // Find out ksSum[q] if INTEGRATE
-
+      // { 
+      //   // spatial integration
+      //   double pt[3] = {0.0,0.0,0.0};
+      //   int N = 1;
+      //   TacsScalar value = 0.0;
+      //   int count = delem->evalPointQuantity(elemIndex, 
+      //                                        this->quantityType,
+      //                                        time, N, pt,
+      //                                        Xpts, uq, udq, uddq,
+      //                                        &value);
+      //   fvals[j*nsterms+q] += scale*value;
+      // }
+ 
       // Get the number of quadrature points for this delem
       const int numGauss = 1; //delem->getNumGaussPts();
       const int numDisps = delem->getNumVariables();
@@ -136,18 +193,18 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
         // Get the Gauss points one at a time
         double weight = 1.0; //delem->getGaussWtsPts(i, pt);
         double pt[3] = {0.0,0.0,0.0};
-        const int n = 1;
+        const int N = 1;
         //  delem->getShapeFunctions(pt, ctx->N);
-    
+   
         // Evaluate the dot-product with the displacements
-        //const double *N = ctx->N;
+        // const double *N = ctx->N;
 
         TacsScalar value = 0.0;
         delem->evalPointQuantity(elemIndex,
                                  this->quantityType,
-                                 time, n, pt,
+                                 time, N, pt,
                                  Xpts, uq, udq, uddq,
-                                 &value);        
+                                 &value);
 
         if (evalType == TACSFunction::INITIALIZE){      
           // Reset maxvalue if needed

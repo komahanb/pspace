@@ -306,8 +306,8 @@ int main( int argc, char *argv[] ){
       disp  = new TACSKSFunction(assembler, TACS_DISPLACEMENT_FUNCTION, ksweight);
 
       if (!sampling){
-        spe   = new TACSKSStochasticFunction(pe, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight, pc, 0);
-        sdisp = new TACSKSStochasticFunction(disp, TACS_DISPLACEMENT_FUNCTION, ksweight, pc, 0);
+        spe   = new TACSKSStochasticFunction(assembler, pe,  pc, TACS_POTENTIAL_ENERGY_FUNCTION, 0, ksweight);
+        sdisp = new TACSKSStochasticFunction(assembler, disp, pc, TACS_DISPLACEMENT_FUNCTION, 0, ksweight);
       }
 
     } else {
