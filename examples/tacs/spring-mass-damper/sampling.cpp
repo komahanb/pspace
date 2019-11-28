@@ -7,6 +7,7 @@
 #include "TACSFunction.h"
 #include "TACSPotentialEnergy.h"
 #include "TACSDisplacement.h"
+#include "TACSKSFunction.h"
 
 #include "ParameterContainer.h"
 #include "ParameterFactory.h"
@@ -68,12 +69,18 @@ void deterministic_solve( MPI_Comm comm,
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  pe    = new TACSPotentialEnergy(tacs); pe->incref();
-  disp  = new TACSDisplacement(tacs); disp->incref();
+  // pe    = new TACSPotentialEnergy(tacs); pe->incref();
+  // disp  = new TACSDisplacement(tacs); disp->incref();
 
+  double ksweight = 10000.0;
+  pe    = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+  pe->incref();
+  disp  = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
+  disp->incref();
+  
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = pe;
-  funcs[1] = disp;    
+  funcs[1] = disp;
 
   TACSBVec *dfdx1 = tacs->createDesignVec();  dfdx1->incref();
   TACSBVec *dfdx2 = tacs->createDesignVec();  dfdx2->incref();
@@ -138,7 +145,7 @@ void sampling_solve(MPI_Comm comm,
 
   int pnqpts[1] = {10};
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *c = factory->createNormalParameter(0.2, 0.1, 0);  
+  AbstractParameter *c = factory->createNormalParameter(0.2, 0.1, 4);  
 
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(c);

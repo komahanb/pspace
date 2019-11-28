@@ -93,7 +93,7 @@ TACSKSStochasticFunction::TACSKSStochasticFunction( TACSAssembler *tacs,
   this->ksWeight = ksWeight;
   this->nsqpts  = pc->getNumQuadraturePoints();
   this->nsterms = pc->getNumBasisTerms();
-  this->fvals    = new TacsScalar[nsterms*nsqpts];
+  this->fvals    = new TacsScalar[nsterms];
   this->ksSum    = new TacsScalar[nsterms*nsqpts];
   this->maxValue = new TacsScalar[nsterms*nsqpts];
 }
@@ -109,12 +109,15 @@ TACSKSStochasticFunction::~TACSKSStochasticFunction()
 
 void TACSKSStochasticFunction::initEvaluation( EvaluationType ftype )
 {
-  memset(this->fvals, 0, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
   if (ftype == TACSFunction::INITIALIZE){
-    memset(this->maxValue, -1e20, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
+    for (int k = 0; k < nsterms*nsqpts; k++){
+      this->maxValue[k] = -1.0e20;
+    }     
   }
   else if (ftype == TACSFunction::INTEGRATE){
-    memset(this->ksSum, 0.0, this->nsterms*this->nsqpts*sizeof(TacsScalar*));
+    for (int k = 0; k < nsterms*nsqpts; k++){
+      this->ksSum[k] = 0.0;
+    }     
   }
 }
 
@@ -159,8 +162,6 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
-      double scale = tscale*wt;
 
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -169,19 +170,6 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
       getDeterministicStates(pc, delem, selem, 
                              v, dv, ddv, zq, 
                              uq, udq, uddq);
-
-      // { 
-      //   // spatial integration
-      //   double pt[3] = {0.0,0.0,0.0};
-      //   int N = 1;
-      //   TacsScalar value = 0.0;
-      //   int count = delem->evalPointQuantity(elemIndex, 
-      //                                        this->quantityType,
-      //                                        time, N, pt,
-      //                                        Xpts, uq, udq, uddq,
-      //                                        &value);
-      //   fvals[j*nsterms+q] += scale*value;
-      // }
  
       // Get the number of quadrature points for this delem
       const int numGauss = 1; //delem->getNumGaussPts();
@@ -215,7 +203,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
           // Add up the contribution from the quadrature
           // delem->getDetJacobian(pt, Xpts);
           TacsScalar h = 1.0;
-          ksSum[j*nsterms+q] += scale*exp(ksWeight*(value - maxValue[q]));
+          ksSum[j*nsterms+q] += tscale*exp(ksWeight*(value - maxValue[q]));
         }      
 
       } // spatial integration
@@ -230,13 +218,11 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
   delete [] uq;
   delete [] udq;
   delete [] uddq;
-
 }
 
 void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
 {
   if (evalType == TACSFunction::INITIALIZE){
-    // Distribute the values of the KS function computed on this domain
     TacsScalar temp;
     for (int q = 0; q < nsterms*nsqpts; q++){
       temp = maxValue[q];
@@ -248,6 +234,20 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
       temp = ksSum[q];
       MPI_Allreduce(&temp, &ksSum[q], 1, TACS_MPI_TYPE, MPI_SUM, this->tacs_comm);
     }
+    // Finish up projection
+    const int nsparams = pc->getNumParameters();
+    double *zq = new double[nsparams];
+    double *yq = new double[nsparams];
+    double wq;
+    memset(this->fvals, 0, this->nsterms*sizeof(TacsScalar*));
+    for (int k = 0; k < nsterms; k++){
+      for (int q = 0; q < nsqpts; q++){
+        double wq = pc->quadrature(q, zq, yq);
+        fvals[k] += wq*pc->basis(k,zq)*(maxValue[q] + log(ksSum[q])/ksWeight);
+      }
+    }
+    delete [] zq;
+    delete [] yq;    
   }
 }
 
@@ -255,33 +255,22 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
    Get the value of the function
 */
 TacsScalar TACSKSStochasticFunction::getFunctionValue(){
-  printf("Getting functionvalue \n");
+  if (moment_type == 0){
+    return getExpectation();
+  } else {
+    return getVariance();
+  }  
+}
 
-
-  const int nsparams = pc->getNumParameters();
-
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
-
-  // Finish up the projection
-  for (int k = 0; k < nsterms; k++){
-    for (int q = 0; q < nsqpts; q++){
-      double wq = pc->quadrature(q, zq, yq);
-      fvals[k] += wq*pc->basis(k,zq)*(maxValue[q] + log(ksSum[q])/ksWeight);
-    }
-  }
-
-  // Compute moments
-  TacsScalar fmean = fvals[0];
+TacsScalar TACSKSStochasticFunction::getExpectation(){
+  return fvals[0];
+}
+ 
+TacsScalar TACSKSStochasticFunction::getVariance(){
   TacsScalar fvar = 0.0;
   for (int k = 1; k < nsterms; k++){
     fvar += fvals[k]*fvals[k];
   }
-
-  delete [] zq;
-  delete [] yq;
-
   return fvar;
 }
 
