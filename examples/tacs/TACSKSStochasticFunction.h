@@ -6,11 +6,12 @@
 
 class TACSKSStochasticFunction : public TACSFunction {
  public:
-  TACSKSStochasticFunction( TACSFunction *dfunc, 
+  TACSKSStochasticFunction( TACSAssembler *tacs,
+                            TACSFunction *dfunc,
+                            ParameterContainer *pc,
                             int quantityType,
-                            double ksWeight,
-                            ParameterContainer *pc,  
-                            int moment_type = 0 );
+                            int moment_type,
+                            double ksWeight );
   ~TACSKSStochasticFunction();
   /**
      Get the object name
