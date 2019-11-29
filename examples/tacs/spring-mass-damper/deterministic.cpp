@@ -5,6 +5,8 @@
 #include "TACSIntegrator.h"
 
 #include "TACSFunction.h"
+#include "TACSKSFunction.h"
+
 #include "TACSPotentialEnergy.h"
 #include "TACSDisplacement.h"
 
@@ -65,13 +67,23 @@ void deterministic_solve( MPI_Comm comm,
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  pe    = new TACSPotentialEnergy(tacs); pe->incref();
-  disp  = new TACSDisplacement(tacs); disp->incref();
-
+  int ks = 0;
+  if (!ks){
+    pe = new TACSPotentialEnergy(tacs);
+    disp = new TACSDisplacement(tacs);
+  } else {
+    double ksweight = 50.0;
+    pe = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+    disp = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
+  }
+  disp->incref();
+  pe->incref();
+  
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = pe;
   funcs[1] = disp;    
 
+  // KS functionals  
   TACSBVec *dfdx1 = tacs->createDesignVec();  dfdx1->incref();
   TACSBVec *dfdx2 = tacs->createDesignVec();  dfdx2->incref();
   
@@ -88,7 +100,10 @@ void deterministic_solve( MPI_Comm comm,
   bdf->setAbsTol(1e-12);
   bdf->setPrintLevel(0);
   bdf->setFunctions(num_funcs, funcs);
+
   bdf->integrate();  
+  bdf->evalFunctions(fvals);
+
   bdf->integrateAdjoint();
   
   bdf->evalFunctions(fvals);
@@ -148,7 +163,7 @@ int main( int argc, char *argv[] ){
 
   // Finite difference derivative check
   TacsScalar *fhvals = new TacsScalar[num_funcs]; 
-  const TacsScalar dh = 1.0e-8;
+  const TacsScalar dh = 1.0e-10;
   
   TacsScalar dh1_parameters[3] = {mass+dh, damping, stiffness};
   deterministic_solve(comm, dh1_parameters, fhvals, dfdxvals);
