@@ -170,44 +170,47 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
       getDeterministicStates(pc, delem, selem, 
                              v, dv, ddv, zq, 
                              uq, udq, uddq);
- 
-      // Get the number of quadrature points for this delem
-      const int numGauss = 1; //delem->getNumGaussPts();
-      const int numDisps = delem->getNumVariables();
-      const int numNodes = delem->getNumNodes();
 
-      for ( int i = 0; i < numGauss; i++ ){
+      {
+        // Get the number of quadrature points for this delem
+        const int numGauss = 1; //delem->getNumGaussPts();
+        const int numDisps = delem->getNumVariables();
+        const int numNodes = delem->getNumNodes();
+
+        for ( int i = 0; i < numGauss; i++ ){
       
-        // Get the Gauss points one at a time
-        double weight = 1.0; //delem->getGaussWtsPts(i, pt);
-        double pt[3] = {0.0,0.0,0.0};
-        const int N = 1;
-        //  delem->getShapeFunctions(pt, ctx->N);
+          // Get the Gauss points one at a time
+          double weight = 1.0; //delem->getGaussWtsPts(i, pt);
+          double pt[3] = {0.0,0.0,0.0};
+          const int N = 1;
+          //  delem->getShapeFunctions(pt, ctx->N);
    
-        // Evaluate the dot-product with the displacements
-        // const double *N = ctx->N;
+          // Evaluate the dot-product with the displacements
+          // const double *N = ctx->N;
 
-        TacsScalar value = 0.0;
-        delem->evalPointQuantity(elemIndex,
-                                 this->quantityType,
-                                 time, N, pt,
-                                 Xpts, uq, udq, uddq,
-                                 &value);
+          TacsScalar value = 0.0;
+          delem->evalPointQuantity(elemIndex,
+                                   this->quantityType,
+                                   time, N, pt,
+                                   Xpts, uq, udq, uddq,
+                                   &value);
 
-        if (evalType == TACSFunction::INITIALIZE){      
-          // Reset maxvalue if needed
-          if (TacsRealPart(value) > TacsRealPart(maxValue[q])){
-            maxValue[j*nsterms+q] = value;
+          if (evalType == TACSFunction::INITIALIZE){      
+            // Reset maxvalue if needed
+            if (TacsRealPart(value) > TacsRealPart(maxValue[q])){
+              maxValue[j*nsterms+q] = value;
+            }      
+          } else {
+            // Add up the contribution from the quadrature
+            // delem->getDetJacobian(pt, Xpts);
+            TacsScalar h = 1.0;
+            ksSum[j*nsterms+q] += tscale*exp(ksWeight*(value - maxValue[q]));
           }      
-        } else {
-          // Add up the contribution from the quadrature
-          // delem->getDetJacobian(pt, Xpts);
-          TacsScalar h = 1.0;
-          ksSum[j*nsterms+q] += tscale*exp(ksWeight*(value - maxValue[q]));
-        }      
 
-      } // spatial integration
+        } // spatial integration
 
+      }
+      
     } // end yloop
 
   } // nsterms

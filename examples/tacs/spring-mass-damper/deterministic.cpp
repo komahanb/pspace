@@ -67,8 +67,8 @@ void deterministic_solve( MPI_Comm comm,
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  int ks = 0;
-  if (!ks){
+  int ks = 1;
+  if (!ks) {
     pe = new TACSPotentialEnergy(tacs);
     disp = new TACSDisplacement(tacs);
   } else {
@@ -105,8 +105,6 @@ void deterministic_solve( MPI_Comm comm,
   bdf->evalFunctions(fvals);
 
   bdf->integrateAdjoint();
-  
-  bdf->evalFunctions(fvals);
   bdf->getGradient(0, &dfdx1);
   bdf->getGradient(1, &dfdx2);
 

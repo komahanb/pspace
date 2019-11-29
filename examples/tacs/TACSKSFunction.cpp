@@ -85,3 +85,89 @@ void TACSKSFunction::finalEvaluation( EvaluationType evalType )
 TacsScalar TACSKSFunction::getFunctionValue() {
   return maxValue + log(ksSum)/ksWeight;
 }
+
+void TACSKSFunction::getElementSVSens( int elemIndex, TACSElement *element,
+                                       double time,
+                                       TacsScalar alpha, TacsScalar beta, TacsScalar gamma,
+                                       const TacsScalar Xpts[],
+                                       const TacsScalar v[],
+                                       const TacsScalar dv[],
+                                       const TacsScalar ddv[],
+                                       TacsScalar dfdu[] ){
+  if (fabs(ksSum) < 1.0e-15){
+    printf("Error: Evaluate the functions before derivatives \n");
+  }
+
+  // Get the number of quadrature points for this element
+  const int numGauss = 1; //element->getNumGaussPts();
+  const int numDisps = element->getNumVariables();
+  const int numNodes = element->getNumNodes();
+  
+  memset(dfdu, 0, numDisps*sizeof(TacsScalar));
+  
+  for ( int i = 0; i < numGauss; i++ ){      
+    double weight       = 1.0; //element->getGaussWtsPts(i, pt);
+    double pt[3]        = {0.0,0.0,0.0};
+    const int n         = 1;
+
+    TacsScalar quantity = 0.0;
+    element->evalPointQuantity(elemIndex,
+                               this->quantityType,
+                               time, n, pt,
+                               Xpts, v, dv, ddv,
+                               &quantity);        
+    
+    TacsScalar ksPtWeight = 0.0;
+    ksPtWeight = exp(ksWeight*(quantity - maxValue))/ksSum;
+    // ksPtWeight *= weight*detJ;
+
+    TacsScalar dfdq = ksPtWeight;
+    element->addPointQuantitySVSens(elemIndex,
+                                    this->quantityType,
+                                    time,
+                                    alpha*ksPtWeight, beta*ksPtWeight, gamma*ksPtWeight,
+                                    n, pt, Xpts, v, dv, ddv,
+                                    &dfdq, dfdu);
+  }
+}
+
+void TACSKSFunction::addElementDVSens( int elemIndex, TACSElement *element,
+                                       double time, TacsScalar scale,
+                                       const TacsScalar Xpts[], const TacsScalar v[],
+                                       const TacsScalar dv[], const TacsScalar ddv[],
+                                       int dvLen, TacsScalar dfdx[] ){
+  if (fabs(ksSum) < 1.0e-15){
+    printf("Error: Evaluate the functions before derivatives \n");
+  }
+
+  // Get the number of quadrature points for this element
+  const int numGauss = 1; //element->getNumGaussPts();
+  const int numDisps = element->getNumVariables();
+  const int numNodes = element->getNumNodes();
+  
+  for ( int i = 0; i < numGauss; i++ ){      
+    double weight       = 1.0; //element->getGaussWtsPts(i, pt);
+    double pt[3]        = {0.0,0.0,0.0};
+    const int n         = 1;
+
+    TacsScalar quantity = 0.0;
+    element->evalPointQuantity(elemIndex,
+                               this->quantityType,
+                               time, n, pt,
+                               Xpts, v, dv, ddv,
+                               &quantity);        
+
+    TacsScalar ksPtWeight = 0.0;
+    ksPtWeight = exp(ksWeight*(quantity - maxValue))/ksSum;
+    // ksPtWeight *= weight*detJ;
+
+    TacsScalar dfdq = ksPtWeight;
+    element->addPointQuantityDVSens(elemIndex,
+                                    this->quantityType,
+                                    time,
+                                    scale*ksPtWeight, n, pt,
+                                    Xpts, v, dv, ddv,
+                                    &dfdq, dvLen, dfdx);
+  }
+}
+

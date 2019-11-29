@@ -122,10 +122,7 @@ class TACSKSFunction : public TACSFunction {
                                  const TacsScalar vars[],
                                  const TacsScalar dvars[],
                                  const TacsScalar ddvars[],
-                                 TacsScalar dfdu[] ){
-    int numVars = element->getNumVariables();
-    memset(dfdu, 0, numVars*sizeof(TacsScalar));
-  }
+                                 TacsScalar dfdu[] );
 
   /**
      Add the derivative of the function w.r.t. the design variables
@@ -149,7 +146,7 @@ class TACSKSFunction : public TACSFunction {
                                  const TacsScalar dvars[],
                                  const TacsScalar ddvars[],
                                  int dvLen,
-                                 TacsScalar dfdx[] ){}
+                                 TacsScalar dfdx[] );
 
   /**
      Evaluate the derivative of the function w.r.t. the node locations
