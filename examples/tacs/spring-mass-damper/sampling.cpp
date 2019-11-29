@@ -69,13 +69,16 @@ void deterministic_solve( MPI_Comm comm,
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  // pe    = new TACSPotentialEnergy(tacs); pe->incref();
-  // disp  = new TACSDisplacement(tacs); disp->incref();
-
-  double ksweight = 10000.0;
-  pe    = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+  int ks = 0;
+  if (!ks) {
+    pe = new TACSPotentialEnergy(tacs);
+    disp = new TACSDisplacement(tacs);
+  } else {
+    double ksweight = 10000.0;
+    pe = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+    disp = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
+  }
   pe->incref();
-  disp  = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
   disp->incref();
   
   TACSFunction **funcs = new TACSFunction*[num_funcs];
@@ -99,9 +102,9 @@ void deterministic_solve( MPI_Comm comm,
   bdf->setPrintLevel(0);
   bdf->setFunctions(num_funcs, funcs);
   bdf->integrate();  
-  bdf->integrateAdjoint();
-  
   bdf->evalFunctions(fvals);
+
+  bdf->integrateAdjoint();
   bdf->getGradient(0, &dfdx1);
   bdf->getGradient(1, &dfdx2);
 

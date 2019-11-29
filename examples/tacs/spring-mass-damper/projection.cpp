@@ -96,26 +96,32 @@ int main( int argc, char *argv[] ){
 
   const int num_dvars = 2;
   const int num_funcs = 2;
-
-  TACSFunction *pe, *disp;
-  // pe    = new TACSPotentialEnergy(tacs); 
-  // disp  = new TACSDisplacement(tacs); 
+  const int moment_type = 0;
+  const int ks = 1;
   double ksweight = 10000.0;
-  pe    = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
-  pe->incref();
-  disp  = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
-  disp->incref();
+    
+  TACSFunction *pe, *disp;
+  if (!ks){
+    // Deterministic Integral
+    pe = new TACSPotentialEnergy(tacs);
+    disp = new TACSDisplacement(tacs);
+  } else {
+    // Deterministic KS
+    pe = new TACSKSFunction(tacs, TACS_POTENTIAL_ENERGY_FUNCTION, ksweight);
+    disp = new TACSKSFunction(tacs, TACS_DISPLACEMENT_FUNCTION, ksweight);
+  }
 
-  TACSKSStochasticFunction *spe, *sdisp;
-  // spe   = new TACSStochasticVarianceFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, 1);
-  // sdisp = new TACSStochasticVarianceFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, 1);
+  TACSFunction *spe, *sdisp;
+  if (!ks){
+    // Stochastic Integral
+    spe = new TACSStochasticVarianceFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type);
+    sdisp = new TACSStochasticVarianceFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type);
+  } else {
+    // Stochastic KS
+    spe = new TACSKSStochasticFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type, ksweight);
+    sdisp = new TACSKSStochasticFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type, ksweight);
+  }
 
-  int moment_type = 0;
-  spe = new TACSKSStochasticFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION,
-                                     moment_type, ksweight);
-  sdisp = new TACSKSStochasticFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION,
-                                       moment_type, ksweight);
-  
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = spe;
   funcs[1] = sdisp;    
@@ -147,8 +153,20 @@ int main( int argc, char *argv[] ){
   for (int i = 0; i < num_funcs; i++){
     printf("projection E[f] = %e\n", ftmp[i]);
   }
-  printf("potential energy E = %e V = %e \n", spe->getExpectation(), spe->getVariance());
-  printf("displacement     E = %e V = %e \n", sdisp->getExpectation(), sdisp->getVariance());
+
+  if (!ks){
+    TACSStochasticVarianceFunction *sspe, *ssdisp;
+    sspe = dynamic_cast<TACSStochasticVarianceFunction*>(spe);
+    ssdisp = dynamic_cast<TACSStochasticVarianceFunction*>(sdisp);
+    printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
+    printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  } else {
+    TACSKSStochasticFunction *sspe, *ssdisp;
+    sspe = dynamic_cast<TACSKSStochasticFunction*>(spe);
+    ssdisp = dynamic_cast<TACSKSStochasticFunction*>(sdisp);
+    printf("ks potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
+    printf("ks displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  }
 
   bdf->getGradient(0, &dfdx1);
   TacsScalar *dfdx1vals;
@@ -159,8 +177,6 @@ int main( int argc, char *argv[] ){
   TacsScalar *dfdx2vals;
   dfdx2->getArray(&dfdx2vals);
   printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
-
-
 
   printf("[c] Get mean derivative \n");
   printf("[ ] Get variance \n");
