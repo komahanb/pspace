@@ -69,7 +69,7 @@ void deterministic_solve( MPI_Comm comm,
   
   const int num_funcs = 2;
   TACSFunction *pe, *disp;
-  int ks = 0;
+  int ks = 1;
   if (!ks) {
     pe = new TACSPotentialEnergy(tacs);
     disp = new TACSDisplacement(tacs);
