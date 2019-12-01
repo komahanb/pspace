@@ -15,7 +15,9 @@
 #include "TACSStochasticElement.h"
 #include "TACSStochasticFunction.h"
 #include "TACSKSStochasticFunction.h"
-#include "TACSStochasticVarianceFunction.h"
+
+#include "TACSStochasticFMeanFunction.h"
+#include "TACSStochasticFFMeanFunction.h"
 
 void updateElement( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
@@ -95,9 +97,9 @@ int main( int argc, char *argv[] ){
   //---------------------------------------------------------------//
 
   const int num_dvars = 2;
-  const int num_funcs = 2;
+  const int num_funcs = 4;
   const int moment_type = 0;
-  const int ks = 1;
+  const int ks = 0;
   double ksweight = 10000.0;
     
   TACSFunction *pe, *disp;
@@ -112,10 +114,16 @@ int main( int argc, char *argv[] ){
   }
 
   TACSFunction *spe, *sdisp;
+  TACSFunction *spe2, *sdisp2;
   if (!ks){
+
     // Stochastic Integral
-    spe = new TACSStochasticVarianceFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type);
-    sdisp = new TACSStochasticVarianceFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type);
+    spe = new TACSStochasticFMeanFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type);
+    sdisp = new TACSStochasticFMeanFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, 1);
+
+    spe2 = new TACSStochasticFFMeanFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type);
+    sdisp2 = new TACSStochasticFFMeanFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, 1);
+
   } else {
     // Stochastic KS
     spe = new TACSKSStochasticFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type, ksweight);
@@ -124,10 +132,14 @@ int main( int argc, char *argv[] ){
 
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = spe;
-  funcs[1] = sdisp;    
+  funcs[1] = spe2;  
+  funcs[2] = sdisp;
+  funcs[3] = sdisp2;    
 
   TACSBVec *dfdx1 = tacs->createDesignVec();
   TACSBVec *dfdx2 = tacs->createDesignVec();
+  TACSBVec *dfdx3 = tacs->createDesignVec();  
+  TACSBVec *dfdx4 = tacs->createDesignVec();
 
   TacsScalar *ftmp = new TacsScalar[ num_funcs ];
   memset(ftmp, 0, num_funcs*sizeof(TacsScalar));  
@@ -139,7 +151,7 @@ int main( int argc, char *argv[] ){
   double tinit = 0.0;
   double tfinal = 10.0;
   int nsteps = 100;
-  int time_order = 2;     
+  int time_order = 2;
   TACSIntegrator *bdf = new TACSBDFIntegrator(tacs, tinit, tfinal, nsteps, time_order);
   bdf->incref();
   bdf->setAbsTol(1e-12);
@@ -147,41 +159,63 @@ int main( int argc, char *argv[] ){
   bdf->setFunctions(num_funcs, funcs);
   bdf->integrate();  
   bdf->evalFunctions(ftmp);
-  bdf->integrateAdjoint();
-  
-  // Post processing to get moments
-  for (int i = 0; i < num_funcs; i++){
-    printf("projection E[f] = %e\n", ftmp[i]);
-  }
+  bdf->integrateAdjoint();   
 
-  if (!ks){
-    TACSStochasticVarianceFunction *sspe, *ssdisp;
-    sspe = dynamic_cast<TACSStochasticVarianceFunction*>(spe);
-    ssdisp = dynamic_cast<TACSStochasticVarianceFunction*>(sdisp);
-    printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
-    printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
-  } else {
-    TACSKSStochasticFunction *sspe, *ssdisp;
-    sspe = dynamic_cast<TACSKSStochasticFunction*>(spe);
-    ssdisp = dynamic_cast<TACSKSStochasticFunction*>(sdisp);
-    printf("ks potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
-    printf("ks displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
-  }
+  // Compute mean
+  TacsScalar pemean, pe2mean, pevar;
+  TacsScalar umean , u2mean, uvar;
+  pemean  = ftmp[0];
+  pe2mean = ftmp[1];
+  umean   = ftmp[2];
+  u2mean  = ftmp[3];
+
+  pevar = pe2mean - pemean*pemean;
+  uvar  = u2mean - umean*umean;
+  printf("Expectations : %e %e\n", pemean, umean);
+  printf("Variance     : %e %e\n", pevar, uvar);
+
+  // if (!ks){
+  //   TACSStochasticVarianceFunction *sspe, *ssdisp;
+  //   sspe = dynamic_cast<TACSStochasticFMeanFunction*>(spe);
+  //   ssdisp = dynamic_cast<TACSStochasticFMeanFunction*>(sdisp);
+  //   printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+
+  //   sspe2 = dynamic_cast<TACSStochasticFFMeanFunction*>(spe);
+  //   ssdisp2 = dynamic_cast<TACSStochasticFFMeanFunction*>(sdisp);
+  //   printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+
+
+  // } else {
+  //   TACSKSStochasticFunction *sspe, *ssdisp;
+  //   sspe = dynamic_cast<TACSKSStochasticFunction*>(spe);
+  //   ssdisp = dynamic_cast<TACSKSStochasticFunction*>(sdisp);
+  //   printf("ks potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("ks displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  // }
 
   bdf->getGradient(0, &dfdx1);
-  TacsScalar *dfdx1vals;
-  dfdx1->getArray(&dfdx1vals);
-  printf("d{pe}dm = %e %e \n", dfdx1vals[0], dfdx1vals[1]);
-
   bdf->getGradient(1, &dfdx2);
-  TacsScalar *dfdx2vals;
-  dfdx2->getArray(&dfdx2vals);
-  printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
+  bdf->getGradient(2, &dfdx3);
+  bdf->getGradient(3, &dfdx4);
 
-  printf("[c] Get mean derivative \n");
-  printf("[ ] Get variance \n");
-  printf("[ ] Get variance derivative \n");
-  printf("[ ] ks implementation \n");
+  TacsScalar *pemeanderiv, *pe2meanderiv, *umeanderiv, *u2meanderiv;
+  dfdx1->getArray(&pemeanderiv);
+  dfdx2->getArray(&pe2meanderiv);
+  dfdx3->getArray(&umeanderiv);
+  dfdx4->getArray(&u2meanderiv);
+
+  printf("dE{ u  }/dx = %e %e \n", umeanderiv[0], umeanderiv[1]);
+  printf("dE{ pe }/dx = %e %e \n", pemeanderiv[0], pemeanderiv[1]);
+
+  // Find the derivative of variance
+  dfdx2->axpy(-2.0*pemean, dfdx1);
+  dfdx4->axpy(-2.0*umean, dfdx3);  
+
+  printf("dV{ u  }/dx = %e %e \n", u2meanderiv[0], u2meanderiv[1]);
+  printf("dV{ pe }/dx = %e %e \n", pe2meanderiv[0], pe2meanderiv[1]);
+
   MPI_Finalize();  
   return 0;
 }

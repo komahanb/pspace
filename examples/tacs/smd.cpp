@@ -154,7 +154,7 @@ void SMD::addAdjResProduct( int elemIndex, double time,
                             const TacsScalar ddv[],
                             int dvLen, 
                             TacsScalar dfdx[] ){
-  // printf("enters addAdjResProduct \n");
+  printf("enters addAdjResProduct \n");
   // printf("adjoint is = %e \n", psi[0]);
   // printf("dvlen is = %d \n", dvLen);
 
