@@ -114,19 +114,19 @@ void TACSStochasticFFMeanFunction::finalEvaluation( EvaluationType evalType )
     temp = fvals[q];
     MPI_Allreduce(&temp, &fvals[q], 1, TACS_MPI_TYPE, MPI_SUM, this->tacs_comm);
   }
-  // Finish up stochastic integration
-  const int nsparams = pc->getNumParameters();
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
-  for (int k = 0; k < nsterms; k++){
-    for (int q = 0; q < nsqpts; q++){
-      double wq = pc->quadrature(q, zq, yq);
-      fvals[k*nsqpts+q] = wq*pc->basis(k,zq)*fvals[k*nsqpts+q]*fvals[k*nsqpts+q];
-    }
-  }
-  delete [] zq;
-  delete [] yq;
+  // // Finish up stochastic integration
+  // const int nsparams = pc->getNumParameters();
+  // double *zq = new double[nsparams];
+  // double *yq = new double[nsparams];
+  // double wq;
+  // for (int k = 0; k < nsterms; k++){
+  //   for (int q = 0; q < nsqpts; q++){
+  //     double wq = pc->quadrature(q, zq, yq);
+  //     fvals[k*nsqpts+q] = wq*pc->basis(k,zq)*fvals[k*nsqpts+q]*fvals[k*nsqpts+q];
+  //   }
+  // }
+  // delete [] zq;
+  // delete [] yq;
 }
 
 TacsScalar TACSStochasticFFMeanFunction::getFunctionValue(){
@@ -134,12 +134,18 @@ TacsScalar TACSStochasticFFMeanFunction::getFunctionValue(){
 }
 
 TacsScalar TACSStochasticFFMeanFunction::getExpectation(){
-  TacsScalar fmean = 0.0;
-  for (int k = 0; k < 1; k++){
-    for (int q = 0; q < nsqpts; q++){      
-      fmean += fvals[k*nsqpts+q];
-    }
+  // Finish up stochastic integration
+  const int nsparams = pc->getNumParameters();
+  double *zq = new double[nsparams];
+  double *yq = new double[nsparams];
+  double wq;
+  TacsScalar fmean = 0.0;    
+  for (int q = 0; q < nsqpts; q++){
+    double wq = pc->quadrature(q, zq, yq);
+    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q]*fvals[0*nsqpts+q];
   }
+  delete [] zq;
+  delete [] yq;
   return fmean;
 }
 
@@ -292,7 +298,10 @@ void TACSStochasticFFMeanFunction::getElementSVSens( int elemIndex, TACSElement 
         TacsScalar _dfdq = 1.0;      
         delem->addPointQuantitySVSens(elemIndex,
                                       this->quantityType,
-                                      time, wt*alpha, wt*beta, wt*gamma,
+                                      time,
+                                      2.0*wt*alpha*fvals[j*nsqpts+q],
+                                      2.0*wt*beta*fvals[j*nsqpts+q],
+                                      2.0*wt*gamma*fvals[j*nsqpts+q],
                                       N, pt,
                                       Xpts, uq, udq, uddq, &_dfdq, 
                                       dfduj); // store into tmp
@@ -383,7 +392,7 @@ void TACSStochasticFFMeanFunction::addElementDVSens( int elemIndex, TACSElement 
       TacsScalar _dfdq = 1.0; 
       delem->addPointQuantityDVSens( elemIndex, 
                                      this->quantityType,
-                                     time, wt*scale,
+                                     time, 2.0*wt*scale*fvals[j*nsqpts+q],
                                      N, pt,
                                      Xpts, uq, udq, uddq, &_dfdq, 
                                      dvLen, dfdxj ); 
