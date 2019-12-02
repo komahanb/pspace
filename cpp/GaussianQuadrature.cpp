@@ -1489,7 +1489,7 @@ void test(int argc, char *argv[] ){
   scalar wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
     wsum += w[i];
-    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, z[i], y[i], w[i], wsum);
+    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, RealPart(z[i]), RealPart(y[i]), RealPart(w[i]), RealPart(wsum));
   }
 
   // Legendre Quadrature
@@ -1501,7 +1501,7 @@ void test(int argc, char *argv[] ){
   wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
     wsum += w[i];
-    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, z[i], y[i], w[i], wsum);
+    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, RealPart(z[i]), RealPart(y[i]), RealPart(w[i]), RealPart(wsum));
   }
 
   // Laguerre Quadrature
@@ -1513,7 +1513,7 @@ void test(int argc, char *argv[] ){
   wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
     wsum += w[i];
-    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, z[i], y[i], w[i], wsum);
+    printf("%d %15.6f %15.6f %15.6f %15.6f\n", i, RealPart(z[i]), RealPart(y[i]), RealPart(w[i]), RealPart(wsum));
   }
 
   // Free allocated heap memory

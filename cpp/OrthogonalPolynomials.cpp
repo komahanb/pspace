@@ -245,19 +245,19 @@ void test_polynomials( int argc, char *argv[] ){
     // Test hermite polynomials
     printf("hermite\n");
     for (int i = 0; i < max_order; i++){
-      printf("%2d %10.3f %10.3f \n", i, poly->hermite(z,i), poly->unit_hermite(z,i));
+      printf("%2d %10.3f %10.3f \n", i, RealPart(poly->hermite(z,i)), RealPart(poly->unit_hermite(z,i)));
     }
 
     // Test Legendre polynomials
     printf("\nLegendre\n");
     for (int i = 0; i < max_order; i++){
-      printf("%2d %10.3f %10.3f \n", i, poly->legendre(z,i), poly->unit_legendre(z,i));
+      printf("%2d %10.3f %10.3f \n", i, RealPart(poly->legendre(z,i)), RealPart(poly->unit_legendre(z,i)));
     }
 
     // Test Laguerre polynomials
     printf("\nLaguerre\n");
     for (int i = 0; i < max_order; i++){
-      printf("%2d %10.3f %10.3f \n", i, poly->laguerre(z,i), poly->unit_laguerre(z,i));
+      printf("%2d %10.3f %10.3f \n", i, RealPart(poly->laguerre(z,i)), RealPart(poly->unit_laguerre(z,i)));
     }
   }
   delete poly;
