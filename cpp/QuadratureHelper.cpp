@@ -145,21 +145,21 @@ void test_quadraure_multi(int argc, char *argv[] ){
   scalar wsum = 0.0;
   for(int k = 0; k < nqpts[0]; k++){
     wsum += wp[0][k];
-    printf("%f %f %f %f \n", zp[0][k], yp[0][k], wp[0][k], wsum);
+    printf("%f %f %f %f \n", RealPart(zp[0][k]), RealPart(yp[0][k]), RealPart(wp[0][k]), RealPart(wsum));
   }
 
   printf("\n");
   wsum = 0.0;
   for(int k = 0; k < nqpts[1]; k++){
     wsum += wp[1][k];
-    printf("%f %f %f %f \n", zp[1][k], yp[1][k], wp[1][k], wsum);
+    printf("%f %f %f %f \n", RealPart(zp[1][k]), RealPart(yp[1][k]), RealPart(wp[1][k]), RealPart(wsum));
   }
 
   printf("\n");
   wsum = 0.0;
   for(int k = 0; k < nqpts[2]; k++){
     wsum += wp[2][k];
-    printf("%f %f %f %f\n", zp[2][k], yp[2][k], wp[2][k], wsum);
+    printf("%f %f %f %f\n", RealPart(zp[2][k]), RealPart(yp[2][k]), RealPart(wp[2][k]), RealPart(wsum));
   }
 
   scalar **zz;
@@ -189,10 +189,10 @@ void test_quadraure_multi(int argc, char *argv[] ){
   for(int k = 0; k < totquadpts; k++){
     printf("%d ", k);
     for(int j = 0; j < nvars; j++){ 
-      printf(" %f ", zz[j][k]);
+      printf(" %f ", RealPart(zz[j][k]));
     }
     wsum += ww[k];
-    printf(" %f %f \n", ww[k], wsum);
+    printf(" %f %f \n", RealPart(ww[k]), RealPart(wsum));
   }  
 
 
