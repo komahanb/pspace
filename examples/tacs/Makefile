@@ -12,24 +12,13 @@ PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o \
-       TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o
-       TACSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o \
-       TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o \
-       smd.o vpl.o ppa.o fourbar.o
+OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o vpl.o ppa.o fourbar.o
 
 library: ${OBJS}
-	ar rcs libtacsuq.a  TACSStochasticElement.o TACSKSFunction.o \
-	TACSStochasticFunction.o TACSStochasticVarianceFunction.o \
-	TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o \
-	TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o \
-	TACSVelocity.o TACSKSStochasticFunction.o
+	ar rcs libtacsuq.a  TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o
 
 default: ${OBJS}
-	${CXX} -o smd TACSStochasticElement.o TACSKSFunction.o \
-	TACSStochasticFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o\
-	TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o \
-	smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
+	${CXX} -o smd TACSStochasticElement.o TACSKSFunction.o 	TACSStochasticFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o vpl TACSStochasticElement.o vpl.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o ppa TACSStochasticElement.o ppa.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
 	${CXX} -o fourbar TACSStochasticElement.o fourbar.o ${TACS_LD_FLAGS} ${PSPACE_LIB}
