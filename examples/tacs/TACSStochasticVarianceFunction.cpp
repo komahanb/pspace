@@ -395,7 +395,7 @@ void TACSStochasticVarianceFunction::addElementDVSens( int elemIndex, TACSElemen
 
     // need to be careful with nodewise placement of dvsx
     for (int n = 0; n < dvLen; n++){
-      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      //      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     
