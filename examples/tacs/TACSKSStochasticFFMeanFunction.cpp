@@ -131,7 +131,7 @@ void TACSKSStochasticFFMeanFunction::elementWiseEval( EvaluationType evalType,
                                                       const TacsScalar dv[],
                                                       const TacsScalar ddv[] )
 {
-  printf("TACSStochasticVarianceFunction::elementWiseEval %d\n", elemIndex);
+  //  printf("TACSStochasticVarianceFunction::elementWiseEval %d\n", elemIndex);
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
@@ -511,7 +511,7 @@ void TACSKSStochasticFFMeanFunction::addElementDVSens( int elemIndex, TACSElemen
 
     // need to be careful with nodewise placement of dvsx
     for (int n = 0; n < dvLen; n++){
-      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      //printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     
