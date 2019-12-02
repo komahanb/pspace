@@ -555,7 +555,7 @@ void TACSStochasticElement::addAdjResProduct( int elemIndex, double time,
                                               int dvLen,
                                               TacsScalar dfdx[] ){
 
-  printf("TACSStochasticElement::addAdjResProduct \n");
+  //  printf("TACSStochasticElement::addAdjResProduct \n");
 
   const int ndvpn   = delem->getVarsPerNode();
   const int nsvpn   = this->getVarsPerNode();

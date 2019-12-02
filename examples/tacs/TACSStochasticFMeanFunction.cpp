@@ -114,19 +114,6 @@ void TACSStochasticFMeanFunction::finalEvaluation( EvaluationType evalType )
     temp = fvals[q];
     MPI_Allreduce(&temp, &fvals[q], 1, TACS_MPI_TYPE, MPI_SUM, this->tacs_comm);
   }
-  // Finish up stochastic integration
-  // const int nsparams = pc->getNumParameters();
-  // double *zq = new double[nsparams];
-  // double *yq = new double[nsparams];
-  // double wq;
-  // for (int k = 0; k < nsterms; k++){
-  //   for (int q = 0; q < nsqpts; q++){
-  //     double wq = pc->quadrature(q, zq, yq);
-  //     fvals[k*nsqpts+q] *= wq*pc->basis(k,zq);
-  //   }
-  // }
-  // delete [] zq;
-  // delete [] yq;
 }
 
 TacsScalar TACSStochasticFMeanFunction::getFunctionValue(){
