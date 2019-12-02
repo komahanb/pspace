@@ -1,4 +1,4 @@
-CFLAGS = -Wall -fPIC -g -DUSE_COMPLEX
+CFLAGS = -Wall -fPIC -g #-DUSE_COMPLEX
 
 default:
 	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
@@ -29,7 +29,7 @@ default:
 	ParameterContainer.o -o libpspace.so
 
 	# Create executable
-	mpicxx -I. -L. main.cpp -o a.out -lpspace
+	mpicxx -I. -L. ${CFLAGS} main.cpp -o a.out -lpspace
 
 python:
 	python setup.py build_ext --inplace

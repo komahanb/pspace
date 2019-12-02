@@ -1,5 +1,6 @@
-#include"ParameterContainer.h"
-#include"ParameterFactory.h"
+#include "scalar.h"
+#include "ParameterContainer.h"
+#include "ParameterFactory.h"
 
 int main( int argc, char *argv[] ){
 
@@ -22,10 +23,10 @@ int main( int argc, char *argv[] ){
   int pmax[] = {2,2,2,2,2};
   int nqpts[] = {3,3,3,3,3};
   
-  printf("initializing basis\n");
+  //printf("initializing basis\n");
   pc->initializeBasis(pmax);
 
-  printf("initializing quadrature\n");
+  //printf("initializing quadrature\n");
   pc->initializeQuadrature(nqpts);
   
   // Initialize basis
@@ -49,11 +50,6 @@ int main( int argc, char *argv[] ){
   delete [] zq;
   delete [] yq;
 
-  delete p1;
-  delete p2;
-  delete p3;
-  delete p4;
-  delete p5;
   delete factory;
   delete pc;
 
