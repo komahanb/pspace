@@ -90,13 +90,13 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
   this->tnum_quadrature_points = totquadpts;
   
   // Get the univariate quadrature points from parameters
-  double **y = new double*[nvars];
-  double **z = new double*[nvars];
-  double **w = new double*[nvars];
+  scalar **y = new scalar*[nvars];
+  scalar **z = new scalar*[nvars];
+  scalar **w = new scalar*[nvars];
   for (int i = 0; i < nvars; i++){
-    z[i] = new double[nqpts[i]];
-    y[i] = new double[nqpts[i]];
-    w[i] = new double[nqpts[i]];    
+    z[i] = new scalar[nqpts[i]];
+    y[i] = new scalar[nqpts[i]];
+    w[i] = new scalar[nqpts[i]];    
   }
   map<int,AbstractParameter*>::iterator it;
   for (it = this->pmap.begin(); it != this->pmap.end(); it++){
@@ -105,12 +105,12 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
   }
 
   // Compute multivariate quadrature and store
-  Z = new double*[nvars];
-  Y = new double*[nvars];
-  W = new double[totquadpts];  
+  Z = new scalar*[nvars];
+  Y = new scalar*[nvars];
+  W = new scalar[totquadpts];  
   for (int i = 0; i < nvars; i++){
-    Z[i] = new double[totquadpts];
-    Y[i] = new double[totquadpts];    
+    Z[i] = new scalar[totquadpts];
+    Y[i] = new scalar[totquadpts];    
   }
 
   // Find tensor product of 1d rules
@@ -129,7 +129,7 @@ void ParameterContainer::initializeQuadrature(const int *nqpts){
 
 /*
  */
-double ParameterContainer::quadrature(int q, double *zq, double *yq){
+scalar ParameterContainer::quadrature(int q, scalar *zq, scalar *yq){
   const int nvars = getNumParameters(); 
   for (int i = 0; i < nvars; i++){
     zq[i] = this->Z[i][q];
@@ -141,8 +141,8 @@ double ParameterContainer::quadrature(int q, double *zq, double *yq){
 /*
   Evaluate the k-the basis function at point "z"
 */
-double ParameterContainer::basis(int k, double *z){
-  double psi = 1.0;
+scalar ParameterContainer::basis(int k, scalar *z){
+  scalar psi = 1.0;
   map<int,AbstractParameter*>::iterator it;
   for (it = this->pmap.begin(); it != this->pmap.end(); it++){
     int pid = it->first;

@@ -16,47 +16,47 @@ public:
 // Mass test element
 class Mass : public Object {
 public:
-  void setMass(double m){
+  void setMass(scalar m){
     this->m = m;
   };
-  double getMass(){
+  scalar getMass(){
     return this->m;
   };
 
-  static double getMass(void* obj){
+  static scalar getMass(void* obj){
     Mass *self = (Mass*) obj;
     return self->m;
   };
 
-  static void setMass(void* obj, double mass){
+  static void setMass(void* obj, scalar mass){
     Mass *self = (Mass*) obj;
     self->m = mass;
   };
 
-  double m;  
+  scalar m;  
 };
   
 // Spring test element
 class Spring : public Object {
 public:
-  static double getStiffness(void* obj){
+  static scalar getStiffness(void* obj){
     Spring *self = (Spring*) obj;
     return self->k;
   };
-  static void setStiffness(void* obj, double stiff){
+  static void setStiffness(void* obj, scalar stiff){
     Spring *self = (Spring*) obj;
     self->k = stiff;
   };
   
-  double k;  
+  scalar k;  
 };
 
 void hello(int a){
   printf("integer number is %d \n",a);
 }
 
-void hello2(double a){
-  printf("double number is %f \n", a);
+void hello2(scalar a){
+  printf("scalar number is %f \n", a);
 }
 
 void setParameterID(AbstractParameter *param, int pid){
@@ -70,26 +70,26 @@ int getParameterID(AbstractParameter *param){
 
 class SMD : public Object {
 public:
-  static double getMass(void* obj){
+  static scalar getMass(void* obj){
     SMD *self = (SMD*) obj;
     return self->m;
   };
 
-  static void setMass(void* obj, double mass){
+  static void setMass(void* obj, scalar mass){
     SMD *self = (SMD*) obj;
     self->m = mass;
   };
 
-  static double getStiffness(void* obj){
+  static scalar getStiffness(void* obj){
     SMD *self = (SMD*) obj;
     return self->k;
   };
-  static void setStiffness(void* obj, double stiff){
+  static void setStiffness(void* obj, scalar stiff){
     SMD *self = (SMD*) obj;
     self->k = stiff;
   };
-  double k;  
-  double m;
+  scalar k;  
+  scalar m;
 };
 
 int main( int argc, char *argv[] ){
@@ -227,9 +227,9 @@ int main( int argc, char *argv[] ){
   fooint = hello; 
   printf("%p %p \n", fooint, hello);
 
-  void (*foodouble)(double) = 0;
-  foodouble = hello2; 
-  printf("%p %p\n", foodouble, hello2);
+  void (*fooscalar)(scalar) = 0;
+  fooscalar = hello2; 
+  printf("%p %p\n", fooscalar, hello2);
 
   void (*foos)(AbstractParameter*,int) = 0;
   foos = setParameterID;
@@ -246,11 +246,11 @@ int main( int argc, char *argv[] ){
 
   */
 
-  //  void (*set)(Object*, double) = 0;
+  //  void (*set)(Object*, scalar) = 0;
   // set = &Mass::setMass;
   //set = &Spring::setStiffness;
 
-  // double (*get)(Object*) = 0;
+  // scalar (*get)(Object*) = 0;
   // get = &Mass::getMass;
   // get = &Spring::getStiffness;
 
@@ -265,10 +265,10 @@ int main( int argc, char *argv[] ){
   // set((Object*)&mass, 2.0);
   // printf("%f \n", get((Object*)&mass));
 
-  // std::map<int,void(*)(Object*,double)> fmap;
-  // fmap.insert(pair<int,void(*)(Object*,double)>(0,Mass::setMass));
+  // std::map<int,void(*)(Object*,scalar)> fmap;
+  // fmap.insert(pair<int,void(*)(Object*,scalar)>(0,Mass::setMass));
 
-  //void (Object::*update)(Object*,double) = 0;
+  //void (Object::*update)(Object*,scalar) = 0;
   // update = Mass::setMass;
   // update(&mass, 1.0);
 
@@ -282,8 +282,8 @@ int main( int argc, char *argv[] ){
 
   // fmap[1]->setParameter(2);
 
-  //  fmap.insert(pair<int,void(*)(double)>(p3->getParameterID(), hello2));
-  //  fmap.insert(pair<int,void(*)(double)>(p4->getParameterID(), hello2));
+  //  fmap.insert(pair<int,void(*)(scalar)>(p3->getParameterID(), hello2));
+  //  fmap.insert(pair<int,void(*)(scalar)>(p4->getParameterID(), hello2));
 
   // 
   //setParameter(1);
@@ -325,9 +325,9 @@ int main( int argc, char *argv[] ){
   printf("%d %d \n", nqpoints, nbasis);
   
   // Space for quadrature points and weights
-  double *zq = new double[nvars];
-  double *yq = new double[nvars];
-  double wq;
+  scalar *zq = new scalar[nvars];
+  scalar *yq = new scalar[nvars];
+  scalar wq;
 
   // for (int q = 0; q < nqpoints; q++){
   //   pc->quadrature(q, zq, yq, &wq);

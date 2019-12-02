@@ -1,6 +1,8 @@
 #ifndef BASIS_HELPER
 #define BASIS_HELPER
 
+#include "scalar.h"
+
 class BasisHelper{
  public:
   // Constructor and destructor

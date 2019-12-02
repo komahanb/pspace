@@ -19,8 +19,8 @@ class ParameterContainer {
   // void addParameter(AbstractParameter *param, int max_deg, );
 
   // Evaluate basis at quadrature points
-  double quadrature(int q, double *zq, double *yq);
-  double basis(int k, double *z);
+  scalar quadrature(int q, scalar *zq, scalar *yq);
+  scalar basis(int k, scalar *z);
 
   // Accessors
   int getNumBasisTerms();
@@ -43,7 +43,7 @@ class ParameterContainer {
 
   int *param_max_degree;   // maximum monomial degree of each parameter
   int **dindex;         // parameterwise degree for each basis entry
-  double **Z, **Y, *W; 
+  scalar **Z, **Y, *W; 
 
   // Helpers to access basis evaluation and quadrature points
   BasisHelper *bhelper;

@@ -2,6 +2,7 @@
 #include"NormalParameter.h"
 #include"UniformParameter.h"
 #include"ExponentialParameter.h"
+#include "scalar.h"
 
 class ParameterFactory {
  public:
@@ -10,14 +11,14 @@ class ParameterFactory {
   ~ParameterFactory();
   
   // Creates different parameter types
-  AbstractParameter* createNormalParameter( double mu, double sigma );
-  AbstractParameter* createUniformParameter( double a, double b );
-  AbstractParameter* createExponentialParameter( double mu, double beta );
+  AbstractParameter* createNormalParameter( scalar mu, scalar sigma );
+  AbstractParameter* createUniformParameter( scalar a, scalar b );
+  AbstractParameter* createExponentialParameter( scalar mu, scalar beta );
 
   // Overloaded constructors
-  AbstractParameter* createNormalParameter( double mu, double sigma, int dmax);
-  AbstractParameter* createUniformParameter( double a, double b, int dmax);
-  AbstractParameter* createExponentialParameter( double mu, double beta, int dmax);
+  AbstractParameter* createNormalParameter( scalar mu, scalar sigma, int dmax);
+  AbstractParameter* createUniformParameter( scalar a, scalar b, int dmax);
+  AbstractParameter* createExponentialParameter( scalar mu, scalar beta, int dmax);
   
  private:
   int next_parameter_id;

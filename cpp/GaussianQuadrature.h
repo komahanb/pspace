@@ -1,3 +1,4 @@
+#include "scalar.h"
 /*
   Class to return points and weights for Gaussian Quadrature
 
@@ -12,10 +13,10 @@ class GaussianQuadrature {
   ~GaussianQuadrature();
 
   // Quadrature implementations
-  void hermiteQuadrature(int npoints, double mu, double sigma, 
-                         double *z, double *y, double *w);
-  void legendreQuadrature(int npoints, double a, double b, 
-                          double *z, double *y, double *w);
-  void laguerreQuadrature(int npoints, double mu, double beta, 
-                          double *z, double *y, double *w);
+  void hermiteQuadrature(int npoints, scalar mu, scalar sigma, 
+                         scalar *z, scalar *y, scalar *w);
+  void legendreQuadrature(int npoints, scalar a, scalar b, 
+                          scalar *z, scalar *y, scalar *w);
+  void laguerreQuadrature(int npoints, scalar mu, scalar beta, 
+                          scalar *z, scalar *y, scalar *w);
 };

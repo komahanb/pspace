@@ -30,7 +30,7 @@ OrthogonalPolynomials::~OrthogonalPolynomials(){}
 /*  
     Evaluate Hermite polynomials
 */
-double OrthogonalPolynomials::hermite(double z, int d){
+scalar OrthogonalPolynomials::hermite(scalar z, int d){
   if ( d <= 4 ) {
     return explicit_hermite(z,d);
   } else {
@@ -41,14 +41,14 @@ double OrthogonalPolynomials::hermite(double z, int d){
 /*  
     Evaluate unit hermite polynomials
 */
-double OrthogonalPolynomials::unit_hermite(double z, int d){
+scalar OrthogonalPolynomials::unit_hermite(scalar z, int d){
   return hermite(z,d)/sqrt(factorial(d));
 }
 
 /*  
     Evaluate Laguerre polynomials
 */
-double OrthogonalPolynomials::laguerre(double z, int d){
+scalar OrthogonalPolynomials::laguerre(scalar z, int d){
   if ( d <= 4 ) {
     return explicit_laguerre(z,d);
   } else {
@@ -59,14 +59,14 @@ double OrthogonalPolynomials::laguerre(double z, int d){
 /*  
     Evaluate unit Laguerre polynomials (already normalized)
 */
-double OrthogonalPolynomials::unit_laguerre(double z, int d){
+scalar OrthogonalPolynomials::unit_laguerre(scalar z, int d){
   return laguerre(z,d);
 }
 
 /*  
     Evaluate Legendre polynomials
 */
-double OrthogonalPolynomials::legendre(double z, int d){
+scalar OrthogonalPolynomials::legendre(scalar z, int d){
   if ( d <= 4 ) {
     return explicit_legendre(z,d);
   } else {
@@ -77,8 +77,8 @@ double OrthogonalPolynomials::legendre(double z, int d){
 /*  
     Evaluate unit legendre polynomials
 */
-double OrthogonalPolynomials::unit_legendre(double z, int d){
-  return legendre(z,d)*sqrt(double(2*d+1));
+scalar OrthogonalPolynomials::unit_legendre(scalar z, int d){
+  return legendre(z,d)*sqrt(scalar(2*d+1));
 }
 
 //===================================================================//
@@ -88,18 +88,18 @@ double OrthogonalPolynomials::unit_legendre(double z, int d){
 /*
   Combination nCr = n!/((n-r)!r!)
 */
-double OrthogonalPolynomials::comb(int n, int r){
-  double nfact  = factorial(n);
-  double rfact  = factorial(r);
-  double nrfact = factorial(n-r);
+scalar OrthogonalPolynomials::comb(int n, int r){
+  scalar nfact  = factorial(n);
+  scalar rfact  = factorial(r);
+  scalar nrfact = factorial(n-r);
   return nfact/(rfact*nrfact);
 }
 
 /*
   Compute the factorial of a number
  */
-double OrthogonalPolynomials::factorial( int n ){
-  double factorial;
+scalar OrthogonalPolynomials::factorial( int n ){
+  scalar factorial;
   if ( n == 0 ){
     factorial = 1.0;
   } else if ( n == 1 ){
@@ -125,7 +125,7 @@ double OrthogonalPolynomials::factorial( int n ){
   } else {
     factorial = 1.0;
     for ( int i = 1; i <= n; i++ ) {
-      factorial *= double(i);
+      factorial *= scalar(i);
     }
   }
   return factorial;
@@ -134,8 +134,8 @@ double OrthogonalPolynomials::factorial( int n ){
 /*  
     Hermite polynomials are evaluated using explicit expressions
 */
-double OrthogonalPolynomials::explicit_hermite(double z, int d){
-  double hval = 0.0;
+scalar OrthogonalPolynomials::explicit_hermite(scalar z, int d){
+  scalar hval = 0.0;
   if ( d == 0 ){
     hval = 1.0;
   } else if ( d == 1 ){
@@ -153,14 +153,14 @@ double OrthogonalPolynomials::explicit_hermite(double z, int d){
 /*  
     Hermite polynomials are evaluated using recursive expressions
 */
-double OrthogonalPolynomials::recursive_hermite(double z, int d){
-  double hval = 0.0;
+scalar OrthogonalPolynomials::recursive_hermite(scalar z, int d){
+  scalar hval = 0.0;
   if ( d == 0 ) {
     hval = 1.0;
   } else if ( d == 1 ) {
     hval = z;
   } else {
-    hval = z*recursive_hermite(z,d-1) - double(d-1)*recursive_hermite(z,d-2);
+    hval = z*recursive_hermite(z,d-1) - scalar(d-1)*recursive_hermite(z,d-2);
   }
   return hval;
 }
@@ -168,8 +168,8 @@ double OrthogonalPolynomials::recursive_hermite(double z, int d){
 /*  
     Laguerre polynomials are evaluated using explicit expressions
 */
-double OrthogonalPolynomials::explicit_laguerre(double z, int d){
-  double lval = 0.0;
+scalar OrthogonalPolynomials::explicit_laguerre(scalar z, int d){
+  scalar lval = 0.0;
   if ( d == 0 ){
     lval = 1.0;
   } else if ( d == 1 ){
@@ -190,15 +190,15 @@ double OrthogonalPolynomials::explicit_laguerre(double z, int d){
 /*  
     Laguerre polynomials are evaluated using recursive expressions
 */
-double OrthogonalPolynomials::recursive_laguerre(double z, int d){
-  double lval = 0.0;
+scalar OrthogonalPolynomials::recursive_laguerre(scalar z, int d){
+  scalar lval = 0.0;
   if ( d == 0 ) {
     lval = 1.0;
   } else if ( d == 1 ) {
     lval = 1.0 - z;
   } else {    
-    lval = ((double(2*d-1)-z)*recursive_laguerre(z,d-1) - double(d-1)*recursive_laguerre(z,d-2));
-    lval /= double(d);
+    lval = ((scalar(2*d-1)-z)*recursive_laguerre(z,d-1) - scalar(d-1)*recursive_laguerre(z,d-2));
+    lval /= scalar(d);
   }
   return lval;
 }
@@ -206,8 +206,8 @@ double OrthogonalPolynomials::recursive_laguerre(double z, int d){
 /*  
     Legendre polynomials are evaluated using explicit expressions
 */
-double OrthogonalPolynomials::explicit_legendre(double z, int d){
-  double pval = 0.0;
+scalar OrthogonalPolynomials::explicit_legendre(scalar z, int d){
+  scalar pval = 0.0;
   if ( d == 0 ){
     pval = 1.0;
   } else if ( d == 1 ){
@@ -225,8 +225,8 @@ double OrthogonalPolynomials::explicit_legendre(double z, int d){
 /*  
     Legendre polynomials are evaluated using general expressions
 */
-double OrthogonalPolynomials::general_legendre(double z, int d){
-  double pval = 0.0;
+scalar OrthogonalPolynomials::general_legendre(scalar z, int d){
+  scalar pval = 0.0;
   for (int k = 0; k <= d; k++){
     pval = pval + comb(d,k)*comb(d+k,k)*pow(-z,k);
   }
@@ -238,7 +238,7 @@ void test_polynomials( int argc, char *argv[] ){
   
   OrthogonalPolynomials *poly = new OrthogonalPolynomials();
 
-  double z = 1.1;
+  scalar z = 1.1;
   int max_order = 10;
   int nruns = 100000;  
   for (int j = 0; j < nruns; j++){

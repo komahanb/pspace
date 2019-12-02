@@ -41,7 +41,7 @@ void BasisHelper::sparse(const int nvars,
                          int *dmapi, int *dmapj, int *dmapk, 
                          bool *filter){
   for( int i = 0; i < nvars; i++ ){
-    if (abs(dmapi[i] - dmapj[i]) <= dmapk[i]){
+    if (fabs(dmapi[i] - dmapj[i]) <= dmapk[i]){
       filter[i] = true;
     } else {
       filter[i] = false;

@@ -1,12 +1,13 @@
+#include "scalar.h"
 #include "AbstractParameter.h"
 
 class UniformParameter : AbstractParameter{
  public:
-  UniformParameter(int pid, double mu, double sigma);
+  UniformParameter(int pid, scalar mu, scalar sigma);
   ~UniformParameter();
-  void quadrature(int npoints, double *z, double *y, double *w);
-  double basis(double z, int d);
+  void quadrature(int npoints, scalar *z, scalar *y, scalar *w);
+  scalar basis(scalar z, int d);
  private:
-  double a;
-  double b;
+  scalar a;
+  scalar b;
 };

@@ -1,12 +1,13 @@
+#include "scalar.h"
 #include "AbstractParameter.h"
 
 class ExponentialParameter : AbstractParameter{
  public:
-  ExponentialParameter(int pid, double mu, double beta);
+  ExponentialParameter(int pid, scalar mu, scalar beta);
   ~ExponentialParameter();
-  void quadrature(int npoints, double *z, double *y, double *w);
-  double basis(double z, int d);
+  void quadrature(int npoints, scalar *z, scalar *y, scalar *w);
+  scalar basis(scalar z, int d);
  private:
-  double mu;
-  double beta;
+  scalar mu;
+  scalar beta;
 };

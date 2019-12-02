@@ -6,21 +6,21 @@ ParameterFactory::ParameterFactory(){
 
 ParameterFactory::~ParameterFactory(){}
 
-AbstractParameter* ParameterFactory::createNormalParameter(double mu, double sigma)
+AbstractParameter* ParameterFactory::createNormalParameter(scalar mu, scalar sigma)
 {
   int pid = this->next_parameter_id;
   this->next_parameter_id++;
   return (AbstractParameter*) new NormalParameter(pid, mu, sigma);  
 }
 
-AbstractParameter* ParameterFactory::createUniformParameter(double a, double b)
+AbstractParameter* ParameterFactory::createUniformParameter(scalar a, scalar b)
 {
   int pid = this->next_parameter_id;
   this->next_parameter_id++;
   return (AbstractParameter*) new UniformParameter(pid, a, b);  
 }
 
-AbstractParameter* ParameterFactory::createExponentialParameter(double mu, double beta)
+AbstractParameter* ParameterFactory::createExponentialParameter(scalar mu, scalar beta)
 {
   int pid = this->next_parameter_id;
   this->next_parameter_id++;
@@ -28,7 +28,7 @@ AbstractParameter* ParameterFactory::createExponentialParameter(double mu, doubl
 }
 
 
-AbstractParameter* ParameterFactory::createNormalParameter( double mu, double sigma,
+AbstractParameter* ParameterFactory::createNormalParameter( scalar mu, scalar sigma,
                                                             int dmax)
 {
   int pid = this->next_parameter_id;
@@ -38,7 +38,7 @@ AbstractParameter* ParameterFactory::createNormalParameter( double mu, double si
   return param;
 }
 
-AbstractParameter* ParameterFactory::createUniformParameter( double a, double b,
+AbstractParameter* ParameterFactory::createUniformParameter( scalar a, scalar b,
                                                              int dmax )
 {
   int pid = this->next_parameter_id;
@@ -48,7 +48,7 @@ AbstractParameter* ParameterFactory::createUniformParameter( double a, double b,
   return param;
 }
 
-AbstractParameter* ParameterFactory::createExponentialParameter( double mu, double beta,
+AbstractParameter* ParameterFactory::createExponentialParameter( scalar mu, scalar beta,
                                                                  int dmax )
 {
   int pid = this->next_parameter_id;

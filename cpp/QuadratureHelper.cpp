@@ -10,8 +10,8 @@ QuadratureHelper::~QuadratureHelper(){}
 
 void QuadratureHelper::tensorProduct( const int nvars,
                                       const int *nqpts,
-                                      double **zp, double **yp, double **wp,
-                                      double **zz, double **yy, double *ww ){
+                                      scalar **zp, scalar **yp, scalar **wp,
+                                      scalar **zz, scalar **yy, scalar *ww ){
 
 
   if (nvars == 1) {
@@ -119,19 +119,19 @@ void test_quadraure_multi(int argc, char *argv[] ){
   nqpts[1] = 2;
   nqpts[2] = 3;
   
-  double **zp = new double*[nvars];
+  scalar **zp = new scalar*[nvars];
   for (int i = 0; i < nvars; i++){
-    zp[i] = new double[nqpts[0]];
+    zp[i] = new scalar[nqpts[0]];
   }
 
-  double **yp = new double*[nvars];
+  scalar **yp = new scalar*[nvars];
   for (int i = 0; i < nvars; i++){
-    yp[i] = new double[nqpts[1]];
+    yp[i] = new scalar[nqpts[1]];
   }
   
-  double **wp = new double*[nvars];
+  scalar **wp = new scalar*[nvars];
   for (int i = 0; i < nvars; i++){
-    wp[i] = new double[nqpts[2]];
+    wp[i] = new scalar[nqpts[2]];
   }
 
   NormalParameter *p1 = new NormalParameter(0, 0.0, 1.0);
@@ -142,7 +142,7 @@ void test_quadraure_multi(int argc, char *argv[] ){
   p2->quadrature(nqpts[1], zp[1], yp[1], wp[1]);
   p3->quadrature(nqpts[2], zp[2], yp[2], wp[2]);
   
-  double wsum = 0.0;
+  scalar wsum = 0.0;
   for(int k = 0; k < nqpts[0]; k++){
     wsum += wp[0][k];
     printf("%f %f %f %f \n", zp[0][k], yp[0][k], wp[0][k], wsum);
@@ -162,9 +162,9 @@ void test_quadraure_multi(int argc, char *argv[] ){
     printf("%f %f %f %f\n", zp[2][k], yp[2][k], wp[2][k], wsum);
   }
 
-  double **zz;
-  double **yy;
-  double *ww;
+  scalar **zz;
+  scalar **yy;
+  scalar *ww;
 
   // Allocate space for return variables
   int totquadpts = 1;
@@ -172,13 +172,13 @@ void test_quadraure_multi(int argc, char *argv[] ){
     totquadpts *= nqpts[i];
   }
   
-  zz = new double*[nvars];
-  yy = new double*[nvars];  
+  zz = new scalar*[nvars];
+  yy = new scalar*[nvars];  
   for (int i = 0; i < nvars; i++){
-    zz[i] = new double[totquadpts];
-    yy[i] = new double[totquadpts];    
+    zz[i] = new scalar[totquadpts];
+    yy[i] = new scalar[totquadpts];    
   }
-  ww = new double[totquadpts];  
+  ww = new scalar[totquadpts];  
 
   // Find tensor product of 1d rules
   qh->tensorProduct(nvars, nqpts,
