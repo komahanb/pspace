@@ -19,6 +19,9 @@
 #include "TACSStochasticFMeanFunction.h"
 #include "TACSStochasticFFMeanFunction.h"
 
+#include "TACSKSStochasticFMeanFunction.h"
+#include "TACSKSStochasticFFMeanFunction.h"
+
 void updateElement( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
@@ -99,7 +102,7 @@ int main( int argc, char *argv[] ){
   const int num_dvars = 2;
   const int num_funcs = 4;
   const int moment_type = 0;
-  const int ks = 0;
+  const int ks = 1;
   double ksweight = 10000.0;
     
   TACSFunction *pe, *disp;
@@ -125,9 +128,14 @@ int main( int argc, char *argv[] ){
     sdisp2 = new TACSStochasticFFMeanFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, 1);
 
   } else {
+    
     // Stochastic KS
-    spe = new TACSKSStochasticFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type, ksweight);
-    sdisp = new TACSKSStochasticFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type, ksweight);
+    spe = new TACSKSStochasticFMeanFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type, ksweight);
+    sdisp = new TACSKSStochasticFMeanFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type, ksweight);
+
+    spe2 = new TACSKSStochasticFFMeanFunction(tacs, pe, pc, TACS_POTENTIAL_ENERGY_FUNCTION, moment_type, ksweight);
+    sdisp2 = new TACSKSStochasticFFMeanFunction(tacs, disp, pc, TACS_DISPLACEMENT_FUNCTION, moment_type, ksweight);
+
   }
 
   TACSFunction **funcs = new TACSFunction*[num_funcs];
