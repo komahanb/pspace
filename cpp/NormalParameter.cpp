@@ -3,7 +3,7 @@
 /*
   Construct normal parameter with input parameters
 */
-NormalParameter::NormalParameter(int pid, double mu, double sigma)
+NormalParameter::NormalParameter(int pid, scalar mu, scalar sigma)
   : AbstractParameter() {
   this->setParameterID(pid);
   this->mu = mu;
@@ -18,7 +18,7 @@ NormalParameter::~NormalParameter(){}
 /*
   Evaluate the basis at the supplied point 
 */
-void NormalParameter::quadrature(int npoints, double *z, double *y, double *w){
+void NormalParameter::quadrature(int npoints, scalar *z, scalar *y, scalar *w){
   this->gauss->hermiteQuadrature(npoints, 
                                  this->mu, this->sigma, 
                                  z, y, w);
@@ -27,6 +27,6 @@ void NormalParameter::quadrature(int npoints, double *z, double *y, double *w){
 /*
   Evalute the basis of order d at the point z
 */
-double NormalParameter::basis(double z, int d){
+scalar NormalParameter::basis(scalar z, int d){
   return this->polyn->unit_hermite(z, d);
 }

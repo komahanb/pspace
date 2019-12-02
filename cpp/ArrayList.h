@@ -1,3 +1,4 @@
+#include "scalar.h"
 class ArrayList{
  public:
   ArrayList(int num_tuples, int nvars);

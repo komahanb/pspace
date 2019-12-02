@@ -1,6 +1,7 @@
 #ifndef ABSTRACT_PARAMETER
 #define ABSTRACT_PARAMETER
 
+#include "scalar.h"
 #include "GaussianQuadrature.h"
 #include "OrthogonalPolynomials.h"
 #include <stdio.h>
@@ -16,8 +17,8 @@ class AbstractParameter {
 
   // Deferred procedures
   //---------------------
-  virtual void quadrature(int npoints, double *z, double *y, double *w) = 0;
-  virtual double basis(double z, int d) = 0;
+  virtual void quadrature(int npoints, scalar *z, scalar *y, scalar *w) = 0;
+  virtual scalar basis(scalar z, int d) = 0;
 
   // Accessors
   //--------------------

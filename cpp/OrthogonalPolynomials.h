@@ -1,3 +1,4 @@
+#include "scalar.h"
 /*
   Class to evaluate orthogonal polynomials.
 
@@ -11,31 +12,31 @@ class OrthogonalPolynomials {
   ~OrthogonalPolynomials();
 
   //  Get Hermite polynomials  -- Normal distribution
-  double hermite(double z, int d);
-  double unit_hermite(double z, int d);
+  scalar hermite(scalar z, int d);
+  scalar unit_hermite(scalar z, int d);
 
   //  Get Legendre polynomials -- Uniform distribution  
-  double legendre(double z, int d);
-  double unit_legendre(double z, int d);
+  scalar legendre(scalar z, int d);
+  scalar unit_legendre(scalar z, int d);
 
   //  Get Laguerre polynomials  -- Exponential distribution
-  double laguerre(double z, int d);
-  double unit_laguerre(double z, int d);
+  scalar laguerre(scalar z, int d);
+  scalar unit_laguerre(scalar z, int d);
 
  private:
   // Useful functions
-  double factorial(int n);
-  double comb(int n, int r);
+  scalar factorial(int n);
+  scalar comb(int n, int r);
 
   // hermite algorithms
-  double explicit_hermite(double z, int d);
-  double recursive_hermite(double z, int d);
+  scalar explicit_hermite(scalar z, int d);
+  scalar recursive_hermite(scalar z, int d);
 
   // Laguerre algorithms
-  double explicit_laguerre(double z, int d);
-  double recursive_laguerre(double z, int d);
+  scalar explicit_laguerre(scalar z, int d);
+  scalar recursive_laguerre(scalar z, int d);
 
   // Legendre algorithms
-  double explicit_legendre(double z, int d);
-  double general_legendre(double z, int d);  
+  scalar explicit_legendre(scalar z, int d);
+  scalar general_legendre(scalar z, int d);  
 };

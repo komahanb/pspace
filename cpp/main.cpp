@@ -36,9 +36,9 @@ int main( int argc, char *argv[] ){
   
   // Space for quadrature points and weights
   const int nvars = pc->getNumParameters();
-  double *zq = new double[nvars];
-  double *yq = new double[nvars];
-  double wq;
+  scalar *zq = new scalar[nvars];
+  scalar *yq = new scalar[nvars];
+  scalar wq;
   for (int k = 0; k < nbasis; k++){
     for (int q = 0; q < nqpoints; q++){
       wq = pc->quadrature(q, zq, yq);

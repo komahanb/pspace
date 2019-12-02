@@ -3,7 +3,7 @@
 /*
   Construct uniform parameter with input parameters
 */
-UniformParameter::UniformParameter(int pid, double a, double b)
+UniformParameter::UniformParameter(int pid, scalar a, scalar b)
   : AbstractParameter() {
   this->setParameterID(pid);
   this->a = a;
@@ -18,7 +18,7 @@ UniformParameter::~UniformParameter(){}
 /*
   Evaluate the basis at the supplied point 
 */
-void UniformParameter::quadrature(int npoints, double *z, double *y, double *w){
+void UniformParameter::quadrature(int npoints, scalar *z, scalar *y, scalar *w){
   this->gauss->legendreQuadrature(npoints, 
                                   this->a, this->b, 
                                   z, y, w);
@@ -27,6 +27,6 @@ void UniformParameter::quadrature(int npoints, double *z, double *y, double *w){
 /*
   Evalute the basis of order d at the point z
 */
-double UniformParameter::basis(double z, int d){
+scalar UniformParameter::basis(scalar z, int d){
   return this->polyn->unit_legendre(z, d);
 }
