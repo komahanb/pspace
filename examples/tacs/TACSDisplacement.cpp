@@ -93,7 +93,7 @@ void TACSDisplacement::getElementSVSens( int elemIndex, TACSElement *element,
                                    N, pt,
                                    Xpts, v, dv, ddv, &_dfdq, 
                                    dfdu);
-  //  printf("displacement dfdu = %e\n", dfdu[0]);
+  //  printf("displacement dfdu = %.17e\n", dfdu[0]);
 }
 
 void TACSDisplacement::addElementDVSens( int elemIndex, TACSElement *element,

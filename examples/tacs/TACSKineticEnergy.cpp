@@ -93,5 +93,5 @@ void TACSKineticEnergy::getElementSVSens( int elemIndex, TACSElement *element,
                                    N, pt,
                                    Xpts, v, dv, ddv, &_dfdq, 
                                    dfdu);
-  //  printf("calling element dfdu = %e \n", dfdu[0]);
+  //  printf("calling element dfdu = %.17e \n", dfdu[0]);
 }

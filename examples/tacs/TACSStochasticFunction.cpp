@@ -359,7 +359,7 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
 
     // need to be careful with nodewise placement of dvs
     for (int n = 0; n < dvLen; n++){
-      //      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      //      printf("term %d dfdx[%d] = %.17e %.17e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     

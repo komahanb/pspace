@@ -26,7 +26,7 @@ void updateElement( TACSElement *elem, TacsScalar *vals ){
   SMD *smd = dynamic_cast<SMD*>(elem);
   if (smd != NULL) {
     smd->c = vals[0];
-    // printf("smd parameters are %e %e %e \n", smd->m, smd->c, smd->k);
+    // printf("smd parameters are %.17e %.17e %.17e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
   }
@@ -179,28 +179,28 @@ int main( int argc, char *argv[] ){
 
   pevar = pe2mean - pemean*pemean;
   uvar  = u2mean - umean*umean;
-  printf("Expectations : %e %e\n", RealPart(pemean), RealPart(umean));
-  printf("Variance     : %e %e\n", RealPart(pevar), RealPart(uvar));
+  printf("Expectations : %.17e %.17e\n", RealPart(pemean), RealPart(umean));
+  printf("Variance     : %.17e %.17e\n", RealPart(pevar), RealPart(uvar));
 
   // if (!ks){
   //   TACSStochasticVarianceFunction *sspe, *ssdisp;
   //   sspe = dynamic_cast<TACSStochasticFMeanFunction*>(spe);
   //   ssdisp = dynamic_cast<TACSStochasticFMeanFunction*>(sdisp);
-  //   printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
-  //   printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  //   printf("potential energy E = %.17e V = %.17e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("displacement     E = %.17e V = %.17e \n", ssdisp->getExpectation(), ssdisp->getVariance());
 
   //   sspe2 = dynamic_cast<TACSStochasticFFMeanFunction*>(spe);
   //   ssdisp2 = dynamic_cast<TACSStochasticFFMeanFunction*>(sdisp);
-  //   printf("potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
-  //   printf("displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  //   printf("potential energy E = %.17e V = %.17e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("displacement     E = %.17e V = %.17e \n", ssdisp->getExpectation(), ssdisp->getVariance());
 
 
   // } else {
   //   TACSKSStochasticFunction *sspe, *ssdisp;
   //   sspe = dynamic_cast<TACSKSStochasticFunction*>(spe);
   //   ssdisp = dynamic_cast<TACSKSStochasticFunction*>(sdisp);
-  //   printf("ks potential energy E = %e V = %e \n", sspe->getExpectation(), sspe->getVariance());
-  //   printf("ks displacement     E = %e V = %e \n", ssdisp->getExpectation(), ssdisp->getVariance());
+  //   printf("ks potential energy E = %.17e V = %.17e \n", sspe->getExpectation(), sspe->getVariance());
+  //   printf("ks displacement     E = %.17e V = %.17e \n", ssdisp->getExpectation(), ssdisp->getVariance());
   // }
 
   bdf->getGradient(0, &dfdx1);
@@ -214,15 +214,15 @@ int main( int argc, char *argv[] ){
   dfdx3->getArray(&umeanderiv);
   dfdx4->getArray(&u2meanderiv);
 
-  printf("dE{ u  }/dx = %e %e \n", RealPart(umeanderiv[0]), RealPart(umeanderiv[1]));
-  printf("dE{ pe }/dx = %e %e \n", RealPart(pemeanderiv[0]), RealPart(pemeanderiv[1]));
+  printf("dE{ u  }/dx = %.17e %.17e \n", RealPart(umeanderiv[0]), RealPart(umeanderiv[1]));
+  printf("dE{ pe }/dx = %.17e %.17e \n", RealPart(pemeanderiv[0]), RealPart(pemeanderiv[1]));
 
   // Find the derivative of variance
   dfdx2->axpy(-2.0*pemean, dfdx1);
   dfdx4->axpy(-2.0*umean, dfdx3);  
 
-  printf("dV{ u  }/dx = %e %e \n", RealPart(u2meanderiv[0]), RealPart(u2meanderiv[1]));
-  printf("dV{ pe }/dx = %e %e \n", RealPart(pe2meanderiv[0]), RealPart(pe2meanderiv[1]));
+  printf("dV{ u  }/dx = %.17e %.17e \n", RealPart(u2meanderiv[0]), RealPart(u2meanderiv[1]));
+  printf("dV{ pe }/dx = %.17e %.17e \n", RealPart(pe2meanderiv[0]), RealPart(pe2meanderiv[1]));
 
   MPI_Finalize();  
   return 0;

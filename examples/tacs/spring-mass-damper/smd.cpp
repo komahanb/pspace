@@ -24,7 +24,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
     //smd->m = vals[0];
     smd->c = vals[0];
     // smd->k = vals[0];
-    printf("smd parameters are %e %e %e \n", smd->m, smd->c, smd->k);
+    //    printf("smd parameters are %.17e %.17e %.17e \n", smd->m, smd->c, smd->k);
   } else {
     printf("Element mismatch while updating...");
   }
@@ -155,7 +155,7 @@ void SMD::addAdjResProduct( int elemIndex, double time,
                             int dvLen, 
                             TacsScalar dfdx[] ){
   // printf("enters addAdjResProduct \n");
-  // printf("adjoint is = %e \n", psi[0]);
+  // printf("adjoint is = %.17e \n", psi[0]);
   // printf("dvlen is = %d \n", dvLen);
 
   dfdx[0] += scale*psi[0]*ddv[0];
@@ -352,13 +352,13 @@ int main2( int argc, char *argv[] ){
     bdf->getGradient(0, &dfdx1);
     TacsScalar *dfdx1vals;
     dfdx1->getArray(&dfdx1vals);
-    printf("d{pe}dm = %e %e \n", dfdx1vals[0], dfdx1vals[1]);
+    printf("d{pe}dm = %.17e %.17e \n", dfdx1vals[0], dfdx1vals[1]);
 
     TACSBVec *dfdx2 = assembler->createDesignVec();
     bdf->getGradient(1, &dfdx2);
     TacsScalar *dfdx2vals;
     dfdx2->getArray(&dfdx2vals);
-    printf("d{u}dk  = %e %e \n", dfdx2vals[0], dfdx2vals[1]);
+    printf("d{u}dk  = %.17e %.17e \n", dfdx2vals[0], dfdx2vals[1]);
 
     // store function values for computing moments
     if (sampling){
@@ -367,7 +367,7 @@ int main2( int argc, char *argv[] ){
         fvals[ptr+i] = ftmp[i];
       }
       for (int i = 0; i < num_funcs; i++){
-        printf("f = %e\n", ftmp[i]);
+        printf("f = %.17e\n", ftmp[i]);
         fmean[i] += wq*ftmp[i];
       }
     }
@@ -380,7 +380,7 @@ int main2( int argc, char *argv[] ){
   if (sampling){
     
     for (int i = 0; i < num_funcs; i++){
-      printf("sampling  E[f] = %e\n", fmean[i]);
+      printf("sampling  E[f] = %.17e\n", fmean[i]);
     }
 
     // Compute variance
@@ -393,13 +393,13 @@ int main2( int argc, char *argv[] ){
 
     printf("\n");
     for (int i = 0; i < num_funcs; i++){
-      printf("sampling  V[f] = %e\n", fvar[i]);
+      printf("sampling  V[f] = %.17e\n", fvar[i]);
     }
 
   } else {
 
     for (int i = 0; i < num_funcs; i++){
-      printf("projection E[f] = %e\n", ftmp[i]);
+      printf("projection E[f] = %.17e\n", ftmp[i]);
     }
 
   }
