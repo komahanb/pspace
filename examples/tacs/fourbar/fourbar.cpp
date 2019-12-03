@@ -133,9 +133,9 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
 
   ParameterFactory *factory  = new ParameterFactory();
-  AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 2);
-  AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 2);
-  AbstractParameter *pOmegaA = factory->createUniformParameter(-0.6, 0.6, 2);
+  AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 1);
+  AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 1);
+  AbstractParameter *pOmegaA = factory->createUniformParameter(-0.6, 0.6, 1);
  
   ParameterContainer *pc = new ParameterContainer();
   pc->addParameter(pm1);
@@ -330,7 +330,7 @@ void test_beam_element(){
   MITC3 *beam = new MITC3(stiff, gravity);
   beam->incref();
 
-  int test_element = 1;
+  int test_element = 0;
   if (test_element){
     TacsScalar X[] = {0.0, 0.0, 0.0,
                       0.375, 0.5, 0.1,

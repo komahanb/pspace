@@ -1,6 +1,6 @@
 #include "TACSVelocity.h"
 #include "TACSAssembler.h"
-#include "smd.h"
+#include "smd/smd.h"
 
 /*
   Allocate the structural mass TACSVelocity

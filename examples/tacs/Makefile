@@ -12,7 +12,7 @@ PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o vpl.o ppa.o fourbar.o
+OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o 
 
 library: ${OBJS}
 	ar rcs libtacsuq.a  TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o
@@ -32,13 +32,5 @@ clean:
 	rm -f *.o smd ppa vpl fourbar
 
 test: default
-	./smd
-	./ppa
-	./vpl
-	./fourbar
 
 test_complex: complex
-	./smd
-	./ppa
-	./vpl
-	./fourbar

@@ -1,6 +1,5 @@
 #include "TACSKSFunction.h"
 #include "TACSAssembler.h"
-#include "smd.h"
 
 TACSKSFunction::TACSKSFunction( TACSAssembler *tacs,
                                 int quantityType,
