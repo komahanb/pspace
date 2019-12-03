@@ -1,6 +1,6 @@
 #include "TACSPotentialEnergy.h"
 #include "TACSAssembler.h"
-#include "smd.h"
+#include "smd/smd.h"
 
 /*
 */
