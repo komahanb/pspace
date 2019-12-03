@@ -94,7 +94,7 @@ void TACSKSFunction::getElementSVSens( int elemIndex, TACSElement *element,
                                        const TacsScalar dv[],
                                        const TacsScalar ddv[],
                                        TacsScalar dfdu[] ){
-  if (fabs(ksSum) < 1.0e-15){
+  if (RealPart(ksSum) < 1.0e-15){
     printf("Error: Evaluate the functions before derivatives \n");
   }
 
@@ -136,7 +136,7 @@ void TACSKSFunction::addElementDVSens( int elemIndex, TACSElement *element,
                                        const TacsScalar Xpts[], const TacsScalar v[],
                                        const TacsScalar dv[], const TacsScalar ddv[],
                                        int dvLen, TacsScalar dfdx[] ){
-  if (fabs(ksSum) < 1.0e-15){
+  if (RealPart(ksSum) < 1.0e-15){
     printf("Error: Evaluate the functions before derivatives \n");
   }
 

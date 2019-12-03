@@ -35,5 +35,5 @@ class VPL : public TACSElement{
     return "Vanderpol";
   }
 
-  double mu;
+  TacsScalar mu;
 };

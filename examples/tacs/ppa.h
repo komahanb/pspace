@@ -1,10 +1,10 @@
 #include "TACSElement.h"
 class PPA : public TACSElement{  
  public:
-  PPA( double xcm, double xf, 
-       double m  , double If, 
-       double ch , double ca,
-       double kh , double ka );
+  PPA( TacsScalar xcm, TacsScalar xf, 
+       TacsScalar m  , TacsScalar If, 
+       TacsScalar ch , TacsScalar ca,
+       TacsScalar kh , TacsScalar ka );
   
   // Return the Initial conditions
   // -----------------------------
@@ -32,5 +32,5 @@ class PPA : public TACSElement{
   int getNumNodes() {
     return 1;
   }
-  double xcm, xf, m, If, ch, ca, kh, ka, s;
+  TacsScalar xcm, xf, m, If, ch, ca, kh, ka, s;
 };

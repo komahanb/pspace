@@ -7,7 +7,7 @@ namespace{
                                 TACSElement *delem,
                                 TACSElement *selem, 
                                 const TacsScalar v[],
-                                double *zq,
+                                TacsScalar *zq,
                                 TacsScalar *uq
                                 ){
     int ndvpn   = delem->getVarsPerNode();
@@ -23,7 +23,7 @@ namespace{
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -39,7 +39,7 @@ namespace{
                                const TacsScalar v[],
                                const TacsScalar dv[],
                                const TacsScalar ddv[], 
-                               double *zq,
+                               TacsScalar *zq,
                                TacsScalar *uq,
                                TacsScalar *udq,
                                TacsScalar *uddq
@@ -59,7 +59,7 @@ namespace{
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -129,9 +129,9 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
   const int nnodes   = selem->getNumNodes();  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -143,7 +143,7 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
 
     // Get the quadrature points and weights for mean
     wq = pc->quadrature(q, zq, yq);
-    double wt = pc->basis(0,zq)*wq;
+    TacsScalar wt = pc->basis(0,zq)*wq;
     
     // Set the parameter values into the element
     selem->updateElement(delem, yq);
@@ -157,7 +157,7 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -169,7 +169,7 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
     }
 
     // Call Deterministic function with modified time weight
-    double scale = wt*tscale;
+    TacsScalar scale = wt*tscale;
     this->dfunc->elementWiseEval(evalType, elemIndex, delem,
                                  time, scale,
                                  Xpts, uq, udq, uddq);    
@@ -215,9 +215,9 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
   TacsScalar *dfduj  = new TacsScalar[nddof];  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -233,7 +233,7 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -247,7 +247,7 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
       // vectors
       for (int n = 0; n < nnodes; n++){
         for (int k = 0; k < nsterms; k++){
-          double psikz = pc->basis(k,zq);
+          TacsScalar psikz = pc->basis(k,zq);
           int lptr = n*ndvpn;
           int gptr = n*nsvpn + k*ndvpn;
           for (int d = 0; d < ndvpn; d++){        
@@ -274,10 +274,6 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
                                     Xpts, uq, udq, uddq, &_dfdq, 
                                     dfduj); // store into tmp
     } // end yloop
-
-    for (int n = 0; n < nddof; n++){
-      printf("term %d dfdq[%d]=%e\n", j, n, dfduj[n]);
-    }
     
     // Store j-th projected sv sens into stochastic array
     for (int n = 0; n < nnodes; n++){
@@ -323,9 +319,9 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
   TacsScalar *dfdxj  = new TacsScalar[dvLen];
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -341,7 +337,7 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -363,7 +359,7 @@ void TACSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *eleme
 
     // need to be careful with nodewise placement of dvs
     for (int n = 0; n < dvLen; n++){
-      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      //      printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     
