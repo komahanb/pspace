@@ -361,7 +361,7 @@ void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *ele
           ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
           // ksPtWeight *= weight*detJ;
 
-          //          printf("%e %e quantity = %e ksptweight = %e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], quantity, ksPtWeight);
+          //          printf("%.17e %.17e quantity = %.17e ksptweight = %.17e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], quantity, ksPtWeight);
           TacsScalar dfdq = ksPtWeight;
           delem->addPointQuantitySVSens(elemIndex,
                                         this->quantityType,
@@ -483,7 +483,7 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
           ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
           // ksPtWeight *= weight*detJ;
 
-          //printf("%e %e ksptweight = %e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], ksPtWeight);
+          //printf("%.17e %.17e ksptweight = %.17e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], ksPtWeight);
 
           // Call the underlying element and get the design variable sensitivities
           TacsScalar _dfdq = ksPtWeight; 
@@ -510,7 +510,7 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
 
     // need to be careful with nodewise placement of dvsx
     for (int n = 0; n < dvLen; n++){
-      // printf("term %d dfdx[%d] = %e %e \n", j, n, dfdx[n], dfdxj[n]);
+      // printf("term %d dfdx[%d] = %.17e %.17e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     

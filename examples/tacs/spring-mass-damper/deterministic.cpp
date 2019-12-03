@@ -155,25 +155,25 @@ int main( int argc, char *argv[] ){
 
   deterministic_solve(comm, parameters, fvals, dfdxvals);
     
-  printf("pe = %e, u = %e \n", fvals[0], fvals[1]);
-  printf("d{pe}dm = %e %e \n", dfdxvals[0][0], dfdxvals[0][1]);
-  printf("d{u}dm  = %e %e \n", dfdxvals[1][0], dfdxvals[1][1]);
+  printf("pe = %.17e, u = %.17e \n", RealPart(fvals[0]), RealPart(fvals[1]));
+  printf("d{pe}dm = %.17e %.17e \n", RealPart(dfdxvals[0][0]), RealPart(dfdxvals[0][1]));
+  printf("d{u}dm  = %.17e %.17e \n", RealPart(dfdxvals[1][0]), RealPart(dfdxvals[1][1]));
 
   // Finite difference derivative check
   TacsScalar *fhvals = new TacsScalar[num_funcs]; 
-  const TacsScalar dh = 1.0e-10;
+  const double dh = 1.0e-10;
   
   TacsScalar dh1_parameters[3] = {mass+dh, damping, stiffness};
   deterministic_solve(comm, dh1_parameters, fhvals, dfdxvals);
 
-  printf("df1dm %e \n", (fhvals[0]-fvals[0])/dh);
-  printf("df2dm %e \n", (fhvals[1]-fvals[1])/dh);
+  printf("df1dm %.17e \n", RealPart(fhvals[0]-fvals[0])/dh);
+  printf("df2dm %.17e \n", RealPart(fhvals[1]-fvals[1])/dh);
 
   TacsScalar dh2_parameters[3] = {mass, damping, stiffness+dh};
   deterministic_solve(comm, dh2_parameters, fhvals, dfdxvals);
 
-  printf("df1dk %e \n", (fhvals[0]-fvals[0])/dh);
-  printf("df2dk %e \n", (fhvals[1]-fvals[1])/dh);
+  printf("df1dk %.17e \n", RealPart(fhvals[0]-fvals[0])/dh);
+  printf("df2dk %.17e \n", RealPart(fhvals[1]-fvals[1])/dh);
   
   MPI_Finalize();  
   return 0;

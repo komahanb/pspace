@@ -529,9 +529,9 @@ int main( int argc, char *argv[] ){
         tacs->setVariables(q);
         TACSElement *element = tacs->getElement(elem[pt], X, vars);
 
-        printf("X = %e %e %e \n", X[0], X[1], X[2]);
-        printf("X = %e %e %e \n", X[3], X[4], X[5]);
-        printf("X = %e %e %e \n", X[6], X[7], X[8]);
+        printf("X = %.17e %.17e %.17e \n", X[0], X[1], X[2]);
+        printf("X = %.17e %.17e %.17e \n", X[3], X[4], X[5]);
+        printf("X = %.17e %.17e %.17e \n", X[6], X[7], X[8]);
         
         TacsScalar e[6], s[6];
         element->getStrain(e, param[pt], X, vars);
@@ -540,7 +540,7 @@ int main( int argc, char *argv[] ){
 //        TacsScalar s[6];
         s[0] = s[1] = s[2] = s[3] = s[4] = s[5] = 0.0;
 
-        fprintf(fp, "%e  %e %e %e  %e %e %e  %e %e %e\n",
+        fprintf(fp, "%.17e  %.17e %.17e %.17e  %.17e %.17e %.17e  %.17e %.17e %.17e\n",
                 time, vars[0], vars[1], vars[2],
                 s[0], s[1], s[2], s[3], s[4], s[5]);
       }

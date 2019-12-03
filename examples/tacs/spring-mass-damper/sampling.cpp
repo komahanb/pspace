@@ -176,11 +176,11 @@ void sampling_solve(MPI_Comm comm,
 
   for (int q = 0; q < nqpoints; q++){
     wq = pc->quadrature(q, zq, yq);
-    printf("deterministic solve %d at c = %e\n", q, RealPart(yq[0]));
+    printf("deterministic solve %d at c = %.17e\n", q, RealPart(yq[0]));
     TacsScalar damping = yq[0];
     TacsScalar params[3] = {mass, damping, stiffness};
     deterministic_solve(comm, params, f[q], dfdx[q]);
-    printf("\t disp = %e energy = %e \n", RealPart(f[q][0]), RealPart(f[q][1]));
+    printf("\t disp = %.17e energy = %.17e \n", RealPart(f[q][0]), RealPart(f[q][1]));
   }
 
   //-------------------------------------------------------------------//
@@ -231,14 +231,14 @@ void sampling_solve(MPI_Comm comm,
 
   // Print output expectation
   for (int i = 0; i < num_funcs; i++){
-    printf("E[f%d] = %e \n", i, RealPart(fmean[i]));
+    printf("E[f%d] = %.17e \n", i, RealPart(fmean[i]));
     fmvals[i] = fmean[i];
   }  
   int idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("E[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
-      printf("%e ", RealPart(dfdxmean[i][j]));
+      printf("%.17e ", RealPart(dfdxmean[i][j]));
       if (fmeanderiv){ fmeanderiv[idx] = dfdxmean[i][j]; }
       idx++;
     }
@@ -258,14 +258,14 @@ void sampling_solve(MPI_Comm comm,
 
   // Print output variance and variance derivative
   for (int i = 0; i < num_funcs; i++){
-    printf("V[f%d] = %e \n", i, RealPart(fvar[i]));
+    printf("V[f%d] = %.17e \n", i, RealPart(fvar[i]));
     fvvals[i] = fvar[i];
   }  
   idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("V[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
-      printf("%e ", RealPart(dfdxvar[i][j]));
+      printf("%.17e ", RealPart(dfdxvar[i][j]));
       if (fvarderiv){ fvarderiv[idx] = dfdxvar[i][j]; }
       idx++;
     }
@@ -283,8 +283,6 @@ int main( int argc, char *argv[] ){
   int rank; 
   MPI_Comm_rank(comm, &rank); 
 
-  TacsScalar mass = 2.5;
-  TacsScalar stiffness = 5.0;
   TacsScalar *fvals;           
   TacsScalar **dfdxvals;
 
@@ -302,21 +300,23 @@ int main( int argc, char *argv[] ){
   TacsScalar *fvarderiv = new TacsScalar[num_funcs*num_dvs];
   memset(fvarderiv, 0, num_dvs*num_funcs*sizeof(TacsScalar));
 
-  double dh = 1.0e-8;
+  double dh = 1.0e-30;
+  TacsScalar mass = 2.5 + 1.0e-30j;
+  TacsScalar stiffness = 5.0;
 
-  // FD Derivative of E[F] wrt mass
-  TacsScalar *fmeanmtmp = new TacsScalar[num_funcs];  
-  memset(fmeanmtmp, 0, num_funcs*sizeof(TacsScalar));
-  TacsScalar *fvarmtmp = new TacsScalar[num_funcs];  
-  memset(fvarmtmp, 0, num_funcs*sizeof(TacsScalar));  
-  sampling_solve(comm, mass + dh, stiffness, fmeanmtmp, fvarmtmp);
+  // // FD Derivative of E[F] wrt mass
+  // TacsScalar *fmeanmtmp = new TacsScalar[num_funcs];  
+  // memset(fmeanmtmp, 0, num_funcs*sizeof(TacsScalar));
+  // TacsScalar *fvarmtmp = new TacsScalar[num_funcs];  
+  // memset(fvarmtmp, 0, num_funcs*sizeof(TacsScalar));  
+  // sampling_solve(comm, mass + dh, stiffness, fmeanmtmp, fvarmtmp);
 
-  // FD Derivative of E[F] wrt stiffness
-  TacsScalar *fmeanktmp = new TacsScalar[num_funcs];  
-  memset(fmeanktmp, 0, num_funcs*sizeof(TacsScalar));
-  TacsScalar *fvarktmp = new TacsScalar[num_funcs];  
-  memset(fvarktmp, 0, num_funcs*sizeof(TacsScalar));  
-  sampling_solve(comm, mass, stiffness + dh, fmeanktmp, fvarktmp);
+  // // FD Derivative of E[F] wrt stiffness
+  // TacsScalar *fmeanktmp = new TacsScalar[num_funcs];  
+  // memset(fmeanktmp, 0, num_funcs*sizeof(TacsScalar));
+  // TacsScalar *fvarktmp = new TacsScalar[num_funcs];  
+  // memset(fvarktmp, 0, num_funcs*sizeof(TacsScalar));  
+  // sampling_solve(comm, mass, stiffness + dh, fmeanktmp, fvarktmp);
   
   // Baseline solution
   sampling_solve(comm, mass, stiffness, fmean, fvar, fmeanderiv, fvarderiv);
@@ -325,32 +325,61 @@ int main( int argc, char *argv[] ){
   int ctr = 0;
   for (int i = 0; i < num_funcs; i++){
     for (int j = 0; j < num_dvs; j++){
-      if (i == 0){
-        printf("%d fd = %e actual = %e error = %e \n", i, 
-               RealPart((fmeanmtmp[j] - fmean[j])/dh), 
-               RealPart(fmeanderiv[i+j*num_dvs]), 
-               RealPart((fmeanmtmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
-      } else { 
-        printf("%d fd = %e actual = %e error = %e \n", i, 
-               RealPart((fmeanktmp[j] - fmean[j])/dh), 
-               RealPart(fmeanderiv[i+j*num_dvs]), 
-               RealPart((fmeanktmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
-      } 
+      printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
+             ImagPart(fmean[j])/dh, 
+             RealPart(fmeanderiv[i+j*num_dvs]), 
+             ImagPart(fmean[j])/dh - RealPart(fmeanderiv[i+j*num_dvs])
+             );
       ctr++;
     }
   }
-  
+
+  printf("Derivative of Variance\n");
+  ctr = 0;
+  for (int i = 0; i < num_funcs; i++){
+    for (int j = 0; j < num_dvs; j++){
+      printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
+             ImagPart(fvar[j])/dh, 
+             RealPart(fvarderiv[i+j*num_dvs]), 
+             ImagPart(fvar[j])/dh - RealPart(fvarderiv[i+j*num_dvs])
+             );
+      ctr++;
+    }
+  }
+
+
+
+
+  // printf("Derivative of Expectation\n");
+  // int ctr = 0;
+  // for (int i = 0; i < num_funcs; i++){
+  //   for (int j = 0; j < num_dvs; j++){
+  //     if (i == 0){
+  //       printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
+  //              RealPart((fmeanmtmp[j] - fmean[j])/dh), 
+  //              RealPart(fmeanderiv[i+j*num_dvs]), 
+  //              RealPart((fmeanmtmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+  //     } else { 
+  //       printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
+  //              RealPart((fmeanktmp[j] - fmean[j])/dh), 
+  //              RealPart(fmeanderiv[i+j*num_dvs]), 
+  //              RealPart((fmeanktmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+  //     } 
+  //     ctr++;
+  //   }
+  // }
+  /*  
   printf("Derivative of Variance\n");
   ctr = 0;
   for (int i = 0; i < num_funcs; i++){
     for (int j = 0; j < num_dvs; j++){
       if (i == 0){
-        printf("%d fd = %e actual = %e error = %e \n", i, 
+        printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
                RealPart((fvarmtmp[j] - fvar[j])/dh), 
                RealPart(fvarderiv[i+j*num_dvs]), 
                RealPart((fvarmtmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
       } else { 
-        printf("%d fd = %e actual = %e error = %e \n", i, 
+        printf("%d fd = %.17e actual = %.17e error = %.17e \n", i, 
                RealPart((fvarktmp[j] - fvar[j])/dh), 
                RealPart(fvarderiv[i+j*num_dvs]), 
                RealPart((fvarktmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
@@ -358,7 +387,7 @@ int main( int argc, char *argv[] ){
       ctr++;
     }
   }
-
+  */
   MPI_Finalize();  
   return 0;
 }
