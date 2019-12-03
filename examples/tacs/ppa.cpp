@@ -14,10 +14,10 @@ void updatePPA( TACSElement *elem, TacsScalar *vals ){
   }
 }
 
-PPA::PPA( double xcm, double xf, 
-            double m  , double If, 
-            double ch , double ca,
-            double kh , double ka ){
+PPA::PPA( TacsScalar xcm, TacsScalar xf, 
+            TacsScalar m  , TacsScalar If, 
+            TacsScalar ch , TacsScalar ca,
+            TacsScalar kh , TacsScalar ka ){
   this->xcm = xcm;
   this->xf  = xf;
   this->m   = m;
@@ -72,10 +72,10 @@ int main( int argc, char *argv[] ){
   MPI_Comm_rank(comm, &rank); 
 
   // Create TACS using PPA element
-  double xcm = 0.375,  xf = 0.25;
-  double m = 55.3291, If = 3.4581;
-  double ch = 0.0, ca = 0.0;
-  double kh = 11366.0, ka = 7002.6;
+  TacsScalar xcm = 0.375,  xf = 0.25;
+  TacsScalar m = 55.3291, If = 3.4581;
+  TacsScalar ch = 0.0, ca = 0.0;
+  TacsScalar kh = 11366.0, ka = 7002.6;
   PPA *ppa = new PPA(xcm, xf, m, If, ch, ca, kh, ka);
   ppa->incref();
  

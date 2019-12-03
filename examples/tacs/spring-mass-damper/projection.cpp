@@ -179,8 +179,8 @@ int main( int argc, char *argv[] ){
 
   pevar = pe2mean - pemean*pemean;
   uvar  = u2mean - umean*umean;
-  printf("Expectations : %e %e\n", pemean, umean);
-  printf("Variance     : %e %e\n", pevar, uvar);
+  printf("Expectations : %e %e\n", RealPart(pemean), RealPart(umean));
+  printf("Variance     : %e %e\n", RealPart(pevar), RealPart(uvar));
 
   // if (!ks){
   //   TACSStochasticVarianceFunction *sspe, *ssdisp;
@@ -214,15 +214,15 @@ int main( int argc, char *argv[] ){
   dfdx3->getArray(&umeanderiv);
   dfdx4->getArray(&u2meanderiv);
 
-  printf("dE{ u  }/dx = %e %e \n", umeanderiv[0], umeanderiv[1]);
-  printf("dE{ pe }/dx = %e %e \n", pemeanderiv[0], pemeanderiv[1]);
+  printf("dE{ u  }/dx = %e %e \n", RealPart(umeanderiv[0]), RealPart(umeanderiv[1]));
+  printf("dE{ pe }/dx = %e %e \n", RealPart(pemeanderiv[0]), RealPart(pemeanderiv[1]));
 
   // Find the derivative of variance
   dfdx2->axpy(-2.0*pemean, dfdx1);
   dfdx4->axpy(-2.0*umean, dfdx3);  
 
-  printf("dV{ u  }/dx = %e %e \n", u2meanderiv[0], u2meanderiv[1]);
-  printf("dV{ pe }/dx = %e %e \n", pe2meanderiv[0], pe2meanderiv[1]);
+  printf("dV{ u  }/dx = %e %e \n", RealPart(u2meanderiv[0]), RealPart(u2meanderiv[1]));
+  printf("dV{ pe }/dx = %e %e \n", RealPart(pe2meanderiv[0]), RealPart(pe2meanderiv[1]));
 
   MPI_Finalize();  
   return 0;

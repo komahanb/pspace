@@ -8,7 +8,7 @@ namespace {
                                 TACSElement *delem,
                                 TACSElement *selem, 
                                 const TacsScalar v[],
-                                double *zq,
+                                TacsScalar *zq,
                                 TacsScalar *uq
                                 ){
     int ndvpn   = delem->getVarsPerNode();
@@ -24,7 +24,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -40,7 +40,7 @@ namespace {
                                const TacsScalar v[],
                                const TacsScalar dv[],
                                const TacsScalar ddv[], 
-                               double *zq,
+                               TacsScalar *zq,
                                TacsScalar *uq,
                                TacsScalar *udq,
                                TacsScalar *uddq
@@ -60,7 +60,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -146,9 +146,9 @@ void TACSKSStochasticFMeanFunction::elementWiseEval( EvaluationType evalType,
   const int nnodes   = selem->getNumNodes();  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -180,7 +180,7 @@ void TACSKSStochasticFMeanFunction::elementWiseEval( EvaluationType evalType,
         for ( int i = 0; i < numGauss; i++ ){
       
           // Get the Gauss points one at a time
-          double weight = 1.0; //delem->getGaussWtsPts(i, pt);
+          TacsScalar weight = 1.0; //delem->getGaussWtsPts(i, pt);
           double pt[3] = {0.0,0.0,0.0};
           const int N = 1;
           //  delem->getShapeFunctions(pt, ctx->N);
@@ -256,12 +256,12 @@ TacsScalar TACSKSStochasticFMeanFunction::getFunctionValue(){
 TacsScalar TACSKSStochasticFMeanFunction::getExpectation(){
   // Finish up stochastic integration
   const int nsparams = pc->getNumParameters();
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   TacsScalar fmean = 0.0;    
   for (int q = 0; q < nsqpts; q++){
-    double wq = pc->quadrature(q, zq, yq);
+    TacsScalar wq = pc->quadrature(q, zq, yq);
     fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
   }
   delete [] zq;
@@ -286,7 +286,7 @@ void TACSKSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement
                                                       const TacsScalar dv[],
                                                       const TacsScalar ddv[],
                                                       TacsScalar dfdu[] ){
-  if (fabs(ksSum[0]) < 1.0e-15){
+  if (RealPart(ksSum[0]) < 1.0e-15){
     printf("Error: Evaluate the functions before derivatives \n");
   }
 
@@ -311,9 +311,9 @@ void TACSKSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement
   TacsScalar *dfduj  = new TacsScalar[nddof];  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -329,7 +329,7 @@ void TACSKSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -347,7 +347,7 @@ void TACSKSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement
         const int numNodes = delem->getNumNodes();
     
         for ( int i = 0; i < numGauss; i++ ){      
-          double weight       = 1.0; //delem->getGaussWtsPts(i, pt);
+          TacsScalar weight       = 1.0; //delem->getGaussWtsPts(i, pt);
           double pt[3]        = {0.0,0.0,0.0};
           const int N         = 1;
 
@@ -427,9 +427,9 @@ void TACSKSStochasticFMeanFunction::addElementDVSens( int elemIndex, TACSElement
   TacsScalar *dfdxj  = new TacsScalar[dvLen];
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -452,7 +452,7 @@ void TACSKSStochasticFMeanFunction::addElementDVSens( int elemIndex, TACSElement
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -469,7 +469,7 @@ void TACSKSStochasticFMeanFunction::addElementDVSens( int elemIndex, TACSElement
         const int numNodes = delem->getNumNodes();
     
         for ( int i = 0; i < numGauss; i++ ){      
-          double weight       = 1.0; //delem->getGaussWtsPts(i, pt);
+          TacsScalar weight       = 1.0; //delem->getGaussWtsPts(i, pt);
           double pt[3]        = {0.0,0.0,0.0};
           const int N         = 1;
 

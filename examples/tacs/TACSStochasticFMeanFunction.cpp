@@ -8,7 +8,7 @@ namespace {
                                 TACSElement *delem,
                                 TACSElement *selem, 
                                 const TacsScalar v[],
-                                double *zq,
+                                TacsScalar *zq,
                                 TacsScalar *uq
                                 ){
     int ndvpn   = delem->getVarsPerNode();
@@ -24,7 +24,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -40,7 +40,7 @@ namespace {
                                const TacsScalar v[],
                                const TacsScalar dv[],
                                const TacsScalar ddv[], 
-                               double *zq,
+                               TacsScalar *zq,
                                TacsScalar *uq,
                                TacsScalar *udq,
                                TacsScalar *uddq
@@ -60,7 +60,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -123,12 +123,12 @@ TacsScalar TACSStochasticFMeanFunction::getFunctionValue(){
 TacsScalar TACSStochasticFMeanFunction::getExpectation(){
   // Finish up stochastic integration
   const int nsparams = pc->getNumParameters();
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   TacsScalar fmean = 0.0;    
   for (int q = 0; q < nsqpts; q++){
-    double wq = pc->quadrature(q, zq, yq);
+    TacsScalar wq = pc->quadrature(q, zq, yq);
     fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
   }
   delete [] zq;
@@ -172,9 +172,9 @@ void TACSStochasticFMeanFunction::elementWiseEval( EvaluationType evalType,
   const int nnodes   = selem->getNumNodes();  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -251,9 +251,9 @@ void TACSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement *
   TacsScalar *dfduj  = new TacsScalar[nddof];  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -269,7 +269,7 @@ void TACSStochasticFMeanFunction::getElementSVSens( int elemIndex, TACSElement *
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -337,9 +337,9 @@ void TACSStochasticFMeanFunction::addElementDVSens( int elemIndex, TACSElement *
   TacsScalar *dfdxj  = new TacsScalar[dvLen];
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -362,7 +362,7 @@ void TACSStochasticFMeanFunction::addElementDVSens( int elemIndex, TACSElement *
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);

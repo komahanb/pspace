@@ -30,7 +30,7 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   }
 }
 
-SMD::SMD(double m, double c, double k){
+SMD::SMD(TacsScalar m, TacsScalar c, TacsScalar k){
   this->m = m;
   this->c = c;
   this->k = k;  

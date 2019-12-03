@@ -170,17 +170,17 @@ void sampling_solve(MPI_Comm comm,
     }
   }
   
-  double *zq = new double[nvars];
-  double *yq = new double[nvars];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nvars];
+  TacsScalar *yq = new TacsScalar[nvars];
+  TacsScalar wq;
 
   for (int q = 0; q < nqpoints; q++){
     wq = pc->quadrature(q, zq, yq);
-    printf("deterministic solve %d at c = %e\n", q, yq[0]);
+    printf("deterministic solve %d at c = %e\n", q, RealPart(yq[0]));
     TacsScalar damping = yq[0];
     TacsScalar params[3] = {mass, damping, stiffness};
     deterministic_solve(comm, params, f[q], dfdx[q]);
-    printf("\t disp = %e energy = %e \n", f[q][0], f[q][1]);
+    printf("\t disp = %e energy = %e \n", RealPart(f[q][0]), RealPart(f[q][1]));
   }
 
   //-------------------------------------------------------------------//
@@ -231,14 +231,14 @@ void sampling_solve(MPI_Comm comm,
 
   // Print output expectation
   for (int i = 0; i < num_funcs; i++){
-    printf("E[f%d] = %e \n", i, fmean[i]);
+    printf("E[f%d] = %e \n", i, RealPart(fmean[i]));
     fmvals[i] = fmean[i];
   }  
   int idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("E[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
-      printf("%e ", dfdxmean[i][j]);
+      printf("%e ", RealPart(dfdxmean[i][j]));
       if (fmeanderiv){ fmeanderiv[idx] = dfdxmean[i][j]; }
       idx++;
     }
@@ -258,14 +258,14 @@ void sampling_solve(MPI_Comm comm,
 
   // Print output variance and variance derivative
   for (int i = 0; i < num_funcs; i++){
-    printf("V[f%d] = %e \n", i, fvar[i]);
+    printf("V[f%d] = %e \n", i, RealPart(fvar[i]));
     fvvals[i] = fvar[i];
   }  
   idx = 0;
   for (int i = 0; i < num_funcs; i++){
     printf("V[df%ddx] = ", i);
     for (int j = 0; j < num_dvars; j++){
-      printf("%e ", dfdxvar[i][j]);
+      printf("%e ", RealPart(dfdxvar[i][j]));
       if (fvarderiv){ fvarderiv[idx] = dfdxvar[i][j]; }
       idx++;
     }
@@ -326,11 +326,15 @@ int main( int argc, char *argv[] ){
   for (int i = 0; i < num_funcs; i++){
     for (int j = 0; j < num_dvs; j++){
       if (i == 0){
-        printf("%d fd = %e actual = %e error = %e \n", i, (fmeanmtmp[j] - fmean[j])/dh, fmeanderiv[i+j*num_dvs], 
-               ((fmeanmtmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+        printf("%d fd = %e actual = %e error = %e \n", i, 
+               RealPart((fmeanmtmp[j] - fmean[j])/dh), 
+               RealPart(fmeanderiv[i+j*num_dvs]), 
+               RealPart((fmeanmtmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
       } else { 
-        printf("%d fd = %e actual = %e error = %e \n", i, (fmeanktmp[j] - fmean[j])/dh, fmeanderiv[i+j*num_dvs], 
-               ((fmeanktmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
+        printf("%d fd = %e actual = %e error = %e \n", i, 
+               RealPart((fmeanktmp[j] - fmean[j])/dh), 
+               RealPart(fmeanderiv[i+j*num_dvs]), 
+               RealPart((fmeanktmp[j] - fmean[j])/dh - fmeanderiv[i+j*num_dvs]));
       } 
       ctr++;
     }
@@ -341,11 +345,15 @@ int main( int argc, char *argv[] ){
   for (int i = 0; i < num_funcs; i++){
     for (int j = 0; j < num_dvs; j++){
       if (i == 0){
-        printf("%d fd = %e actual = %e error = %e \n", i, (fvarmtmp[j] - fvar[j])/dh, fvarderiv[i+j*num_dvs], 
-               ((fvarmtmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
+        printf("%d fd = %e actual = %e error = %e \n", i, 
+               RealPart((fvarmtmp[j] - fvar[j])/dh), 
+               RealPart(fvarderiv[i+j*num_dvs]), 
+               RealPart((fvarmtmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
       } else { 
-        printf("%d fd = %e actual = %e error = %e \n", i, (fvarktmp[j] - fvar[j])/dh, fvarderiv[i+j*num_dvs], 
-               ((fvarktmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
+        printf("%d fd = %e actual = %e error = %e \n", i, 
+               RealPart((fvarktmp[j] - fvar[j])/dh), 
+               RealPart(fvarderiv[i+j*num_dvs]), 
+               RealPart((fvarktmp[j] - fvar[j])/dh - fvarderiv[i+j*num_dvs]));
       } 
       ctr++;
     }

@@ -8,7 +8,7 @@ static const int TACS_VELOCITY_FUNCTION         = -4;
 
 class SMD : public TACSElement{  
  public:
-  SMD(double m, double c, double k);
+  SMD(TacsScalar m, TacsScalar c, TacsScalar k);
 
   /**
      Return the Initial conditions
@@ -192,5 +192,5 @@ class SMD : public TACSElement{
     return 1;
   }
 
-  double m, c, k;
+  TacsScalar m, c, k;
 };

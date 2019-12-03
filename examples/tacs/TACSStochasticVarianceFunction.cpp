@@ -8,7 +8,7 @@ namespace {
                                 TACSElement *delem,
                                 TACSElement *selem, 
                                 const TacsScalar v[],
-                                double *zq,
+                                TacsScalar *zq,
                                 TacsScalar *uq
                                 ){
     int ndvpn   = delem->getVarsPerNode();
@@ -24,7 +24,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -40,7 +40,7 @@ namespace {
                                const TacsScalar v[],
                                const TacsScalar dv[],
                                const TacsScalar ddv[], 
-                               double *zq,
+                               TacsScalar *zq,
                                TacsScalar *uq,
                                TacsScalar *udq,
                                TacsScalar *uddq
@@ -60,7 +60,7 @@ namespace {
     // vectors
     for (int n = 0; n < nnodes; n++){
       for (int k = 0; k < nsterms; k++){
-        double psikz = pc->basis(k,zq);
+        TacsScalar psikz = pc->basis(k,zq);
         int lptr = n*ndvpn;
         int gptr = n*nsvpn + k*ndvpn;
         for (int d = 0; d < ndvpn; d++){        
@@ -171,9 +171,9 @@ void TACSStochasticVarianceFunction::elementWiseEval( EvaluationType evalType,
   const int nnodes   = selem->getNumNodes();  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -187,8 +187,8 @@ void TACSStochasticVarianceFunction::elementWiseEval( EvaluationType evalType,
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
-      double scale = wt*tscale;
+      TacsScalar wt = pc->basis(j,zq)*wq;
+      TacsScalar scale = wt*tscale;
       
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -253,9 +253,9 @@ void TACSStochasticVarianceFunction::getElementSVSens( int elemIndex, TACSElemen
   TacsScalar *dfduj  = new TacsScalar[nddof];  
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -271,7 +271,7 @@ void TACSStochasticVarianceFunction::getElementSVSens( int elemIndex, TACSElemen
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);
@@ -340,9 +340,9 @@ void TACSStochasticVarianceFunction::addElementDVSens( int elemIndex, TACSElemen
   TacsScalar *dfdxj  = new TacsScalar[dvLen];
   
   // Space for quadrature points and weights
-  double *zq = new double[nsparams];
-  double *yq = new double[nsparams];
-  double wq;
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
   
   // Create space for deterministic states at each quadrature node in y
   TacsScalar *uq     = new TacsScalar[nddof];
@@ -365,7 +365,7 @@ void TACSStochasticVarianceFunction::addElementDVSens( int elemIndex, TACSElemen
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
-      double wt = pc->basis(j,zq)*wq;
+      TacsScalar wt = pc->basis(j,zq)*wq;
     
       // Set the parameter values into the element
       selem->updateElement(delem, yq);

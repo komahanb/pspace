@@ -466,7 +466,7 @@ int main( int argc, char *argv[] ){
       TacsScalar e[6];
       beam->getStrain(e, &pt, X, vars);
       printf("%5.2f %15.4e %15.4e %15.4e %15.4e %15.4e %15.4e\n",
-             pt, e[0], e[1], e[2], e[3], e[4], e[5]);
+             pt, RealPart(e[0]), RealPart(e[1]), RealPart(e[2]), RealPart(e[3]), RealPart(e[4]), RealPart(e[5]));
     }
 
     beam->decref();
