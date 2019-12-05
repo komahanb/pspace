@@ -74,11 +74,11 @@ namespace {
 }
 
 TACSKSStochasticFFMeanBeamFunction::TACSKSStochasticFFMeanBeamFunction( TACSAssembler *tacs,
-                                                                      TACSFunction *dfunc,
-                                                                      ParameterContainer *pc,
-                                                                      int quantityType,
-                                                                      int moment_type,
-                                                                      double ksWeight )
+                                                                        TACSFunction *dfunc,
+                                                                        ParameterContainer *pc,
+                                                                        int quantityType,
+                                                                        int moment_type,
+                                                                        double ksWeight )
   : TACSFunction(dfunc->getAssembler(), 
                  dfunc->getDomainType(), 
                  dfunc->getStageType(),
@@ -122,14 +122,14 @@ void TACSKSStochasticFFMeanBeamFunction::initEvaluation( EvaluationType ftype )
 }
 
 void TACSKSStochasticFFMeanBeamFunction::elementWiseEval( EvaluationType evalType,
-                                                         int elemIndex,
-                                                         TACSElement *element,
-                                                         double time,
-                                                         TacsScalar tscale,
-                                                         const TacsScalar Xpts[],
-                                                         const TacsScalar v[],
-                                                         const TacsScalar dv[],
-                                                         const TacsScalar ddv[] )
+                                                          int elemIndex,
+                                                          TACSElement *element,
+                                                          double time,
+                                                          TacsScalar tscale,
+                                                          const TacsScalar Xpts[],
+                                                          const TacsScalar v[],
+                                                          const TacsScalar dv[],
+                                                          const TacsScalar ddv[] )
 {
   //printf("TACSStochasticVarianceFunction::elementWiseEval %d\n", elemIndex);
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
@@ -250,7 +250,7 @@ TacsScalar TACSKSStochasticFFMeanBeamFunction::getExpectation(){
   TacsScalar fmean = 0.0;    
   for (int q = 0; q < nsqpts; q++){
     TacsScalar wq = pc->quadrature(q, zq, yq);
-    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
+    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q]*fvals[0*nsqpts+q];
   }
   delete [] zq;
   delete [] yq;
@@ -266,14 +266,14 @@ TacsScalar TACSKSStochasticFFMeanBeamFunction::getVariance(){
 }
 
 void TACSKSStochasticFFMeanBeamFunction::getElementSVSens( int elemIndex, TACSElement *element,
-                                                          double time,
-                                                          TacsScalar alpha, TacsScalar beta,
-                                                          TacsScalar gamma,
-                                                          const TacsScalar Xpts[],
-                                                          const TacsScalar v[],
-                                                          const TacsScalar dv[],
-                                                          const TacsScalar ddv[],
-                                                          TacsScalar dfdu[] ){
+                                                           double time,
+                                                           TacsScalar alpha, TacsScalar beta,
+                                                           TacsScalar gamma,
+                                                           const TacsScalar Xpts[],
+                                                           const TacsScalar v[],
+                                                           const TacsScalar dv[],
+                                                           const TacsScalar ddv[],
+                                                           TacsScalar dfdu[] ){
   if (RealPart(ksSum[0]) < 1.0e-15){
     printf("Error: Evaluate the functions before derivatives \n");
   }
@@ -349,6 +349,7 @@ void TACSKSStochasticFFMeanBeamFunction::getElementSVSens( int elemIndex, TACSEl
           
           TacsScalar ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
           ksPtWeight *= weight*detJ*wt;
+          ksPtWeight *= 2.0*fvals[j*nsqpts+q];
 
           TacsScalar dfdq = ksPtWeight;
           delem->addPointQuantitySVSens(elemIndex,
@@ -386,13 +387,13 @@ void TACSKSStochasticFFMeanBeamFunction::getElementSVSens( int elemIndex, TACSEl
 }
 
 void TACSKSStochasticFFMeanBeamFunction::addElementDVSens( int elemIndex, TACSElement *element,
-                                                          double time, TacsScalar scale,
-                                                          const TacsScalar Xpts[],
-                                                          const TacsScalar v[],
-                                                          const TacsScalar dv[],
-                                                          const TacsScalar ddv[],
-                                                          int dvLen,
-                                                          TacsScalar dfdx[] ){
+                                                           double time, TacsScalar scale,
+                                                           const TacsScalar Xpts[],
+                                                           const TacsScalar v[],
+                                                           const TacsScalar dv[],
+                                                           const TacsScalar ddv[],
+                                                           int dvLen,
+                                                           TacsScalar dfdx[] ){
 
 
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
@@ -457,7 +458,8 @@ void TACSKSStochasticFFMeanBeamFunction::addElementDVSens( int elemIndex, TACSEl
           TacsScalar Xd[9], J[9];
           TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
 
-          TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];          
+          TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
+          dfdq *= 2.0*fvals[j*nsqpts+q];
           delem->addPointQuantityDVSens( elemIndex, 
                                          this->quantityType,
                                          time, scale,
