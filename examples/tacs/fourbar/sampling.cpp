@@ -5,56 +5,16 @@
 #include "TACSTimoshenkoConstitutive.h"
 #include "MITC3.h"
 #include "TACSKSFailure.h"
+#include "TACSStructuralMass.h"
 #include "TACSConstitutiveVerification.h"
-#include "ParameterContainer.h"
-#include "ParameterFactory.h"
-#include "TACSStochasticElement.h"
 #include "TACSElementVerification.h"
 
-void updateBeam1( TACSElement *elem, TacsScalar *vals ){
-  MITC3 *mitc3 = dynamic_cast<MITC3*>(elem);
-  if (mitc3 != NULL) {
-    TACSTimoshenkoConstitutive *stiff = dynamic_cast<TACSTimoshenkoConstitutive*>(mitc3->getConstitutive());
-    if (stiff){
-      stiff->incref();      TacsScalar rho[4];
-      stiff->getProperties(rho, NULL, NULL);
-      rho[0] = vals[0];
-      stiff->setProperties(rho, NULL, NULL);
-      stiff->decref();
-    }
-  } else {
-    printf("Element mismatch while updating...");
-  }
-}
-
-void updateBeam2( TACSElement *elem, TacsScalar *vals ){
-  MITC3 *mitc3 = dynamic_cast<MITC3*>(elem);
-  if (mitc3 != NULL) {
-    TACSTimoshenkoConstitutive *stiff = dynamic_cast<TACSTimoshenkoConstitutive*>(mitc3->getConstitutive());
-    if (stiff){
-      stiff->incref();      TacsScalar rho[4];
-      stiff->getProperties(rho, NULL, NULL);
-      rho[0] = vals[1];
-      stiff->setProperties(rho, NULL, NULL);
-      stiff->decref();
-    }
-  } else {
-    printf("Element mismatch while updating...");
-  }
-}
-
-void updateRevoluteDriver( TACSElement *elem, TacsScalar *vals ){
-  TACSRevoluteDriver *revDriverA = dynamic_cast<TACSRevoluteDriver*>(elem);
-  if (revDriverA != NULL) {
-    revDriverA->setSpeed(vals[0]);
-  } else {
-    printf("Element mismatch while updating...");
-  }
-}
+#include "ParameterContainer.h"
+#include "ParameterFactory.h"
 
 class SquareSection : public TACSTimoshenkoConstitutive {
 public:
-  static const double k = 5.0/6.0;
+  static const double kcorr;
 
   SquareSection( TacsScalar _density, TacsScalar _E, TacsScalar _G,
                  TacsScalar _w, int _wNum,
@@ -86,8 +46,8 @@ public:
     C[7] = G*J;
     C[14] = E*Iy;
     C[21] = E*Iz;
-    C[28] = k*G*A;
-    C[35] = k*G*A;
+    C[28] = kcorr*G*A;
+    C[35] = kcorr*G*A;
 
     // Set the entries of the density matrix
     rho[0] = density*A;
@@ -120,7 +80,7 @@ public:
   void addStressDVSens( int elemIndex, const double pt[], const TacsScalar X[],
                         const TacsScalar e[], TacsScalar scale,
                         const TacsScalar psi[], int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += scale*(2.0*w*(E*e[0]*psi[0] + k*G*(e[4]*psi[4] + e[5]*psi[5])) +
+    dfdx[0] += scale*(2.0*w*(E*e[0]*psi[0] + kcorr*G*(e[4]*psi[4] + e[5]*psi[5])) +
                       (w*w*w/3.0)*(2.0*G*e[1]*psi[1] + E*(e[2]*psi[2] + e[3]*psi[3])));
   }
   void addMassMomentsDVSens( int elemIndex, const double pt[],
@@ -147,12 +107,13 @@ public:
                                     const TacsScalar X[], const TacsScalar e[],
                                     TacsScalar sens[] ){
     memset(sens, 0, 6*sizeof(TacsScalar));
-    if (e[0] >= 0.0){
+    if (TacsRealPart(e[0]) >= 0.0){
       sens[0] = E*w*w/10e3;
     }
     else {
       sens[0] = -E*w*w/10e3;
     }
+    return E*w*w*fabs(e[0])/10e3;
   }
   void addFailureDVSens( int elemIndex, const double pt[],
                          const TacsScalar X[], const TacsScalar e[],
@@ -164,6 +125,8 @@ public:
   TacsScalar w;
   int wNum;
 };
+
+const double SquareSection::kcorr = 5.0/6.0;
 
 /*
   Create and return the TACSAssembler object for the four bar
@@ -192,7 +155,8 @@ public:
   Bars 1 and 2 are square and of dimension 16 x 16 mm
   Bar 3 is square and of dimension 8 x 8 mm
 */
-TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
+TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _omega ){
+  printf("speed = %e \n", _omega);
   // Set the gravity vector
   TACSGibbsVector *gravity = new TACSGibbsVector(0.0, 0.0, -9.81);
 
@@ -211,7 +175,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TACSGibbsVector *revDirC = new TACSGibbsVector(sin(theta), 0.0, cos(theta));
 
   // Create the revolute constraints
-  TacsScalar omega = -0.6; // rad/seconds
+  TacsScalar omega = _omega; // rad/seconds
   int fixed_point = 1;
   int not_fixed = 0;
 
@@ -224,76 +188,10 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TACSRevoluteConstraint *revD =
     new TACSRevoluteConstraint(fixed_point, ptD, revDirD);
 
-  // Create the stiffness objects for each element
-  TacsScalar mA = 1.997; // kg/m
-  TacsScalar IA = 42.60e-6; // kg*m
-
-  TacsScalar EA_A = 52.99e6;
-  TacsScalar GJ_A = 733.5;
-  TacsScalar kGAz_A = 16.88e6;
-  TacsScalar EIz_A = 1131.0;
-
-  // The properties of the second beam
-  TacsScalar mB = 0.4992; // kg*m^2/m
-  TacsScalar IB = 2.662e-6; // kg*m^2/m
-
-  TacsScalar EA_B = 13.25e6;
-  TacsScalar GJ_B = 45.84;
-  TacsScalar kGAz_B = 4.220e6;
-  TacsScalar EIz_B = 70.66;
-
   // Set the reference axes for each beam
   TacsScalar axis_A[] = {-1.0, 0.0, 0.0};
   TacsScalar axis_B[] = {0.0, 1.0, 0.0};
   TacsScalar axis_C[] = {1.0, 0.0, 0.0};
-
-  ParameterFactory *factory  = new ParameterFactory();
-  //AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 1);
-  //AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 1);
-  AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.1, 0);
- 
-  ParameterContainer *pc = new ParameterContainer();
-  //pc->addParameter(pm1);
-  //pc->addParameter(pm2); 
-  pc->addParameter(pOmegaA);  
-  pc->initialize();
-  
-  int nsterms = pc->getNumBasisTerms();
-  printf("nsterms = %d \n", nsterms);
-
-  // // Create the stiffness objects for each element
-  // TacsScalar mA = 1.997; // kg/m
-  // TacsScalar IA = 42.60e-6; // kg*m
-
-  // TacsScalar EA_A = 52.99e6;
-  // TacsScalar GJ_A = 733.5;
-  // TacsScalar kGAz_A = 16.88e6;
-  // TacsScalar EIz_A = 1131.0;
-
-  // // The properties of the second beam
-  // TacsScalar mB = 0.4992; // kg*m^2/m
-  // TacsScalar IB = 2.662e-6; // kg*m^2/m
-
-  // TacsScalar EA_B = 13.25e6;
-  // TacsScalar GJ_B = 45.84;
-  // TacsScalar kGAz_B = 4.220e6;
-  // TacsScalar EIz_B = 70.66;
-
-  // Create the Timoshenko stiffness object
-  // TACSTimoshenkoConstitutive *stiffA =
-  //   new TACSTimoshenkoConstitutive(mA, IA, IA, 0.0,
-  //                                  EA_A, GJ_A, EIz_A, EIz_A, kGAz_A, kGAz_A,
-  //                                  axis_A);
-
-  // TACSTimoshenkoConstitutive *stiffB =
-  //   new TACSTimoshenkoConstitutive(mA, IA, IA, 0.0,
-  //                                  EA_A, GJ_A, EIz_A, EIz_A, kGAz_A, kGAz_A,
-  //                                  axis_B);
-
-  // TACSTimoshenkoConstitutive *stiffC =
-  //   new TACSTimoshenkoConstitutive(mB, IB, IB, 0.0,
-  //                                  EA_B, GJ_B, EIz_B, EIz_B, kGAz_B, kGAz_B,
-  //                                  axis_C);
 
   // Set the material properties
   TacsScalar density = 7800.0;
@@ -318,15 +216,6 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   MITC3 *beamA = new MITC3(stiffA, gravity);
   MITC3 *beamB = new MITC3(stiffB, gravity);
   MITC3 *beamC = new MITC3(stiffC, gravity);
-
-  // Create stochastic elements
-  TACSStochasticElement *sbeamA      = new TACSStochasticElement(beamA, pc, NULL);
-  TACSStochasticElement *sbeamB      = new TACSStochasticElement(beamB, pc, NULL);
-  TACSStochasticElement *sbeamC      = new TACSStochasticElement(beamC, pc, NULL);
-  TACSStochasticElement *srevDriverA = new TACSStochasticElement(revDriverA, pc, updateRevoluteDriver);
-  TACSStochasticElement *srevB       = new TACSStochasticElement(revB, pc, NULL);
-  TACSStochasticElement *srevC       = new TACSStochasticElement(revC, pc, NULL);
-  TACSStochasticElement *srevD       = new TACSStochasticElement(revD, pc, NULL);
 
   // Set the number of nodes in the mesh
   int nnodes = (2*nA+1) + (2*nB+1) + (2*nC+1) + 4;
@@ -369,7 +258,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesA[2*i];
     conn[ptr[elem]+1] = nodesA[2*i+1];
     conn[ptr[elem]+2] = nodesA[2*i+2];
-    elems[elem] = sbeamA;
+    elems[elem] = beamA;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -378,7 +267,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesB[2*i];
     conn[ptr[elem]+1] = nodesB[2*i+1];
     conn[ptr[elem]+2] = nodesB[2*i+2];
-    elems[elem] = sbeamB;
+    elems[elem] = beamB;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -387,7 +276,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
     conn[ptr[elem]] = nodesC[2*i];
     conn[ptr[elem]+1] = nodesC[2*i+1];
     conn[ptr[elem]+2] = nodesC[2*i+2];
-    elems[elem] = sbeamC;
+    elems[elem] = beamC;
     ptr[elem+1] = ptr[elem] + 3;
     elem++;
   }
@@ -395,27 +284,27 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   // Add the connectivities for the constraints
   conn[ptr[elem]] = nodesA[0];
   conn[ptr[elem]+1] = nnodes-4;
-  elems[elem] = srevDriverA;
+  elems[elem] = revDriverA;
   ptr[elem+1] = ptr[elem] + 2;
   elem++;
 
   conn[ptr[elem]] = nodesA[2*nA];
   conn[ptr[elem]+1] = nodesB[0];
   conn[ptr[elem]+2] = nnodes-3;
-  elems[elem] = srevB;
+  elems[elem] = revB;
   ptr[elem+1] = ptr[elem] + 3;
   elem++;
 
   conn[ptr[elem]] = nodesC[0];
   conn[ptr[elem]+1] = nodesB[2*nB];
   conn[ptr[elem]+2] = nnodes-2;
-  elems[elem] = srevC;
+  elems[elem] = revC;
   ptr[elem+1] = ptr[elem] + 3;
   elem++;
 
   conn[ptr[elem]] = nodesC[2*nC];
   conn[ptr[elem]+1] = nnodes-1;
-  elems[elem] = srevD;
+  elems[elem] = revD;
   ptr[elem+1] = ptr[elem] + 2;
   elem++;
 
@@ -424,7 +313,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   delete [] nodesC;
 
   // Create the TACSAssembler object
-  TACSAssembler *assembler = new TACSAssembler(MPI_COMM_WORLD, 8*nsterms, nnodes, nelems);
+  TACSAssembler *assembler = new TACSAssembler(MPI_COMM_WORLD, 8, nnodes, nelems);
 
   assembler->setElementConnectivity(ptr, conn);
   delete [] conn;
@@ -448,191 +337,56 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   return assembler;
 }
 
-/*
-  Test the element implementation
-*/
-void test_beam_element(){
-    // Set the reference axis
-  TacsScalar axis[] = {0.0, 1.0, 0.0};
-
-  // Set the gravity vector
-  TACSGibbsVector *gravity = new TACSGibbsVector(0.0, 0.0, -9.81);
-
-  // Set the element properties
-  TacsScalar rhoA = 1.5;
-  TacsScalar rhoIy = 0.15;
-  TacsScalar rhoIz = 0.15;
-  TacsScalar rhoIyz = 0.0;
-
-  TacsScalar EA = 1e4;
-  TacsScalar GJ = 1.50e4;
-  TacsScalar EIy = 2.4e4;
-  TacsScalar EIz = 3.24e4;
-  TacsScalar kGAy = 2.5e3;
-  TacsScalar kGAz = 5.2e3;
-
-  // Create the Timoshenko stiffness object
-  TACSTimoshenkoConstitutive *stiff =
-    new TACSTimoshenkoConstitutive(rhoA, rhoIy, rhoIz, rhoIyz,
-                                   EA, GJ, EIy, EIz, kGAy, kGAz,
-                                   axis);
-  stiff->incref();
-
-  // Create the MITC3 element
-  MITC3 *beam = new MITC3(stiff, gravity);
-  beam->incref();
-
-  int test_element = 0;
-  if (test_element){
-    TacsScalar X[] = {0.0, 0.0, 0.0,
-                      0.375, 0.5, 0.1,
-                      1.0, 1.0, 0.2};
-    beam->testStrain(X);
-
-    int multipliers[3] = {7, 15, 23};
-    TacsScalar vars[24], dvars[24], ddvars[24];
-    for ( int i = 0; i < 24; i++ ){
-      vars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-      dvars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-      ddvars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-    }
-
-    TacsTestElementResidual(beam, 0, 0.0, X, vars, dvars, ddvars, 5e-6);
-    TacsTestElementJacobian(beam, 0, 0.0, X, vars, dvars, ddvars, -1, 5e-6);
-  }
-
-  int test_average = 1;
-  if (test_average){
-    TacsScalar X[] = {0.0, 0.0, 0.0,
-                      0.0, 3.0, 0.1,
-                      1.0, 3.0, 0.2,
-                      2.0, 4.0, 0.3,
-                      3.0, 3.0, 1.0};
-
-    int nmultipliers = 6;
-    int multipliers[] = {32, 33, 34, 35, 36, 37};
-    TacsScalar vars[40], dvars[40], ddvars[40];
-    for ( int i = 0; i < 40; i++ ){
-      vars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-      dvars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-      ddvars[i] = -1.0 + 2.0*rand()/RAND_MAX;
-    }
-
-    // Construct the frame of reference
-    TACSGibbsVector *rAInitVec = new TACSGibbsVector(5.2, 5.3, 5.4);
-    TACSGibbsVector *rA1Vec = new TACSGibbsVector(5.2+1.0, 5.3, 5.4);
-    TACSGibbsVector *rA2Vec = new TACSGibbsVector(5.2, 5.3+1.0, 5.4);
-    TACSRefFrame *refFrame = new TACSRefFrame(rAInitVec, rA1Vec, rA2Vec);
-
-    // Define the inertial properties
-    const TacsScalar mA    = 6.0;
-    const TacsScalar cA[3] = {20.0, 14.0, 42.0};
-    const TacsScalar JA[6] = {1.0, 0.8, -0.7,
-                              2.0, 1.4,
-                              3.0};
-    // Construct a rigid body
-    TACSRigidBody *bodyA = new TACSRigidBody(refFrame,
-                                             mA, cA, JA,
-                                             rAInitVec, rAInitVec, rAInitVec,
-                                             gravity);
-
-    // Test the revolute constraint
-    TACSGibbsVector *point = new TACSGibbsVector(0.5, 1.0, -2.5);
-
-    int moment_flag = 7;
-    TACSAverageConstraint *avg =
-      new TACSAverageConstraint(bodyA, point, refFrame, moment_flag);
-
-    TacsTestElementResidual(avg, 0, 0.0, X, vars, dvars, ddvars, 5e-6);
-    TacsTestElementJacobian(avg, 0, 0.0, X, vars, dvars, ddvars, -1, 5e-6);
-  }
-}
-
 int main( int argc, char *argv[] ){
   // Initialize MPI
   MPI_Init(&argc, &argv);
 
-  int test_beam = 0;
-  for ( int k = 0; k < argc; k++ ){
-    if (strcmp(argv[k], "test_beam") == 0){
-      test_beam = 1;
+  // The number of total steps (100 per second)
+  const int num_steps = 1200;
+  const int num_bars = 3;
+  int pnqpts[1] = {10};
+  ParameterFactory *factory = new ParameterFactory();
+  AbstractParameter *pspeed = factory->createNormalParameter(-0.6, 0.06, 0);  
+
+  ParameterContainer *pc = new ParameterContainer();
+  pc->addParameter(pspeed);
+  pc->initializeQuadrature(pnqpts);
+
+  const int nqpoints = pc->getNumQuadraturePoints();
+  const int nvars = pc->getNumParameters();
+
+  TacsScalar ***data = new TacsScalar**[nqpoints];
+  for (int i = 0; i < nqpoints; i++){
+    data[i] = new TacsScalar*[num_bars];
+    for (int j = 0; j < num_bars; j++){
+      data[i][j] = new TacsScalar[num_steps];
     }
   }
 
-  if (test_beam){
-    test_beam_element();
+  TacsScalar *failmeanbar1 = new TacsScalar[num_steps];
+  memset(failmeanbar1, 0, num_steps*sizeof(TacsScalar));
 
-    // Create the stiffness objects for each element
-    TacsScalar mA = 1.997; // kg/m
-    TacsScalar IA = 42.60e-6; // kg*m
+  TacsScalar *fail2meanbar1 = new TacsScalar[num_steps];
+  memset(fail2meanbar1, 0, num_steps*sizeof(TacsScalar));
 
-    TacsScalar EA_A = 52.99e6;
-    TacsScalar GJ_A = 733.5;
-    TacsScalar kGAz_A = 16.88e6;
-    TacsScalar EIz_A = 1131.0;
+  TacsScalar *failvarbar1 = new TacsScalar[num_steps];
+  memset(failvarbar1, 0, num_steps*sizeof(TacsScalar));
 
-    // Set the reference axes
-    TacsScalar axis_A[] = {0.0, 1.0, 0.0};
+  TacsScalar *zq = new TacsScalar[nvars];
+  TacsScalar *yq = new TacsScalar[nvars];
+  TacsScalar wq;
 
-    // Create the Timoshenko stiffness object
-    TACSTimoshenkoConstitutive *stiffA =
-      new TACSTimoshenkoConstitutive(mA, IA, IA, 0.0,
-                                     EA_A, GJ_A, EIz_A, EIz_A, kGAz_A, kGAz_A,
-                                     axis_A);
+  for (int iq = 0; iq < nqpoints; iq++){
 
-    // Create the element
-    TACSGibbsVector *gravity = new TACSGibbsVector(0.0, 0.0, -9.81);
-    MITC3 *beam = new MITC3(stiffA, gravity);
-    beam->incref();
+    wq = pc->quadrature(iq, zq, yq);
 
-    // Test the straight beam for bending/torsion/extension
-    // relationships
-    TacsScalar X[] = {-1.5, 0., 0., 0.0, 0., 0., 2.5, 0., 0.};
-    TacsScalar vars[24];
-
-    // Set the distribution of displacements/quaternions
-    TacsScalar eps = 1e-3;
-    TacsScalar u[] = {0., 0., 0.};
-    TacsScalar ux[] = {0., 0., 0.};
-    TacsScalar theta0[] = {0., 0., 0.};
-    TacsScalar thetax[] = {1., 0., 0.};
-
-    memset(vars, 0, 24*sizeof(TacsScalar));
-    for ( int k = 0; k < 3; k++ ){
-      vars[8*k] = u[0] + eps*X[3*k]*ux[0];
-      vars[8*k+1] = u[1] + eps*X[3*k]*ux[1];
-      vars[8*k+2] = u[2] + eps*X[3*k]*ux[2];
-
-      vars[8*k+3] = 1.0;
-      vars[8*k+4] = 0.5*eps*(theta0[0] + X[3*k]*thetax[0]);
-      vars[8*k+5] = 0.5*eps*(theta0[1] + X[3*k]*thetax[1]);
-      vars[8*k+6] = 0.5*eps*(theta0[2] + X[3*k]*thetax[2]);
-    }
-
-    printf("%5s %15s %15s %15s %15s %15s %15s\n",
-           "pt", "ex0", "et0", "ey1", "ez2", "exy", "exz");
-
-    for ( int i = 1; i < 11; i += 2 ){
-      double pt = -1.0 + 0.2*i;
-
-      TacsScalar e[6];
-      beam->getStrain(e, &pt, X, vars);
-      printf("%5.2f %15.4e %15.4e %15.4e %15.4e %15.4e %15.4e\n",
-             pt, RealPart(e[0]), RealPart(e[1]), RealPart(e[2]), RealPart(e[3]), RealPart(e[4]), RealPart(e[5]));
-    }
-
-    beam->decref();
-  } else {
     // Create the finite-element model
     int nA = 4, nB = 8, nC = 4;
-    TACSAssembler *assembler = four_bar_mechanism(nA, nB, nC);
+    TACSAssembler *assembler = four_bar_mechanism(nA, nB, nC, yq[0]);
     assembler->incref();
 
     // Set the final time
     double tf = 12.0;
-
-    // The number of total steps (100 per second)
-    int num_steps = 1200;
 
     // Create the integrator class
     TACSIntegrator *integrator =
@@ -642,24 +396,15 @@ int main( int argc, char *argv[] ){
     // Set the integrator options
     integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
     integrator->setAbsTol(1e-7);
-    integrator->setPrintLevel(2);
     integrator->setOutputFrequency(10);
-
-    TACSBVec *ans = assembler->createVec();
-    assembler->getInitConditions(ans, NULL, NULL);
-    assembler->setVariables(ans);
-
-    for ( int i = 0; i < assembler->getNumElements(); i++ ){
-      assembler->testElement(i, 2);
-    }
 
     // Integrate the equations of motion forward in time
     integrator->integrate();
 
     // Create the continuous KS function
-    double ksRho = 1.0e6;
+    double ksRho = 100.0;
     TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-    ksfunc->setKSFailureType(TACSKSFailure::CONTINUOUS);
+    ksfunc->setKSFailureType(TACSKSFailure::DISCRETE);
 
     // Set the functions
     TACSFunction *funcs = ksfunc;
@@ -669,17 +414,19 @@ int main( int argc, char *argv[] ){
     integrator->evalFunctions(&fval);
     printf("Function value: %15.10e\n", TacsRealPart(fval));
 
-    /*
     // Evaluate the adjoint
     integrator->integrateAdjoint();
 
     // Get the gradient
     TACSBVec *dfdx;
     integrator->getGradient(0, &dfdx);
-    
-    // integrator->checkGradients(1e-8);
-    */
-    
+
+#ifdef TACS_USE_COMPLEX
+    //  integrator->checkGradients(1e-30);
+#else
+    //  integrator->checkGradients(1e-6);
+#endif // TACS_USE_COMPLEX
+
     // Set the output options/locations
     int elem[3];
     elem[0] = nA/2;
@@ -690,7 +437,7 @@ int main( int argc, char *argv[] ){
     // Extra the data to a file
     for ( int pt = 0; pt < 3; pt++ ){
       char filename[128];
-      sprintf(filename, "mid_beam_%d.dat", pt+1);
+      sprintf(filename, "mid_beam_%d_%d.dat", pt+1, iq);
       FILE *fp = fopen(filename, "w");
 
       fprintf(fp, "Variables = t, u0, v0, w0, quantity\n");
@@ -708,14 +455,44 @@ int main( int argc, char *argv[] ){
                                    0, param[pt], X, vars, dvars, ddvars, &quantity);
 
         fprintf(fp, "%e  %e %e %e  %e\n",
-                time, vars[0], vars[1], vars[2], quantity);
+                time, TacsRealPart(vars[0]), TacsRealPart(vars[1]),
+                TacsRealPart(vars[2]), TacsRealPart(quantity));
+
+        // Store 
+        data[iq][pt][k] = quantity;
       }
       fclose(fp);
     }
 
     integrator->decref();
     assembler->decref();
+
+  } // end quadrature
+
+  char filename[128];
+  sprintf(filename, "sampling_mean_variance_mid_beam_0.dat");
+  FILE *fp = fopen(filename, "w");
+          
+  // Compute mean and variance of mid point of beam 1
+  for (int q = 0; q < nqpoints; q++){
+    wq = pc->quadrature(q, zq, yq);
+    for (int i = 0; i < num_steps; i++){
+      failmeanbar1[i] += wq*data[q][0][i]; // E[F]
+      fail2meanbar1[i] += wq*data[q][0][i]*data[q][0][i]; // E{F*F}
+    }
   }
+  for (int i = 0; i < num_steps; i++){
+    failvarbar1[i] = fail2meanbar1[i] - failmeanbar1[i]*failmeanbar1[i]; //E{F^2} - E[f]*E[f]
+  }
+
+  // Print mean and variance
+  for (int i = 0; i < num_steps; i++){
+    fprintf(fp, "%e %e\n",
+            TacsRealPart(failmeanbar1[i]), 
+            TacsRealPart(failvarbar1[i])
+            );
+  }  
+  fclose(fp);
 
   MPI_Finalize();
   return 0;
