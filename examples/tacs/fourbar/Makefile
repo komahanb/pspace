@@ -15,10 +15,11 @@ PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS =  fourbar.o
+OBJS =  fourbar.o sampling.o
 
 default: ${OBJS}
 	${CXX} -o fourbar fourbar.o  ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}
+	${CXX} -o sampling sampling.o  ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}
 
 debug: TACS_CC_FLAGS=${TACS_DEBUG_CC_FLAGS}
 debug: default
