@@ -487,11 +487,13 @@ int main( int argc, char *argv[] ){
 
   // Print mean and variance
   for (int i = 0; i < num_steps; i++){
-    fprintf(fp, "%e %e\n",
+    double time = i*(12.0/num_steps);
+    fprintf(fp, "%e %e %e\n",
+            time,
             TacsRealPart(failmeanbar1[i]), 
             TacsRealPart(failvarbar1[i])
             );
-  }  
+  }
   fclose(fp);
 
   MPI_Finalize();
