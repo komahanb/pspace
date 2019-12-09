@@ -16,6 +16,44 @@
 #include "ParameterFactory.h"
 #include "TACSStochasticElement.h"
 
+void getDeterministicStates( ParameterContainer *pc, 
+                             TACSElement *delem,
+                             TACSElement *selem, 
+                             const TacsScalar v[],
+                             const TacsScalar dv[],
+                             const TacsScalar ddv[], 
+                             TacsScalar *zq,
+                             TacsScalar *uq,
+                             TacsScalar *udq,
+                             TacsScalar *uddq
+                             ){
+  int ndvpn   = delem->getVarsPerNode();
+  int nsvpn   = selem->getVarsPerNode();
+  int nddof   = delem->getNumVariables();
+  int nsdof   = selem->getNumVariables();
+  int nsterms = pc->getNumBasisTerms();
+  int nnodes  = selem->getNumNodes();
+
+  memset(uq  , 0, nddof*sizeof(TacsScalar));
+  memset(udq , 0, nddof*sizeof(TacsScalar));
+  memset(uddq, 0, nddof*sizeof(TacsScalar));
+
+  // Evaluate the basis at quadrature node and form the state
+  // vectors
+  for (int n = 0; n < nnodes; n++){
+    for (int k = 0; k < nsterms; k++){
+      TacsScalar psikz = pc->basis(k,zq);
+      int lptr = n*ndvpn;
+      int gptr = n*nsvpn + k*ndvpn;
+      for (int d = 0; d < ndvpn; d++){        
+        uq[lptr+d] += v[gptr+d]*psikz;
+        udq[lptr+d] += dv[gptr+d]*psikz;
+        uddq[lptr+d] += ddv[gptr+d]*psikz;
+      }
+    }
+  }
+} 
+
 void updateBeam1( TACSElement *elem, TacsScalar *vals ){
   MITC3 *mitc3 = dynamic_cast<MITC3*>(elem);
   if (mitc3 != NULL) {
@@ -52,7 +90,18 @@ void updateRevoluteDriver( TACSElement *elem, TacsScalar *vals ){
   TACSRevoluteDriver *revDriverA = dynamic_cast<TACSRevoluteDriver*>(elem);
   if (revDriverA != NULL) {
     revDriverA->setSpeed(vals[0]);
-    printf("updating driver with speed %e \n...", vals[0]);
+    // printf("updating driver with speed %e \n...", vals[0]);
+  } else {
+    printf("Element mismatch while updating...");
+  }
+}
+
+void updateRevoluteConstraint( TACSElement *elem, TacsScalar *vals ){
+  TACSRevoluteConstraint *revConstraint = dynamic_cast<TACSRevoluteConstraint*>(elem);
+  if (revConstraint != NULL) {
+    TacsScalar theta = (vals[0]*M_PI/180.0);
+    TACSGibbsVector *revDir = new TACSGibbsVector(sin(theta), 0.0, cos(theta));
+    revConstraint->setRevoluteAxis(revDir);    
   } else {
     printf("Element mismatch while updating...");
   }
@@ -269,9 +318,9 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   TACSStochasticElement *sbeamA      = new TACSStochasticElement(beamA, pc, NULL);
   TACSStochasticElement *sbeamB      = new TACSStochasticElement(beamB, pc, NULL);
   TACSStochasticElement *sbeamC      = new TACSStochasticElement(beamC, pc, NULL);
-  TACSStochasticElement *srevDriverA = new TACSStochasticElement(revDriverA, pc, updateRevoluteDriver);
+  TACSStochasticElement *srevDriverA = new TACSStochasticElement(revDriverA, pc, NULL);
   TACSStochasticElement *srevB       = new TACSStochasticElement(revB, pc, NULL);
-  TACSStochasticElement *srevC       = new TACSStochasticElement(revC, pc, NULL);
+  TACSStochasticElement *srevC       = new TACSStochasticElement(revC, pc, updateRevoluteConstraint);
   TACSStochasticElement *srevD       = new TACSStochasticElement(revD, pc, NULL);
 
   // Set the number of nodes in the mesh
@@ -401,27 +450,28 @@ int main( int argc, char *argv[] ){
   ParameterFactory *factory  = new ParameterFactory();
   //AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 1);
   //AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 1);
-  AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.06, 2);
- 
+  //  AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.06, 5);
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 6);  
+
   ParameterContainer *pc = new ParameterContainer();
   //pc->addParameter(pm1);
   //pc->addParameter(pm2); 
-  pc->addParameter(pOmegaA);  
+  pc->addParameter(ptheta);  
   pc->initialize();
 
   const int nsterms  = pc->getNumBasisTerms();
   const int nsqpts   = pc->getNumQuadraturePoints();
 
   // Create the finite-element model
-  int nA = 1, nB = 2, nC = 1; // fix mesh size
+  int nA = 4, nB = 8, nC = 4; // fix mesh size
   TACSAssembler *assembler = four_bar_mechanism(nA, nB, nC, pc);
   assembler->incref();
 
   // Set the final time
-  double tf = 1.0; // fix
+  double tf = 12.0; // fix
 
   // The number of total steps (100 per second)
-  int num_steps = 100; // fix
+  int num_steps = 1200; // fix
 
   // Create the integrator class
   TACSIntegrator *integrator =
@@ -429,8 +479,8 @@ int main( int argc, char *argv[] ){
   integrator->incref();
 
   // Set the integrator options
-  integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
-  integrator->setAbsTol(1e-7);
+  integrator->setUseSchurMat(0, TACSAssembler::TACS_AMD_ORDER);
+  integrator->setAbsTol(1e-6);
   integrator->setPrintLevel(2);
   // integrator->setOutputFrequency(10);
 
@@ -439,44 +489,144 @@ int main( int argc, char *argv[] ){
 
   // use projection to find the failure index at mid point of beam 1
   {
+
+    TacsScalar ***data = new TacsScalar**[num_steps+1];
+    for (int i = 0; i < num_steps+1; i++){
+      data[i] = new TacsScalar*[nsterms];
+      for (int j = 0; j < nsterms; j++){
+        data[i][j] = new TacsScalar[nsqpts];
+      }
+    }
+
+    TacsScalar **fvals = new TacsScalar*[num_steps+1];
+    for (int i = 0; i < num_steps+1; i++){
+      fvals[i] = new TacsScalar[nsterms];
+    }
+
     int elem[3];
     elem[0] = nA/2;
     elem[1] = nA + nB/2;
     elem[2] = nA + nB + nC/2;
     double param[][1] = {{-1.0}, {-1.0}, {0.0}};
 
+    for ( int k = 0; k < num_steps+1; k++ ){
+
+      TACSBVec *q = NULL;
+      TACSBVec *qd = NULL;
+      TACSBVec *qdd = NULL;
+
+      TacsScalar X[3*3], vars[8*3*nsterms], dvars[8*3*nsterms], ddvars[8*3*nsterms];
+      double time = integrator->getStates(k, &q, &qd, &qdd);
+      assembler->setVariables(q, qd, qdd);
+
+      TACSElement *element = assembler->getElement(elem[0], X, vars, dvars, ddvars);
+      TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
+      if (!selem) {
+        printf("Casting to stochastic element failed; skipping elemenwiseEval");
+      };
+  
+      TACSElement *delem = selem->getDeterministicElement();
+
+      const int nsparams = pc->getNumParameters();
+      const int ndvpn    = delem->getVarsPerNode();
+      const int nsvpn    = selem->getVarsPerNode();
+      const int nddof    = delem->getNumVariables();
+      const int nnodes   = selem->getNumNodes();  
+  
+      // Space for quadrature points and weights
+      TacsScalar *zq = new TacsScalar[nsparams];
+      TacsScalar *yq = new TacsScalar[nsparams];
+      TacsScalar wq;
+  
+      // Create space for deterministic states at each quadrature node in y
+      TacsScalar *uq     = new TacsScalar[nddof];
+      TacsScalar *udq    = new TacsScalar[nddof];
+      TacsScalar *uddq   = new TacsScalar[nddof];
+
+      for (int j = 0; j < nsterms; j++){
+
+        // Stochastic Integration
+        for (int iq = 0; iq < nsqpts; iq++){
+
+          // Get the quadrature points and weights for mean
+          wq = pc->quadrature(iq, zq, yq);
+
+          // Set the parameter values into the element
+          selem->updateElement(delem, yq);
+
+          // Form the state vectors
+          getDeterministicStates(pc, delem, selem, 
+                                 vars, dvars, ddvars, zq, 
+                                 uq, udq, uddq);
+
+          TacsScalar quantity;
+          delem->evalPointQuantity(elem[0], TACS_FAILURE_INDEX, time,
+                                   0, param[0], X, uq, udq, uddq, 
+                                   &quantity);
+
+          data[k][j][iq] = quantity;
+
+        } 
+      }
+    }
+
+    const int nsparams = pc->getNumParameters();
+    // Space for quadrature points and weights
+    TacsScalar *zq = new TacsScalar[nsparams];
+    TacsScalar *yq = new TacsScalar[nsparams];
+    TacsScalar wq;
+
+    // Compute moments from the results of projection   
+    TacsScalar *fmean = new TacsScalar[num_steps+1];
+    memset(fmean, 0, (num_steps)*sizeof(TacsScalar));
+    for (int k = 0; k < num_steps+1; k++){
+      for (int j = 0; j < 1; j++){ // mean is the first basis entry
+        for (int iq = 0; iq < nsqpts; iq++){
+          TacsScalar wq = pc->quadrature(iq, zq, yq);
+          fmean[k] += pc->basis(j,zq)*wq*data[k][j][iq];
+        }      
+      }
+    }
+
+
+    for (int k = 0; k < num_steps+1; k++){
+      for (int j = 0; j < nsterms; j++){
+        for (int iq = 0; iq < nsqpts; iq++){
+          TacsScalar wq = pc->quadrature(iq, zq, yq);
+          fvals[k][j] += wq*pc->basis(j,zq)*data[k][j][iq];
+        }
+      }
+    }
+
+
+    TacsScalar *fvar = new TacsScalar[num_steps+1];
+    memset(fvar, 0, (num_steps)*sizeof(TacsScalar));
+    for (int k = 0; k < num_steps+1; k++){
+      for (int j = 1; j < nsterms; j++){
+        fvar[k] += fvals[k][j]*fvals[k][j];
+      }
+    }
+
+    // for (int j = 1; j < nsterms; j++){ // 
+    //   for (int k = 0; k < num_steps+1; k++){
+    //     for (int iq = 0; iq < nsqpts; iq++){
+    //       TacsScalar wq = pc->quadrature(iq, zq, yq);
+    //       fvar[k] += pc->basis(j,zq)*wq*data[k][j][iq]*pc->basis(j,zq)*wq*data[k][j][iq];
+    //     }      
+    //   }
+    // }
+
     char filename[128];
     sprintf(filename, "projection_mean_variance_mid_beam_0.dat");
     FILE *fp = fopen(filename, "w");
-    
-    // Write out data from the beams
-    TACSBVec *q = NULL;
-    for ( int k = 0; k < num_steps+1; k++ ){
-      TacsScalar X[3*3], vars[8*3*nsterms], dvars[8*3*nsterms], ddvars[8*3*nsterms];
-      double time = integrator->getStates(k, &q, NULL, NULL);
-      assembler->setVariables(q);
-      TACSElement *element = assembler->getElement(elem[0], X, vars, dvars, ddvars);
-
-      // Form deterministic states from stochastic states
-
-      //
-      TacsScalar quantity;
-      element->evalPointQuantity(elem[0], TACS_FAILURE_INDEX, time,
-                                 0, param[0], X, vars, dvars, ddvars, 
-                                 &quantity);
-
-      // fprintf(fp, "%e %e\n",
-      //         time,
-      //         TacsRealPart(failmeanbar1[i]), 
-      //         //              TacsRealPart(failvarbar1[i])
-      //         );
-
+    fprintf(fp, "Variables = t, fmean, fvar\n");
+    for (int i = 0; i < num_steps+1; i++){
+      double time = i*(tf/num_steps);
+      fprintf(fp, "%e %e %e \n", time, fmean[i], fvar[i]);
     }
-
     fclose(fp);
-  }
 
-  
+  }
 
   exit(-1);
 
