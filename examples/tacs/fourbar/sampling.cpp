@@ -155,8 +155,8 @@ const double SquareSection::kcorr = 5.0/6.0;
   Bars 1 and 2 are square and of dimension 16 x 16 mm
   Bar 3 is square and of dimension 8 x 8 mm
 */
-TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _omega ){
-  printf("speed = %e \n", _omega);
+TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _theta ){
+  //  printf("speed = %e \n", _omega);
   // Set the gravity vector
   TACSGibbsVector *gravity = new TACSGibbsVector(0.0, 0.0, -9.81);
 
@@ -171,11 +171,11 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _omega ){
   TACSGibbsVector *revDirD = new TACSGibbsVector(0.0, 0.0, 1.0);
 
   // Create the revolute direction for C
-  TacsScalar theta = (5.0*M_PI/180.0);
+  TacsScalar theta = (_theta*M_PI/180.0);
   TACSGibbsVector *revDirC = new TACSGibbsVector(sin(theta), 0.0, cos(theta));
 
   // Create the revolute constraints
-  TacsScalar omega = _omega; // rad/seconds
+  TacsScalar omega = -0.6; // rad/seconds
   int fixed_point = 1;
   int not_fixed = 0;
 
@@ -344,12 +344,14 @@ int main( int argc, char *argv[] ){
   // The number of total steps (100 per second)
   const int num_steps = 1200;
   const int num_bars = 3;
-  int pnqpts[1] = {10};
+  int pnqpts[1] = {15};
   ParameterFactory *factory = new ParameterFactory();
-  AbstractParameter *pspeed = factory->createNormalParameter(-0.6, 0.06, 0);  
+  //AbstractParameter *pspeed = factory->createNormalParameter(-0.6, 0.06, 0);  
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 0);  
 
   ParameterContainer *pc = new ParameterContainer();
-  pc->addParameter(pspeed);
+  //  pc->addParameter(pspeed);
+  pc->addParameter(ptheta);
   pc->initializeQuadrature(pnqpts);
 
   const int nqpoints = pc->getNumQuadraturePoints();
