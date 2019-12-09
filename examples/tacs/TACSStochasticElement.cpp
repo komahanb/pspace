@@ -385,7 +385,7 @@ void TACSStochasticElement::addJacobian( int elemIndex,
 
       pc->getBasisParamDeg(j, dmapj);
 
-      if (nonzero(nsparams, dmapi, dmapj, dmapf)){
+      if (1){ // nonzero(nsparams, dmapi, dmapj, dmapf)){
 
         memset(A, 0, nddof*nddof*sizeof(TacsScalar));
 
