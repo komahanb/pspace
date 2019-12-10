@@ -173,29 +173,35 @@ void TACSKSStochasticFMeanBeamFunction::elementWiseEval( EvaluationType evalType
 
       {
         TACSElementBasis *basis = delem->getElementBasis();
-        for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
-          double pt[3];
-          double weight = basis->getQuadraturePoint(i, pt);
-          TacsScalar value = 0.0;
-          int count = delem->evalPointQuantity(elemIndex,
-                                               this->quantityType,
-                                               time, i, pt,
-                                               Xpts, uq, udq, uddq,
-                                               &value);
-          
-          if (evalType == TACSFunction::INITIALIZE){      
-            // Reset maxvalue if needed
-            if (TacsRealPart(value) > TacsRealPart(maxValue[j*nsqpts+q])){
-              maxValue[j*nsqpts+q] = value;
-            }      
-          } else {
-            // Evaluate the determinant of the Jacobian
-            TacsScalar Xd[9], J[9];
-            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
-            ksSum[j*nsqpts+q] += tscale*weight*detJ*exp(ksWeight*(value - maxValue[j*nsqpts+q]));
-          }      
 
-        } // spatial integration
+        if (basis){
+
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
+
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
+            TacsScalar value = 0.0;
+            int count = delem->evalPointQuantity(elemIndex,
+                                                 this->quantityType,
+                                                 time, i, pt,
+                                                 Xpts, uq, udq, uddq,
+                                                 &value);
+          
+            if (evalType == TACSFunction::INITIALIZE){      
+              // Reset maxvalue if needed
+              if (TacsRealPart(value) > TacsRealPart(maxValue[j*nsqpts+q])){
+                maxValue[j*nsqpts+q] = value;
+              }      
+            } else {
+              // Evaluate the determinant of the Jacobian
+              TacsScalar Xd[9], J[9];
+              TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+              ksSum[j*nsqpts+q] += tscale*weight*detJ*exp(ksWeight*(value - maxValue[j*nsqpts+q]));
+            }      
+
+          } // spatial integration
+
+        } // basis
 
       }
       
@@ -283,7 +289,6 @@ void TACSKSStochasticFMeanBeamFunction::getElementSVSens( int elemIndex, TACSEle
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
   };
 
-  
   TACSElement *delem = selem->getDeterministicElement();
   const int nsterms  = pc->getNumBasisTerms();
   const int nqpts    = pc->getNumQuadraturePoints();
@@ -332,34 +337,38 @@ void TACSKSStochasticFMeanBeamFunction::getElementSVSens( int elemIndex, TACSEle
         // Get the element basis class
         TACSElementBasis *basis = delem->getElementBasis();
 
-        for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
+        if (basis){
 
-          double pt[3];
-          double weight = basis->getQuadraturePoint(i, pt);
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
+
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
       
-          TacsScalar quantity = 0.0;
-          delem->evalPointQuantity(elemIndex,
-                                   this->quantityType,
-                                   time, i, pt,
-                                   Xpts, uq, udq, uddq,
-                                   &quantity);
+            TacsScalar quantity = 0.0;
+            delem->evalPointQuantity(elemIndex,
+                                     this->quantityType,
+                                     time, i, pt,
+                                     Xpts, uq, udq, uddq,
+                                     &quantity);
 
-          TacsScalar Xd[9], J[9];
-          TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+            TacsScalar Xd[9], J[9];
+            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
           
-          TacsScalar ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
-          ksPtWeight *= weight*detJ*wt;
+            TacsScalar ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
+            ksPtWeight *= weight*detJ*wt;
 
-          TacsScalar dfdq = ksPtWeight;
-          delem->addPointQuantitySVSens(elemIndex,
-                                        this->quantityType,
-                                        time,
-                                        alpha, beta, gamma,
-                                        i, pt,
-                                        Xpts, uq, udq, uddq,
-                                        &dfdq, dfduj);
+            TacsScalar dfdq = ksPtWeight;
+            delem->addPointQuantitySVSens(elemIndex,
+                                          this->quantityType,
+                                          time,
+                                          alpha, beta, gamma,
+                                          i, pt,
+                                          Xpts, uq, udq, uddq,
+                                          &dfdq, dfduj);
 
-        } // spatial integration
+          } // spatial integration
+
+        }
 
       }
 
@@ -442,31 +451,35 @@ void TACSKSStochasticFMeanBeamFunction::addElementDVSens( int elemIndex, TACSEle
       {
         TACSElementBasis *basis = delem->getElementBasis();
         
-        for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
+        if (basis){
 
-          double pt[3];
-          double weight = basis->getQuadraturePoint(i, pt);
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
 
-          TacsScalar quantity = 0.0;
-          delem->evalPointQuantity(elemIndex,
-                                   this->quantityType,
-                                   time, i, pt,
-                                   Xpts, uq, udq, uddq,
-                                   &quantity);        
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
+
+            TacsScalar quantity = 0.0;
+            delem->evalPointQuantity(elemIndex,
+                                     this->quantityType,
+                                     time, i, pt,
+                                     Xpts, uq, udq, uddq,
+                                     &quantity);        
           
-          TacsScalar Xd[9], J[9];
-          TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+            TacsScalar Xd[9], J[9];
+            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
 
-          TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];          
-          delem->addPointQuantityDVSens( elemIndex, 
-                                         this->quantityType,
-                                         time, scale,
-                                         i, pt,
-                                         Xpts, uq, udq, uddq, &dfdq, 
-                                         dvLen, dfdxj ); 
+            TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];          
+            delem->addPointQuantityDVSens( elemIndex, 
+                                           this->quantityType,
+                                           time, scale,
+                                           i, pt,
+                                           Xpts, uq, udq, uddq, &dfdq, 
+                                           dvLen, dfdxj ); 
 
-        } // spatial integration
+          } // spatial integration
         
+        }
+
       }
       
     } // end yloop
@@ -479,7 +492,7 @@ void TACSKSStochasticFMeanBeamFunction::addElementDVSens( int elemIndex, TACSEle
     //   }            
     // }
 
-    printf("check nodewise placement of derivatives");
+    // printf("check nodewise placement of derivatives");
     // need to be careful with nodewise placement of dvsx
     for (int n = 0; n < dvLen; n++){
       //printf("term %d dfdx[%d] = %.17e %.17e \n", j, n, dfdx[n], dfdxj[n]);

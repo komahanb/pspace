@@ -1,4 +1,4 @@
-CFLAGS = -Wall -fPIC -g #-DUSE_COMPLEX
+CFLAGS = -Wall -fPIC -g -DUSE_COMPLEX
 
 default:
 	mpicxx ${CFLAGS} -funroll-loops -fbounds-check -fstack-protector-all  --stack-check -c ArrayList.cpp
