@@ -448,10 +448,10 @@ int main( int argc, char *argv[] ){
   MPI_Init(&argc, &argv);
 
   ParameterFactory *factory  = new ParameterFactory();
-  //AbstractParameter *pm1     = factory->createExponentialParameter(mA, 0.1, 1);
-  //AbstractParameter *pm2     = factory->createExponentialParameter(mB, 0.2, 1);
-  //  AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.06, 5);
-  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 6);  
+  // AbstractParameter *pm1 = factory->createExponentialParameter(mA, 0.1, 1);
+  // AbstractParameter *pm2 = factory->createExponentialParameter(mB, 0.2, 1);
+  // AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.06, 5);
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 2);
 
   ParameterContainer *pc = new ParameterContainer();
   //pc->addParameter(pm1);
@@ -463,15 +463,15 @@ int main( int argc, char *argv[] ){
   const int nsqpts   = pc->getNumQuadraturePoints();
 
   // Create the finite-element model
-  int nA = 4, nB = 8, nC = 4; // fix mesh size
+  int nA = 2, nB = 4, nC = 2; // fix mesh size
   TACSAssembler *assembler = four_bar_mechanism(nA, nB, nC, pc);
   assembler->incref();
 
   // Set the final time
-  double tf = 12.0; // fix
+  double tf = 1.0e-1; // fix
 
   // The number of total steps (100 per second)
-  int num_steps = 1200; // fix
+  int num_steps = 10; // fix
 
   // Create the integrator class
   TACSIntegrator *integrator =
@@ -481,7 +481,7 @@ int main( int argc, char *argv[] ){
   // Set the integrator options
   integrator->setUseSchurMat(0, TACSAssembler::TACS_AMD_ORDER);
   integrator->setAbsTol(1e-6);
-  integrator->setPrintLevel(2);
+  integrator->setPrintLevel(0);
   // integrator->setOutputFrequency(10);
 
   // Integrate the equations of motion forward in time
@@ -622,88 +622,46 @@ int main( int argc, char *argv[] ){
     fprintf(fp, "Variables = t, fmean, fvar\n");
     for (int i = 0; i < num_steps+1; i++){
       double time = i*(tf/num_steps);
-      fprintf(fp, "%e %e %e \n", time, fmean[i], fvar[i]);
+      fprintf(fp, "%e %e %e \n", TacsRealPart(time), 
+              TacsRealPart(fmean[i]), 
+              TacsRealPart(fvar[i]));
     }
     fclose(fp);
 
   }
 
-  exit(-1);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // Create the continuous KS function
   double ksRho = 10000.0;
   TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  ksfunc->setKSFailureType(TACSKSFailure::CONTINUOUS);
+  // ksfunc->setKSFailureType(TACSKSFailure::CONTINUOUS);
 
   const int num_funcs = 2; // mean and variance
   TACSFunction **funcs = new TACSFunction*[num_funcs];
+
   TACSFunction *sfunc, *sffunc;
   sfunc = new TACSKSStochasticFMeanBeamFunction(assembler, ksfunc, pc, 
                                                 TACS_FAILURE_INDEX, 
                                                 0, ksRho);
+
   sffunc = new TACSKSStochasticFFMeanBeamFunction(assembler, ksfunc, pc, 
                                                   TACS_FAILURE_INDEX, 
                                                   0, ksRho);
   funcs[0] = sfunc;
   funcs[1] = sffunc;
 
-  // Set the functions
-  //  TACSFunction *funcs = ksfunc;
-
   // Create stochastic functions to set into TACS 
   integrator->setFunctions(num_funcs, funcs);
 
-  // #ifdef TACS_USE_COMPLEX
-  //   integrator->checkGradients(1e-30);
-  // #else
-  //   integrator->checkGradients(1e-6);
-  // #endif // TACS_USE_COMPLEX
-
-  //   exit(-1);
-
   TacsScalar fval[2];
   integrator->evalFunctions(fval);
-  //  printf("Function value: %15.10e\n", TacsRealPart(fval));
+  printf("Function values : %15.10e %15.10e\n", TacsRealPart(fval[0]),
+         TacsRealPart(fval[1]));
+
+#ifdef TACS_USE_COMPLEX
+  integrator->checkGradients(1e-30);
+#else
+  integrator->checkGradients(1e-6);
+#endif // TACS_USE_COMPLEX
 
   // Compute mean and variance of ks failure
   TacsScalar failmean, fail2mean, failvar;
@@ -713,11 +671,8 @@ int main( int argc, char *argv[] ){
   printf("Expectations : %.17e \n", RealPart(failmean));
   printf("Variance     : %.17e \n", RealPart(failvar));
 
-  exit(-1);
-
   // Evaluate the adjoint
   integrator->integrateAdjoint();
-
 
   // Get the gradient
   TACSBVec *dfdx1, *dfdx2;
@@ -732,18 +687,14 @@ int main( int argc, char *argv[] ){
   dfdx2->axpy(-2.0*failmean, dfdx1);
 
   double dh = 1.0e-30;
-  printf("CS dE{ fail }/dx = %.17e %.17e %.17e \n", RealPart(failmeanderiv[0]), ImagPart(failmean)/dh,
+  printf("CS dE{ fail }/dx = %.17e %.17e %.17e \n", 
+         RealPart(failmeanderiv[0]), 
+         ImagPart(failmean)/dh,
          RealPart(failmeanderiv[0]) - ImagPart(failmean)/dh);
-  printf("CS dV{ fail }/dx = %.17e %.17e %.17e \n", RealPart(fail2meanderiv[0]), ImagPart(failvar)/dh,
+  printf("CS dV{ fail }/dx = %.17e %.17e %.17e \n", 
+         RealPart(fail2meanderiv[0]), 
+         ImagPart(failvar)/dh,
          RealPart(fail2meanderiv[0]) - ImagPart(failvar)/dh);
-
-
-
-  //#ifdef TACS_USE_COMPLEX
-  //  integrator->checkGradients(1e-30);
-  //#else
-  //  integrator->checkGradients(1e-6);
-  //#endif // TACS_USE_COMPLEX
 
   /*
   // Set the output options/locations
