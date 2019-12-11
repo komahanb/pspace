@@ -9,12 +9,11 @@
 #include "TACSConstitutiveVerification.h"
 #include "TACSElementVerification.h"
 
-#include "TACSKSStochasticFMeanBeamFunction.h"
-#include "TACSKSStochasticFFMeanBeamFunction.h"
-
 #include "ParameterContainer.h"
 #include "ParameterFactory.h"
+
 #include "TACSStochasticElement.h"
+#include "TACSKSStochasticFunction.h"
 
 void getDeterministicStates( ParameterContainer *pc, 
                              TACSElement *delem,
@@ -639,13 +638,13 @@ int main( int argc, char *argv[] ){
   TACSFunction **funcs = new TACSFunction*[num_funcs];
 
   TACSFunction *sfunc, *sffunc;
-  sfunc = new TACSKSStochasticFMeanBeamFunction(assembler, ksfunc, pc, 
-                                                TACS_FAILURE_INDEX, 
-                                                0, ksRho);
+  sfunc = new TACSKSStochasticFunction(assembler, ksfunc, pc, 
+                                       TACS_FAILURE_INDEX, 
+                                       FUNCTION_MEAN, ksRho);
 
-  sffunc = new TACSKSStochasticFFMeanBeamFunction(assembler, ksfunc, pc, 
-                                                  TACS_FAILURE_INDEX, 
-                                                  0, ksRho);
+  sffunc = new TACSKSStochasticFunction(assembler, ksfunc, pc, 
+                                        TACS_FAILURE_INDEX, 
+                                        FUNCTION_VARIANCE, ksRho);
   funcs[0] = sfunc;
   funcs[1] = sffunc;
 
