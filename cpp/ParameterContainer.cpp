@@ -158,6 +158,15 @@ void ParameterContainer::getBasisParamDeg(int k, int *degs) {
   }
 }
 
+void ParameterContainer::getBasisParamMaxDeg(int *pmax) {
+  map<int,AbstractParameter*>::iterator it;
+  for (it = this->pmap.begin(); it != this->pmap.end(); it++){
+    int pid = it->first;
+    int dmax = it->second->getMaxDegree();
+    pmax[pid] = dmax;
+  }
+}
+
 /*
   Default initialization 
 */
