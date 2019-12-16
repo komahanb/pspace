@@ -95,4 +95,7 @@ ENV/
 *.bin
 *.cue
 *.out
+*.o
 *~
+*.dat
+*.mod
