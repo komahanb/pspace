@@ -10,11 +10,12 @@
 #include "TACSConstitutiveVerification.h"
 #include "TACSElementVerification.h"
 
+#include "TACSKSStochasticFMeanBeamFunction.h"
+#include "TACSKSStochasticFFMeanBeamFunction.h"
+
 #include "ParameterContainer.h"
 #include "ParameterFactory.h"
-
 #include "TACSStochasticElement.h"
-#include "TACSKSStochasticFunction.h"
 
 void getDeterministicStates( ParameterContainer *pc, 
                              TACSElement *delem,
@@ -481,7 +482,7 @@ int main( int argc, char *argv[] ){
   // AbstractParameter *pm1 = factory->createExponentialParameter(mA, 0.1, 1);
   // AbstractParameter *pm2 = factory->createExponentialParameter(mB, 0.2, 1);
   // AbstractParameter *pOmegaA = factory->createNormalParameter(-0.6, 0.06, 5);
-  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 3);
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 2);
 
   ParameterContainer *pc = new ParameterContainer();
   //pc->addParameter(pm1);
@@ -510,8 +511,7 @@ int main( int argc, char *argv[] ){
 
   // Set the integrator options
   integrator->setUseSchurMat(0, TACSAssembler::TACS_AMD_ORDER);
-  integrator->setAbsTol(1e-9);
-  integrator->setRelTol(1e-14);
+  integrator->setAbsTol(1e-6);
   integrator->setPrintLevel(0);
   // integrator->setOutputFrequency(10);
 
@@ -663,15 +663,20 @@ int main( int argc, char *argv[] ){
 
   // Create the continuous KS function
   double ksRho = 10000.0;
-  TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  // ksfunc->setKSFailureType(TACSKSFailure::CONTINUOUS);
+  TACSKSFailure  *ksfunc = new TACSKSFailure(assembler, ksRho);
+  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
   const int num_funcs = 2; // mean and variance
   TACSFunction **funcs = new TACSFunction*[num_funcs];
 
   TACSFunction *sfunc, *sffunc;
-  sfunc  = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_MEAN, ksRho);
-  sffunc = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_VARIANCE, ksRho);
+  sfunc = new TACSKSStochasticFMeanBeamFunction(assembler, ksfunc, pc, 
+                                                TACS_FAILURE_INDEX, 
+                                                0, ksRho);
+
+  sffunc = new TACSKSStochasticFFMeanBeamFunction(assembler, ksfunc, pc, 
+                                                  TACS_FAILURE_INDEX, 
+                                                  0, ksRho);
   funcs[0] = sfunc;
   funcs[1] = sffunc;
 
@@ -690,9 +695,10 @@ int main( int argc, char *argv[] ){
 #endif // TACS_USE_COMPLEX
 
   // Compute mean and variance of ks failure
-  TacsScalar failmean, failvar;
-  failmean = fval[0];
-  failvar  = fval[1]; 
+  TacsScalar failmean, fail2mean, failvar;
+  failmean  = fval[0];
+  fail2mean = fval[1]; 
+  failvar = fail2mean - failmean*failmean; 
   printf("Expectations : %.17e \n", RealPart(failmean));
   printf("Variance     : %.17e \n", RealPart(failvar));
 

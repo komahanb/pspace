@@ -1,18 +1,18 @@
-#ifndef TACS_KSSTOCHASTIC_FUNCTION
-#define TACS_KSSTOCHASTIC_FUNCTION
+#ifndef TACS_KSSTOCHASTIC_FFMEAN_BEAM_FUNCTION
+#define TACS_KSSTOCHASTIC_FFMEAN_BEAM_FUNCTION
 
 #include "TACSFunction.h"
 #include "ParameterContainer.h"
 
-class TACSKSStochasticFunction : public TACSFunction {
+class TACSKSStochasticFFMeanBeamFunction : public TACSFunction {
  public:
-  TACSKSStochasticFunction( TACSAssembler *tacs,
-                            TACSFunction *dfunc,
-                            ParameterContainer *pc,
-                            int quantityType,
-                            int moment_type,
-                            double ksWeight );
-  ~TACSKSStochasticFunction();
+  TACSKSStochasticFFMeanBeamFunction( TACSAssembler *tacs,
+                                      TACSFunction *dfunc,
+                                      ParameterContainer *pc,
+                                      int quantityType,
+                                      int moment_type,
+                                      double ksWeight );
+  ~TACSKSStochasticFFMeanBeamFunction();
 
   // New functions
   TacsScalar getExpectation();
