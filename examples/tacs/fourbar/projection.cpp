@@ -1,3 +1,4 @@
+#include "TACSCreator.h"
 #include "TACSAssembler.h"
 #include "TACSIntegrator.h"
 #include "TACSRigidBody.h"
@@ -250,6 +251,9 @@ const double SquareSection::kcorr = 5.0/6.0;
   Bar 3 is square and of dimension 8 x 8 mm
 */
 TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *pc){
+  int rank; 
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
+
   // Set the gravity vector
   TACSGibbsVector *gravity = new TACSGibbsVector(0.0, 0.0, -9.81);
 
@@ -417,7 +421,33 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   delete [] nodesB;
   delete [] nodesC;
 
+  int vars_per_node = 8*nsterms;
+
+  // Node points array
+  TacsScalar *Xpts = new TacsScalar[3*nnodes];
+  memset(Xpts, 0, 3*nnodes*sizeof(TacsScalar));
+
+  // Element Ids array
+  int *eids = new int[nelems];
+  for (int i = 0; i < nelems; i++){
+    eids[i] = i;
+  }
+
+  // Creator object for TACS
+  TACSCreator *creator = new TACSCreator(MPI_COMM_WORLD, vars_per_node);
+  creator->incref();
+  if (rank == 0){    
+    creator->setGlobalConnectivity(nnodes, nelems, ptr, conn, eids);
+    creator->setNodes(Xpts);
+  }
+  creator->setElements(nelems, elems);
+
+  TACSAssembler *assembler = creator->createTACS();
+  assembler->incref();  
+  creator->decref(); 
+  
   // Create the TACSAssembler object
+  /*
   TACSAssembler *assembler = new TACSAssembler(MPI_COMM_WORLD, 8*nsterms, nnodes, nelems);
 
   assembler->setElementConnectivity(ptr, conn);
@@ -428,7 +458,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   delete [] elems;
 
   assembler->initialize();
-
+  
   // Set the node locations
   TACSBVec *Xvec = assembler->createNodeVec();
   Xvec->incref();
@@ -438,7 +468,8 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   assembler->setNodes(Xvec);
   Xvec->decref();
   delete [] X;
-
+  */
+  
   return assembler;
 }
 
