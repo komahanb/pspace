@@ -1,5 +1,5 @@
 #include "TACSAssembler.h"
-#include "TACSKSStochasticFunction.h"
+#include "TACSKSStochasticFFMeanBeamFunction.h"
 #include "TACSStochasticElement.h"
 
 namespace {
@@ -73,12 +73,12 @@ namespace {
   } 
 }
 
-TACSKSStochasticFunction::TACSKSStochasticFunction( TACSAssembler *tacs,
-                                                    TACSFunction *dfunc,
-                                                    ParameterContainer *pc,
-                                                    int quantityType,
-                                                    int moment_type,
-                                                    double ksWeight )
+TACSKSStochasticFFMeanBeamFunction::TACSKSStochasticFFMeanBeamFunction( TACSAssembler *tacs,
+                                                                        TACSFunction *dfunc,
+                                                                        ParameterContainer *pc,
+                                                                        int quantityType,
+                                                                        int moment_type,
+                                                                        double ksWeight )
   : TACSFunction(dfunc->getAssembler(), 
                  dfunc->getDomainType(), 
                  dfunc->getStageType(),
@@ -93,12 +93,12 @@ TACSKSStochasticFunction::TACSKSStochasticFunction( TACSAssembler *tacs,
   this->ksWeight = ksWeight;
   this->nsqpts  = pc->getNumQuadraturePoints();
   this->nsterms = pc->getNumBasisTerms();
-  this->fvals    = new TacsScalar[nsterms];
+  this->fvals    = new TacsScalar[nsterms*nsqpts];
   this->ksSum    = new TacsScalar[nsterms*nsqpts];
   this->maxValue = new TacsScalar[nsterms*nsqpts];
 }
 
-TACSKSStochasticFunction::~TACSKSStochasticFunction()
+TACSKSStochasticFFMeanBeamFunction::~TACSKSStochasticFFMeanBeamFunction()
 {
   delete [] this->ksSum;
   delete [] this->maxValue;
@@ -107,7 +107,7 @@ TACSKSStochasticFunction::~TACSKSStochasticFunction()
   delete [] this->maxValue;
 }
 
-void TACSKSStochasticFunction::initEvaluation( EvaluationType ftype )
+void TACSKSStochasticFFMeanBeamFunction::initEvaluation( EvaluationType ftype )
 {
   if (ftype == TACSFunction::INITIALIZE){
     for (int k = 0; k < nsterms*nsqpts; k++){
@@ -121,16 +121,17 @@ void TACSKSStochasticFunction::initEvaluation( EvaluationType ftype )
   }
 }
 
-void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
-                                                int elemIndex,
-                                                TACSElement *element,
-                                                double time,
-                                                TacsScalar tscale,
-                                                const TacsScalar Xpts[],
-                                                const TacsScalar v[],
-                                                const TacsScalar dv[],
-                                                const TacsScalar ddv[] )
+void TACSKSStochasticFFMeanBeamFunction::elementWiseEval( EvaluationType evalType,
+                                                          int elemIndex,
+                                                          TACSElement *element,
+                                                          double time,
+                                                          TacsScalar tscale,
+                                                          const TacsScalar Xpts[],
+                                                          const TacsScalar v[],
+                                                          const TacsScalar dv[],
+                                                          const TacsScalar ddv[] )
 {
+  //printf("TACSStochasticVarianceFunction::elementWiseEval %d\n", elemIndex);
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
   if (!selem) {
     printf("Casting to stochastic element failed; skipping elemenwiseEval");
@@ -171,42 +172,36 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
                              uq, udq, uddq);
 
       {
-        // Get the number of quadrature points for this delem
-        const int numGauss = 1; //delem->getNumGaussPts();
-        const int numDisps = delem->getNumVariables();
-        const int numNodes = delem->getNumNodes();
+        TACSElementBasis *basis = delem->getElementBasis();
 
-        for ( int i = 0; i < numGauss; i++ ){
-      
-          // Get the Gauss points one at a time
-          TacsScalar weight = 1.0; //delem->getGaussWtsPts(i, pt);
-          double pt[3] = {0.0,0.0,0.0};
-          const int N = 1;
-          //  delem->getShapeFunctions(pt, ctx->N);
-   
-          // Evaluate the dot-product with the displacements
-          // const double *N = ctx->N;
+        if (basis){
 
-          TacsScalar value = 0.0;
-          delem->evalPointQuantity(elemIndex,
-                                   this->quantityType,
-                                   time, N, pt,
-                                   Xpts, uq, udq, uddq,
-                                   &value);
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
 
-          if (evalType == TACSFunction::INITIALIZE){      
-            // Reset maxvalue if needed
-            if (TacsRealPart(value) > TacsRealPart(maxValue[j*nsqpts+q])){
-              maxValue[j*nsqpts+q] = value;
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
+            TacsScalar value = 0.0;
+            int count = delem->evalPointQuantity(elemIndex,
+                                                 this->quantityType,
+                                                 time, i, pt,
+                                                 Xpts, uq, udq, uddq,
+                                                 &value);
+          
+            if (evalType == TACSFunction::INITIALIZE){      
+              // Reset maxvalue if needed
+              if (TacsRealPart(value) > TacsRealPart(maxValue[j*nsqpts+q])){
+                maxValue[j*nsqpts+q] = value;
+              }      
+            } else {
+              // Evaluate the determinant of the Jacobian
+              TacsScalar Xd[9], J[9];
+              TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+              ksSum[j*nsqpts+q] += tscale*weight*detJ*exp(ksWeight*(value - maxValue[j*nsqpts+q]));
             }      
-          } else {
-            // Add up the contribution from the quadrature
-            // delem->getDetJacobian(pt, Xpts);
-            TacsScalar h = 1.0;
-            ksSum[j*nsqpts+q] += tscale*exp(ksWeight*(value - maxValue[j*nsqpts+q]));
-          }      
 
-        } // spatial integration
+          } // spatial integration
+
+        }
 
       }
       
@@ -222,7 +217,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
   delete [] uddq;
 }
 
-void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
+void TACSKSStochasticFFMeanBeamFunction::finalEvaluation( EvaluationType evalType )
 {
   if (evalType == TACSFunction::INITIALIZE){
     TacsScalar temp;
@@ -236,39 +231,39 @@ void TACSKSStochasticFunction::finalEvaluation( EvaluationType evalType )
       temp = ksSum[q];
       MPI_Allreduce(&temp, &ksSum[q], 1, TACS_MPI_TYPE, MPI_SUM, this->tacs_comm);
     }
-    // Finish up projection
-    const int nsparams = pc->getNumParameters();
-    TacsScalar *zq = new TacsScalar[nsparams];
-    TacsScalar *yq = new TacsScalar[nsparams];
-    TacsScalar wq;
-    memset(this->fvals, 0, this->nsterms*sizeof(TacsScalar*));
     for (int k = 0; k < nsterms; k++){
       for (int q = 0; q < nsqpts; q++){
-        TacsScalar wq = pc->quadrature(q, zq, yq);
-        fvals[k] += wq*pc->basis(k,zq)*(maxValue[k*nsqpts+q] + log(ksSum[k*nsqpts+q])/ksWeight);
+        fvals[k*nsqpts+q] = maxValue[k*nsqpts+q] + log(ksSum[k*nsqpts+q])/ksWeight;
       }
     }
-    delete [] zq;
-    delete [] yq;    
+
   }
 }
 
 /**
    Get the value of the function
 */
-TacsScalar TACSKSStochasticFunction::getFunctionValue(){
-  if (moment_type == 0){
-    return getExpectation();
-  } else {
-    return getVariance();
-  }  
+TacsScalar TACSKSStochasticFFMeanBeamFunction::getFunctionValue(){  
+  return getExpectation();
 }
 
-TacsScalar TACSKSStochasticFunction::getExpectation(){
-  return fvals[0];
+TacsScalar TACSKSStochasticFFMeanBeamFunction::getExpectation(){
+  // Finish up stochastic integration
+  const int nsparams = pc->getNumParameters();
+  TacsScalar *zq = new TacsScalar[nsparams];
+  TacsScalar *yq = new TacsScalar[nsparams];
+  TacsScalar wq;
+  TacsScalar fmean = 0.0;    
+  for (int q = 0; q < nsqpts; q++){
+    TacsScalar wq = pc->quadrature(q, zq, yq);
+    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q]*fvals[0*nsqpts+q];
+  }
+  delete [] zq;
+  delete [] yq;
+  return fmean;
 }
  
-TacsScalar TACSKSStochasticFunction::getVariance(){
+TacsScalar TACSKSStochasticFFMeanBeamFunction::getVariance(){
   TacsScalar fvar = 0.0;
   for (int k = 1; k < nsterms; k++){
     fvar += fvals[k]*fvals[k];
@@ -276,15 +271,15 @@ TacsScalar TACSKSStochasticFunction::getVariance(){
   return fvar;
 }
 
-void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *element,
-                                                 double time,
-                                                 TacsScalar alpha, TacsScalar beta,
-                                                 TacsScalar gamma,
-                                                 const TacsScalar Xpts[],
-                                                 const TacsScalar v[],
-                                                 const TacsScalar dv[],
-                                                 const TacsScalar ddv[],
-                                                 TacsScalar dfdu[] ){
+void TACSKSStochasticFFMeanBeamFunction::getElementSVSens( int elemIndex, TACSElement *element,
+                                                           double time,
+                                                           TacsScalar alpha, TacsScalar beta,
+                                                           TacsScalar gamma,
+                                                           const TacsScalar Xpts[],
+                                                           const TacsScalar v[],
+                                                           const TacsScalar dv[],
+                                                           const TacsScalar ddv[],
+                                                           TacsScalar dfdu[] ){
   if (RealPart(ksSum[0]) < 1.0e-15){
     printf("Error: Evaluate the functions before derivatives \n");
   }
@@ -340,39 +335,42 @@ void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *ele
 
       { 
 
-        // Get the number of quadrature points for this element
-        const int numGauss = 1; //delem->getNumGaussPts();
-        const int numDisps = delem->getNumVariables();
-        const int numNodes = delem->getNumNodes();
-    
-        for ( int i = 0; i < numGauss; i++ ){      
-          TacsScalar weight       = 1.0; //delem->getGaussWtsPts(i, pt);
-          double pt[3]        = {0.0,0.0,0.0};
-          const int N         = 1;
+        // Get the element basis class
+        TACSElementBasis *basis = delem->getElementBasis();
 
-          TacsScalar quantity = 0.0;
-          delem->evalPointQuantity(elemIndex,
-                                   this->quantityType,
-                                   time, N, pt,
-                                   Xpts, uq, udq, uddq,
-                                   &quantity);        
+        if (basis){
+
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
+
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
+      
+            TacsScalar quantity = 0.0;
+            delem->evalPointQuantity(elemIndex,
+                                     this->quantityType,
+                                     time, i, pt,
+                                     Xpts, uq, udq, uddq,
+                                     &quantity);
+
+            TacsScalar Xd[9], J[9];
+            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
           
-          TacsScalar ksPtWeight = 0.0;
-          ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
-          // ksPtWeight *= weight*detJ;
+            TacsScalar ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
+            ksPtWeight *= weight*detJ*wt;
+            ksPtWeight *= 2.0*fvals[j*nsqpts+q];
 
-          //          printf("%.17e %.17e quantity = %.17e ksptweight = %.17e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], quantity, ksPtWeight);
-          TacsScalar dfdq = ksPtWeight;
-          delem->addPointQuantitySVSens(elemIndex,
-                                        this->quantityType,
-                                        time,
-                                        wt*alpha*ksPtWeight,
-                                        wt*beta*ksPtWeight,
-                                        wt*gamma*ksPtWeight,
-                                        N, pt,
-                                        Xpts, uq, udq, uddq,
-                                        &dfdq, dfduj);
-        } // spatial integration
+            TacsScalar dfdq = ksPtWeight;
+            delem->addPointQuantitySVSens(elemIndex,
+                                          this->quantityType,
+                                          time,
+                                          alpha, beta, gamma,
+                                          i, pt,
+                                          Xpts, uq, udq, uddq,
+                                          &dfdq, dfduj);
+
+          } // spatial integration
+
+        }
 
       }
 
@@ -398,14 +396,14 @@ void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *ele
   delete [] uddq; 
 }
 
-void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *element,
-                                                 double time, TacsScalar scale,
-                                                 const TacsScalar Xpts[],
-                                                 const TacsScalar v[],
-                                                 const TacsScalar dv[],
-                                                 const TacsScalar ddv[],
-                                                 int dvLen,
-                                                 TacsScalar dfdx[] ){
+void TACSKSStochasticFFMeanBeamFunction::addElementDVSens( int elemIndex, TACSElement *element,
+                                                           double time, TacsScalar scale,
+                                                           const TacsScalar Xpts[],
+                                                           const TacsScalar v[],
+                                                           const TacsScalar dv[],
+                                                           const TacsScalar ddv[],
+                                                           int dvLen,
+                                                           TacsScalar dfdx[] ){
 
 
   TACSStochasticElement *selem = dynamic_cast<TACSStochasticElement*>(element);
@@ -435,14 +433,7 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
   TacsScalar *udq    = new TacsScalar[nddof];
   TacsScalar *uddq   = new TacsScalar[nddof];
   
-  // int nterms;
-  // if (moment_type == 0){
-  //   nterms = 1;
-  // } else {
-  //   nterms = 
-  // }
-
-  for (int j = 0; j < 1; j++){   // not sure, other contributions are zero, so this does not affect
+  for (int j = 0; j < 1; j++){
 
     memset(dfdxj, 0, dvLen*sizeof(TacsScalar));
     
@@ -459,42 +450,38 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
       // form deterministic states      
       getDeterministicStates(pc, delem, selem, v, dv, ddv, zq, uq, udq, uddq);
 
+      {
+        TACSElementBasis *basis = delem->getElementBasis();
 
-      { 
+        if (basis){
+        
+          for ( int i = 0; i < basis->getNumQuadraturePoints(); i++ ){
 
-        // Get the number of quadrature points for this element
-        const int numGauss = 1; //delem->getNumGaussPts();
-        const int numDisps = delem->getNumVariables();
-        const int numNodes = delem->getNumNodes();
-    
-        for ( int i = 0; i < numGauss; i++ ){      
-          TacsScalar weight       = 1.0; //delem->getGaussWtsPts(i, pt);
-          double pt[3]        = {0.0,0.0,0.0};
-          const int N         = 1;
+            double pt[3];
+            double weight = basis->getQuadraturePoint(i, pt);
 
-          TacsScalar quantity = 0.0;
-          delem->evalPointQuantity(elemIndex,
-                                   this->quantityType,
-                                   time, N, pt,
-                                   Xpts, uq, udq, uddq,
-                                   &quantity);        
+            TacsScalar quantity = 0.0;
+            delem->evalPointQuantity(elemIndex,
+                                     this->quantityType,
+                                     time, i, pt,
+                                     Xpts, uq, udq, uddq,
+                                     &quantity);        
           
-          TacsScalar ksPtWeight = 0.0;
-          ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
-          // ksPtWeight *= weight*detJ;
+            TacsScalar Xd[9], J[9];
+            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
 
-          //printf("%.17e %.17e ksptweight = %.17e \n", maxValue[j*nsqpts+q], ksSum[j*nsqpts+q], ksPtWeight);
+            TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
+            dfdq *= 2.0*fvals[j*nsqpts+q];
+            delem->addPointQuantityDVSens( elemIndex, 
+                                           this->quantityType,
+                                           time, scale,
+                                           i, pt,
+                                           Xpts, uq, udq, uddq, &dfdq, 
+                                           dvLen, dfdxj ); 
 
-          // Call the underlying element and get the design variable sensitivities
-          TacsScalar _dfdq = ksPtWeight; 
-          delem->addPointQuantityDVSens( elemIndex, 
-                                         this->quantityType,
-                                         time, ksPtWeight*wt*scale,
-                                         N, pt,
-                                         Xpts, uq, udq, uddq, &_dfdq, 
-                                         dvLen, dfdxj ); 
+          } // spatial integration
 
-        } // spatial integration
+        }
         
       }
       
@@ -508,9 +495,10 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
     //   }            
     // }
 
+    // printf("check nodewise placement of derivatives");
     // need to be careful with nodewise placement of dvsx
     for (int n = 0; n < dvLen; n++){
-      // printf("term %d dfdx[%d] = %.17e %.17e \n", j, n, dfdx[n], dfdxj[n]);
+      //printf("term %d dfdx[%d] = %.17e %.17e \n", j, n, dfdx[n], dfdxj[n]);
       dfdx[n] += dfdxj[n];
     }
     
