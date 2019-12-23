@@ -4,6 +4,10 @@
 #include "TACSFunction.h"
 #include "ParameterContainer.h"
 
+// Define some quantities of interest
+static const int FUNCTION_MEAN   = 0;
+static const int FUNCTION_VARIANCE = 1;
+
 class TACSKSStochasticFunction : public TACSFunction {
  public:
   TACSKSStochasticFunction( TACSAssembler *tacs,
@@ -13,11 +17,6 @@ class TACSKSStochasticFunction : public TACSFunction {
                             int moment_type,
                             double ksWeight );
   ~TACSKSStochasticFunction();
-
-  // New functions
-  TacsScalar getExpectation();
-  TacsScalar getVariance();
-
   /**
      Get the object name
   */
