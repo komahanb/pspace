@@ -1,16 +1,21 @@
 include ${HOME}/git/tacs/Makefile.in
 include ${HOME}/git/tacs/TACS_Common.mk
 
+# PSPACE CORE
 PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/
-PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
+PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a 
 
+# PSPACE CORE
 PSPACE_TACS_INCLUDE = -I${HOME}/git/pspace/examples/tacs/
-PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a
+PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a  
 
-# This is the one rule that is used to compile all the
-# source code in TACS
+# OPTIMIZATION Package
+IPOPT_INCLUDE = -I${HOME}/git/ipopt/build/include/coin/
+IPOPT_LIB = -L${HOME}/git/ipopt/build/lib -lipopt -llapack -lblas -lm -ldl
+
+# This is the one rule that is used to compile all the source code in TACS
 %.o: %.cpp
-	${CXX} ${TACS_CC_FLAGS} ${PSPACE_INCLUDE} ${PSPACE_TACS_INCLUDE} -c $< -o $*.o
+	${CXX} ${TACS_CC_FLAGS} ${PSPACE_INCLUDE} ${PSPACE_TACS_INCLUDE} ${IPOPT_INCLUDE} -c $< -o $*.o
 	@echo
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
@@ -18,9 +23,9 @@ PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a
 OBJS =  deterministic.o projection.o sampling.o
 
 default: ${OBJS}
-	${CXX} -o deterministic deterministic.o  ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}	
-	${CXX} -o projection projection.o  ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}
-	${CXX} -o sampling sampling.o  ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}
+	${CXX} -o deterministic deterministic.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
+	${CXX} -o projection projection.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
+	${CXX} -o sampling sampling.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
 
 debug: TACS_CC_FLAGS=${TACS_DEBUG_CC_FLAGS}
 debug: default
