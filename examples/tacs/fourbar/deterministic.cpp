@@ -364,22 +364,30 @@ int main( int argc, char *argv[] ){
   // Create the continuous KS function
   double ksRho = 100.0;
   TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  ksfunc->setKSFailureType(TACSKSFailure::DISCRETE);
+  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
   // Set the functions
-  TACSFunction *funcs = ksfunc;
-  integrator->setFunctions(1, &funcs);
+  const int num_funcs = 2;
+  TACSFunction **funcs = new TACSFunction*[num_funcs];
+  funcs[0] = ksfunc;
+  funcs[1] = fmass;
+  
+  integrator->setFunctions(num_funcs, funcs);
 
-  TacsScalar fval;
-  integrator->evalFunctions(&fval);
-  printf("Function value: %15.10e\n", TacsRealPart(fval));
+  TacsScalar fval[2];
+  integrator->evalFunctions(fval);
+  printf("Function value failure : %15.10e\n", TacsRealPart(fval[0]));
+  printf("Function value mass    : %15.10e\n", TacsRealPart(fval[1]));
 
   // Evaluate the adjoint
   integrator->integrateAdjoint();
 
   // Get the gradient
-  TACSBVec *dfdx;
-  integrator->getGradient(0, &dfdx);
+  TACSBVec *dfdx1;
+  integrator->getGradient(0, &dfdx1);
+
+  TACSBVec *dfdx2;
+  integrator->getGradient(1, &dfdx2);
 
 #ifdef TACS_USE_COMPLEX
   integrator->checkGradients(1e-30);

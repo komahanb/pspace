@@ -663,8 +663,8 @@ int main( int argc, char *argv[] ){
 
   // Create the continuous KS function
   double ksRho = 10000.0;
-  TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  // ksfunc->setKSFailureType(TACSKSFailure::CONTINUOUS);
+  TACSKSFailure  *ksfunc = new TACSKSFailure(assembler, ksRho);
+  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
   const int num_funcs = 2; // mean and variance
   TACSFunction **funcs = new TACSFunction*[num_funcs];
