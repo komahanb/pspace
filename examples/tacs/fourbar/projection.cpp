@@ -3,7 +3,7 @@
 #include "TACSIntegrator.h"
 #include "TACSRigidBody.h"
 #include "TACSKinematicConstraints.h"
-#include "TACSTimoshenkoConstitutive.h"
+#include "SquareSection.h"
 #include "MITC3.h"
 #include "TACSKSFailure.h"
 #include "TACSStructuralMass.h"
@@ -15,6 +15,7 @@
 
 #include "TACSStochasticElement.h"
 #include "TACSKSStochasticFunction.h"
+#include "TACSStochasticFunction.h"
 
 void getDeterministicStates( ParameterContainer *pc, 
                              TACSElement *delem,
@@ -106,122 +107,6 @@ void updateRevoluteConstraint( TACSElement *elem, TacsScalar *vals ){
     printf("Element mismatch while updating...");
   }
 }
-
-class SquareSection : public TACSTimoshenkoConstitutive {
-public:
-  static const double kcorr;
-
-  SquareSection( TacsScalar _density, TacsScalar _E, TacsScalar _G,
-                 TacsScalar _w, int _wNum,
-                 const TacsScalar axis[] ):
-    TACSTimoshenkoConstitutive(NULL, NULL, axis){
-    density = _density;
-    E = _E;
-    G = _G;
-    w = _w;
-    wNum = _wNum;
-    if (wNum < 0){
-      wNum = 0;
-    }
-
-    computeProperties();
-  }
-
-  void computeProperties(){
-    // Set the properties based on the width/thickness variables
-    TacsScalar A = w*w;
-    TacsScalar Iy = w*w*w*w/12.0;
-    TacsScalar Iz = Iy;
-    TacsScalar J = Iy + Iz;
-    TacsScalar Iyz = 0.0;
-
-    // Set the entries of the stiffness matrix
-    memset(C, 0, 36*sizeof(TacsScalar));
-    C[0] = E*A;
-    C[7] = G*J;
-    C[14] = E*Iy;
-    C[21] = E*Iz;
-    C[28] = kcorr*G*A;
-    C[35] = kcorr*G*A;
-
-    // Set the entries of the density matrix
-    rho[0] = density*A;
-    rho[1] = density*Iy;
-    rho[2] = density*Iz;
-    rho[3] = density*Iyz;
-  }
-
-  int getDesignVarNums( int elemIndex, int dvLen, int dvNums[] ){
-    if (dvNums){
-      dvNums[0] = wNum;
-    }
-    return 1;
-  }
-  int setDesignVars( int elemIndex, int dvLen, const TacsScalar dvs[] ){
-    w = dvs[0];
-    computeProperties();
-    return 1;
-  }
-  int getDesignVars( int elemIndex, int dvLen, TacsScalar dvs[] ){
-    dvs[0] = w;
-    return 1;
-  }
-  int getDesignVarRange( int elemIndex, int dvLen,
-                         TacsScalar lb[], TacsScalar ub[] ){
-    lb[0] = 0.0;
-    ub[0] = 10.0;
-    return 1;
-  }
-  void addStressDVSens( int elemIndex, const double pt[], const TacsScalar X[],
-                        const TacsScalar e[], TacsScalar scale,
-                        const TacsScalar psi[], int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += scale*(2.0*w*(E*e[0]*psi[0] + kcorr*G*(e[4]*psi[4] + e[5]*psi[5])) +
-                      (w*w*w/3.0)*(2.0*G*e[1]*psi[1] + E*(e[2]*psi[2] + e[3]*psi[3])));
-  }
-  void addMassMomentsDVSens( int elemIndex, const double pt[],
-                             TacsScalar scale, const TacsScalar psi[],
-                             int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += scale*density*(2.0*w*psi[0] + ((w*w*w)/3.0)*(psi[1] + psi[2]));
-  }
-
-  TacsScalar evalDensity( int elemIndex, const double pt[],
-                          const TacsScalar X[] ){
-    return density*w*w;
-  }
-  void addDensityDVSens( int elemIndex, const double pt[],
-                         const TacsScalar X[], const TacsScalar scale,
-                         int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += 2.0*scale*density*w;
-  }
-
-  TacsScalar evalFailure( int elemIndex, const double pt[],
-                          const TacsScalar X[], const TacsScalar e[] ){
-    return E*w*w*fabs(e[0])/10e3;
-  }
-  TacsScalar evalFailureStrainSens( int elemIndex, const double pt[],
-                                    const TacsScalar X[], const TacsScalar e[],
-                                    TacsScalar sens[] ){
-    memset(sens, 0, 6*sizeof(TacsScalar));
-    if (TacsRealPart(e[0]) >= 0.0){
-      sens[0] = E*w*w/10e3;
-    }
-    else {
-      sens[0] = -E*w*w/10e3;
-    }
-    return E*w*w*fabs(e[0])/10e3;
-  }
-  void addFailureDVSens( int elemIndex, const double pt[],
-                         const TacsScalar X[], const TacsScalar e[],
-                         TacsScalar scale, int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += 2.0*scale*E*w*fabs(e[0])/10e3;
-  }
-
-  TacsScalar density, E, G;
-  TacsScalar w;
-  int wNum;
-};
-
-const double SquareSection::kcorr = 5.0/6.0;
 
 /*
   Create and return the TACSAssembler object for the four bar
@@ -442,12 +327,12 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   }
   creator->setElements(nelems, elems);
 
-  TACSAssembler *assembler = creator->createTACS();
-  assembler->incref();  
-  creator->decref(); 
+  //  TACSAssembler *assembler = creator->createTACS();
+  //assembler->incref();  
+  //creator->decref(); 
   
   // Create the TACSAssembler object
-  /*
+
   TACSAssembler *assembler = new TACSAssembler(MPI_COMM_WORLD, 8*nsterms, nnodes, nelems);
 
   assembler->setElementConnectivity(ptr, conn);
@@ -468,7 +353,6 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   assembler->setNodes(Xvec);
   Xvec->decref();
   delete [] X;
-  */
   
   return assembler;
 }
@@ -493,28 +377,26 @@ int main( int argc, char *argv[] ){
   const int nsqpts   = pc->getNumQuadraturePoints();
 
   // Create the finite-element model
-  int nA = 2, nB = 4, nC = 2; // fix mesh size
+  int nA = 4, nB = 8, nC = 4;
   TACSAssembler *assembler = four_bar_mechanism(nA, nB, nC, pc);
   assembler->incref();
 
   // Set the final time
-  double tf = 1.0e-1; // fix
+  double tf = 12.0;
 
   // The number of total steps (100 per second)
-  int num_steps = 10; // fix
+  int num_steps = 1200;
 
   // Create the integrator class
-  TACSIntegrator *integrator =
-    new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
+  TACSIntegrator *integrator = new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
   integrator->incref();
 
   // Set the integrator options
-  integrator->setUseSchurMat(0, TACSAssembler::TACS_AMD_ORDER);
-  integrator->setAbsTol(1e-9);
-  integrator->setRelTol(1e-14);
-  integrator->setPrintLevel(0);
-  // integrator->setOutputFrequency(10);
-
+  integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
+  integrator->setAbsTol(1e-7);
+  integrator->setRelTol(1e-12);
+  integrator->setOutputFrequency(0);
+    
   // Integrate the equations of motion forward in time
   integrator->integrate();
 
@@ -666,35 +548,40 @@ int main( int argc, char *argv[] ){
   TACSKSFailure  *ksfunc = new TACSKSFailure(assembler, ksRho);
   TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
-  const int num_funcs = 2; // mean and variance
+  const int num_funcs = 4; // mean and variance
   TACSFunction **funcs = new TACSFunction*[num_funcs];
 
-  TACSFunction *sfunc, *sffunc;
-  sfunc  = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_MEAN, ksRho);
-  sffunc = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_VARIANCE, ksRho);
-  funcs[0] = sfunc;
-  funcs[1] = sffunc;
+  TACSFunction *sfuncfail, *sffuncfail;
+  sfuncfail  = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_MEAN, ksRho);
+  sffuncfail = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_VARIANCE, ksRho);
+  funcs[0] = sfuncfail;
+  funcs[1] = sffuncfail;
+
+  TACSFunction *sfuncmass, *sffuncmass;
+  sfuncmass  = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_MEAN);
+  sffuncmass = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_VARIANCE);
+  funcs[2] = sfuncmass;
+  funcs[3] = sffuncmass;  
 
   // Create stochastic functions to set into TACS 
   integrator->setFunctions(num_funcs, funcs);
 
-  TacsScalar fval[2];
+  TacsScalar fval[num_funcs];
   integrator->evalFunctions(fval);
-  printf("Function values : %15.10e %15.10e\n", TacsRealPart(fval[0]),
-         TacsRealPart(fval[1]));
+  for ( int i = 0; i < num_funcs; i++ ){
+    printf("Function values : %15.10e \n", TacsRealPart(fval[i]));
+  }
 
+  TacsScalar failmean = fval[0];
+  TacsScalar failvar  = fval[1];
+  TacsScalar massmean = fval[2];
+  TacsScalar massvar  = fval[3];
+  
 #ifdef TACS_USE_COMPLEX
   integrator->checkGradients(1e-30);
 #else
   integrator->checkGradients(1e-6);
 #endif // TACS_USE_COMPLEX
-
-  // Compute mean and variance of ks failure
-  TacsScalar failmean, failvar;
-  failmean = fval[0];
-  failvar  = fval[1]; 
-  printf("Expectations : %.17e \n", RealPart(failmean));
-  printf("Variance     : %.17e \n", RealPart(failvar));
 
   // Evaluate the adjoint
   integrator->integrateAdjoint();
@@ -721,41 +608,26 @@ int main( int argc, char *argv[] ){
          ImagPart(failvar)/dh,
          RealPart(fail2meanderiv[0]) - ImagPart(failvar)/dh);
 
-  /*
-  // Set the output options/locations
-  int elem[3];
-  elem[0] = nA/2;
-  elem[1] = nA + nB/2;
-  elem[2] = nA + nB + nC/2;
-  double param[][1] = {{-1.0}, {-1.0}, {0.0}};
+  // Get the gradient for mass
+  TACSBVec *dfdx3, *dfdx4;
+  integrator->getGradient(2, &dfdx3);
+  integrator->getGradient(3, &dfdx4);
 
-  // Extra the data to a file
-  for ( int pt = 0; pt < 3; pt++ ){
-  char filename[128];
-  sprintf(filename, "mid_beam_%d.dat", pt+1);
-  FILE *fp = fopen(filename, "w");
+  TacsScalar *massmeanderiv, *mass2meanderiv;
+  dfdx3->getArray(&massmeanderiv);
+  dfdx4->getArray(&mass2meanderiv);
 
-  fprintf(fp, "Variables = t, u0, v0, w0, quantity\n");
+  // Find the derivative of variance
+  dfdx4->axpy(-2.0*massmean, dfdx3);
 
-  // Write out data from the beams
-  TACSBVec *q = NULL;
-  for ( int k = 0; k < num_steps+1; k++ ){
-  TacsScalar X[3*3], vars[8*3], dvars[8*3], ddvars[8*3];
-  double time = integrator->getStates(k, &q, NULL, NULL);
-  assembler->setVariables(q);
-  TACSElement *element = assembler->getElement(elem[pt], X, vars, dvars, ddvars);
-
-  TacsScalar quantity;
-  element->evalPointQuantity(elem[pt], TACS_FAILURE_INDEX, time,
-  0, param[pt], X, vars, dvars, ddvars, &quantity);
-
-  fprintf(fp, "%e  %e %e %e  %e\n",
-  time, TacsRealPart(vars[0]), TacsRealPart(vars[1]),
-  TacsRealPart(vars[2]), TacsRealPart(quantity));
-  }
-  fclose(fp);
-  }
-  */
+  printf("CS dE{ mass }/dx = %.17e %.17e %.17e \n", 
+         RealPart(massmeanderiv[0]), 
+         ImagPart(massmean)/dh,
+         RealPart(massmeanderiv[0]) - ImagPart(massmean)/dh);
+  printf("CS dV{ mass }/dx = %.17e %.17e %.17e \n", 
+         RealPart(mass2meanderiv[0]), 
+         ImagPart(massvar)/dh,
+         RealPart(mass2meanderiv[0]) - ImagPart(massvar)/dh);
 
   integrator->decref();
   assembler->decref();
