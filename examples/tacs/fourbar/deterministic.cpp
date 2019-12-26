@@ -238,9 +238,10 @@ int main( int argc, char *argv[] ){
   integrator->incref();
 
   // Set the integrator options
-  //  integrator->setUseSchurMat(0, TACSAssembler::RCM_ORDER);
+  integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
   integrator->setAbsTol(1e-7);
-  integrator->setOutputFrequency(10);
+  integrator->setRelTol(1e-12);
+  integrator->setOutputFrequency(0);
 
   // Integrate the equations of motion forward in time
   integrator->integrate();
