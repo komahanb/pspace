@@ -4,12 +4,17 @@
 #include "TACSFunction.h"
 #include "ParameterContainer.h"
 
+// Define some quantities of interest
+static const int FUNCTION_MEAN1   = 0;
+static const int FUNCTION_VARIANCE1 = 1;
+
 class TACSStochasticFunction : public TACSFunction {
  public:
   TACSStochasticFunction( TACSAssembler *tacs,
-                          TACSFunction *dfunc, 
+                          TACSFunction *dfunc,
                           ParameterContainer *pc,
-                          int quantityType);
+                          int quantityType,
+                          int moment_type );
   ~TACSStochasticFunction();
   /**
      Get the object name
@@ -86,17 +91,7 @@ class TACSStochasticFunction : public TACSFunction {
                         const TacsScalar Xpts[],
                         const TacsScalar vars[],
                         const TacsScalar dvars[],
-                        const TacsScalar ddvars[] );
-
-  void elementWiseEval2( EvaluationType ftype,
-                         int elemIndex, TACSElement *element,
-                         double time,
-                         TacsScalar scale,
-                         const TacsScalar Xpts[],
-                         const TacsScalar vars[],
-                         const TacsScalar dvars[],
-                         const TacsScalar ddvars[] );
-  
+                        const TacsScalar ddvars[] ); 
   /**
      Finalize the function evaluation for the specified eval type.
      
@@ -157,7 +152,6 @@ class TACSStochasticFunction : public TACSFunction {
                          const TacsScalar ddvars[],
                          int dvLen,
                          TacsScalar dfdx[] );
-
   /**
      Evaluate the derivative of the function w.r.t. the node locations
 
@@ -181,39 +175,29 @@ class TACSStochasticFunction : public TACSFunction {
     memset(dfdXpts, 0, 3*numNodes*sizeof(TacsScalar));
   }
 
- protected:  
+ protected:
+
   TACSFunction *dfunc;
   ParameterContainer *pc;
 
  private:
-  // Store function values
-  TacsScalar fval;
 
   // The name of the function
   static const char *funcName;
 
-  // The direction
-  TacsScalar dir[3];
-
-  // The value of the KS weight
-  double ksWeight;
+  // Integer identifying the function type
+  int quantityType;
 
   // Intermediate values in the functional evaluation
-  TacsScalar ksSum;
-  TacsScalar maxValue;
+  TacsScalar *fvals;
 
-  int quantityType;
-  
-  // Set the type of constraint aggregate
-  // KSDisplacementType ksType;
+  int moment_type;
 
-  // The max number of nodes
-  int maxNumNodes;
+  // number of stochastic quadrature points
+  int nsqpts;
+  int nsterms;
 
   MPI_Comm tacs_comm;
-
-  // Callback function to update the parameters (not sure if we need for functions)
-  // void (*update)(TACSFunction*, TacsScalar*);
 };
 
 #endif
