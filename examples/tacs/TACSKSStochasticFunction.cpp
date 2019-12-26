@@ -99,8 +99,6 @@ TACSKSStochasticFunction::TACSKSStochasticFunction( TACSAssembler *tacs,
 
 TACSKSStochasticFunction::~TACSKSStochasticFunction()
 {
-  delete [] this->ksSum;
-  delete [] this->maxValue;
   delete [] this->fvals;
   delete [] this->ksSum;
   delete [] this->maxValue;
