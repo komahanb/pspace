@@ -12,6 +12,7 @@ PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a
 # OPTIMIZATION Package
 IPOPT_INCLUDE = -I${HOME}/git/ipopt/build/include/coin/
 IPOPT_LIB = -L${HOME}/git/ipopt/build/lib -lipopt -llapack -lblas -lm -ldl
+IPOPT_LD_FLAGS = -Wl,--rpath -Wl,${HOME}/git/ipopt/build/lib
 
 # This is the one rule that is used to compile all the source code in TACS
 %.o: %.cpp
@@ -20,10 +21,10 @@ IPOPT_LIB = -L${HOME}/git/ipopt/build/lib -lipopt -llapack -lblas -lm -ldl
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS =  deterministic.o projection.o sampling.o
+OBJS =  MyNLP.o deterministic.o projection.o sampling.o
 
 default: ${OBJS}
-	${CXX} -o deterministic deterministic.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
+	${CXX} -o deterministic MyNLP.o deterministic.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB} ${IPOPT_LD_FLAGS}
 	${CXX} -o projection projection.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
 	${CXX} -o sampling sampling.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB}
 
