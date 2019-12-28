@@ -120,7 +120,6 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
   };
   
   TACSElement *delem = selem->getDeterministicElement();
-  const int nqpts    = pc->getNumQuadraturePoints();
   const int nsparams = pc->getNumParameters();
   const int ndvpn    = delem->getVarsPerNode();
   const int nsvpn    = selem->getVarsPerNode();
@@ -140,7 +139,7 @@ void TACSStochasticFunction::elementWiseEval( EvaluationType evalType,
   for (int j = 0; j < nsterms; j++){
 
     // Stochastic Integration
-    for (int q = 0; q < nqpts; q++){
+    for (int q = 0; q < nsqpts; q++){
 
       // Get the quadrature points and weights for mean
       wq = pc->quadrature(q, zq, yq);
@@ -213,14 +212,16 @@ TacsScalar TACSStochasticFunction::getFunctionValue(){
   TacsScalar *zq = new TacsScalar[nsparams];
   TacsScalar *yq = new TacsScalar[nsparams];
   TacsScalar wq;
+  
+  // Compute mean
   TacsScalar fmean = 0.0; 
-  TacsScalar ffmean = 0.0;       
-  if (moment_type == FUNCTION_MEAN1) {   
-    for (int q = 0; q < nsqpts; q++){
-      wq = pc->quadrature(q, zq, yq);
-      fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
-    }
-  } else {
+  for (int q = 0; q < nsqpts; q++){
+    wq = pc->quadrature(q, zq, yq);
+    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
+  }
+
+  TacsScalar ffmean = 0.0;
+  if (moment_type == FUNCTION_VARIANCE1) {   
     for (int q = 0; q < nsqpts; q++){
       wq = pc->quadrature(q, zq, yq);
       ffmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q]*fvals[0*nsqpts+q];
@@ -228,13 +229,13 @@ TacsScalar TACSStochasticFunction::getFunctionValue(){
   }
   delete [] zq;
   delete [] yq;
+  
   if (moment_type == FUNCTION_MEAN1) {
     return fmean;
   } else {
     return ffmean - fmean*fmean;
   }
 }
-
 
 void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *element,
                                                double time,
@@ -252,7 +253,6 @@ void TACSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *eleme
 
   TACSElement *delem = selem->getDeterministicElement();
   const int nsterms  = pc->getNumBasisTerms();
-  const int nqpts    = pc->getNumQuadraturePoints();
   const int nsparams = pc->getNumParameters();
   const int ndvpn    = delem->getVarsPerNode();
   const int nsvpn    = selem->getVarsPerNode();
