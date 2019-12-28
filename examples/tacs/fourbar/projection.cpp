@@ -184,7 +184,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   TacsScalar nu = 0.3;
   TacsScalar G = 0.5*E/(1.0 + nu);
 
-  TacsScalar wA = 0.016;
+  TacsScalar wA = 0.016 + 1.0e-30j;
   TacsScalar wB = 0.008;
   int wANum = 0, wBNum = 1;
 
@@ -551,18 +551,18 @@ int main( int argc, char *argv[] ){
   const int num_funcs = 4; // mean and variance
   TACSFunction **funcs = new TACSFunction*[num_funcs];
 
+ TACSFunction *sfuncmass, *sffuncmass;
+  sfuncmass  = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_MEAN);
+  sffuncmass = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_VARIANCE);
+  funcs[0] = sfuncmass;
+  funcs[1] = sffuncmass;  
+
   TACSFunction *sfuncfail, *sffuncfail;
   sfuncfail  = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_MEAN, ksRho);
   sffuncfail = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_VARIANCE, ksRho);
-  funcs[0] = sfuncfail;
-  funcs[1] = sffuncfail;
-
-  TACSFunction *sfuncmass, *sffuncmass;
-  sfuncmass  = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_MEAN);
-  sffuncmass = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_VARIANCE);
-  funcs[2] = sfuncmass;
-  funcs[3] = sffuncmass;  
-
+  funcs[2] = sfuncfail;
+  funcs[3] = sffuncfail;
+ 
   // Create stochastic functions to set into TACS 
   integrator->setFunctions(num_funcs, funcs);
 
@@ -572,63 +572,62 @@ int main( int argc, char *argv[] ){
     printf("Function values : %15.10e \n", TacsRealPart(fval[i]));
   }
 
-  TacsScalar failmean = fval[0];
-  TacsScalar failvar  = fval[1];
-  TacsScalar massmean = fval[2];
-  TacsScalar massvar  = fval[3];
+  TacsScalar massmean = fval[0];
+  TacsScalar massvar  = fval[1];
+  TacsScalar failmean = fval[2];
+  TacsScalar failvar  = fval[3];
   
-#ifdef TACS_USE_COMPLEX
-  integrator->checkGradients(1e-30);
-#else
-  integrator->checkGradients(1e-6);
-#endif // TACS_USE_COMPLEX
+// #ifdef TACS_USE_COMPLEX
+//   integrator->checkGradients(1e-30);
+// #else
+//   integrator->checkGradients(1e-6);
+// #endif // TACS_USE_COMPLEX
 
   // Evaluate the adjoint
   integrator->integrateAdjoint();
 
-  // Get the gradient
+  // Get the gradient for mass
   TACSBVec *dfdx1, *dfdx2;
   integrator->getGradient(0, &dfdx1);
   integrator->getGradient(1, &dfdx2);
 
-  TacsScalar *failmeanderiv, *fail2meanderiv;
-  dfdx1->getArray(&failmeanderiv);
-  dfdx2->getArray(&fail2meanderiv);
+  TacsScalar *massmeanderiv, *massvarderiv;
+  dfdx1->getArray(&massmeanderiv);
+  dfdx2->getArray(&massvarderiv);
 
   // Find the derivative of variance
-  dfdx2->axpy(-2.0*failmean, dfdx1);
+  dfdx2->axpy(-2.0*massmean, dfdx1);
 
   double dh = 1.0e-30;
-  printf("CS dE{ fail }/dx = %.17e %.17e %.17e \n", 
-         RealPart(failmeanderiv[0]), 
-         ImagPart(failmean)/dh,
-         RealPart(failmeanderiv[0]) - ImagPart(failmean)/dh);
-  printf("CS dV{ fail }/dx = %.17e %.17e %.17e \n", 
-         RealPart(fail2meanderiv[0]), 
-         ImagPart(failvar)/dh,
-         RealPart(fail2meanderiv[0]) - ImagPart(failvar)/dh);
-
-  // Get the gradient for mass
-  TACSBVec *dfdx3, *dfdx4;
-  integrator->getGradient(2, &dfdx3);
-  integrator->getGradient(3, &dfdx4);
-
-  TacsScalar *massmeanderiv, *mass2meanderiv;
-  dfdx3->getArray(&massmeanderiv);
-  dfdx4->getArray(&mass2meanderiv);
-
-  // Find the derivative of variance
-  dfdx4->axpy(-2.0*massmean, dfdx3);
-
   printf("CS dE{ mass }/dx = %.17e %.17e %.17e \n", 
          RealPart(massmeanderiv[0]), 
          ImagPart(massmean)/dh,
          RealPart(massmeanderiv[0]) - ImagPart(massmean)/dh);
   printf("CS dV{ mass }/dx = %.17e %.17e %.17e \n", 
-         RealPart(mass2meanderiv[0]), 
+         RealPart(massvarderiv[0]), 
          ImagPart(massvar)/dh,
-         RealPart(mass2meanderiv[0]) - ImagPart(massvar)/dh);
+         RealPart(massvarderiv[0]) - ImagPart(massvar)/dh);
 
+  // Get the gradient of failure
+  TACSBVec *dfdx3, *dfdx4;
+  integrator->getGradient(2, &dfdx3);
+  integrator->getGradient(3, &dfdx4);
+
+  TacsScalar *failmeanderiv, *failvarderiv;
+  dfdx3->getArray(&failmeanderiv);
+
+  // Find the derivative of variance
+  dfdx4->axpy(-2.0*failmean, dfdx3);
+  dfdx4->getArray(&failvarderiv);
+  
+  printf("CS dE{ fail }/dx = %.17e %.17e %.17e \n", 
+         RealPart(failmeanderiv[0]), 
+         ImagPart(failmean)/dh,
+         RealPart(failmeanderiv[0]) - ImagPart(failmean)/dh);
+  printf("CS dV{ fail }/dx = %.17e %.17e %.17e \n", 
+         RealPart(failvarderiv[0]), 
+         ImagPart(failvar)/dh,
+         RealPart(failvarderiv[0]) - ImagPart(failvar)/dh);
   integrator->decref();
   assembler->decref();
 

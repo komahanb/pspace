@@ -1,4 +1,4 @@
-CFLAGS = -O3 -fPIC #Wall -fPIC -g -DUSE_COMPLEX
+CFLAGS = -O3 -fPIC -DUSE_COMPLEX #Wall -fPIC -g 
 
 default:
 	mpicxx ${CFLAGS} -funroll-loops -c ArrayList.cpp
