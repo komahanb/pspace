@@ -288,17 +288,19 @@ int main( int argc, char *argv[] ){
     integrator->integrate();
 
     // Create the continuous KS function
-    double ksRho = 100.0;
+    double ksRho = 10000.0;
     TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
     TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
     // Set the functions
-    TACSFunction *funcs = fmass; // ksfunc
-    integrator->setFunctions(1, &funcs);
+    TACSFunction **funcs = new TACSFunction*[2]; //fmass
+    funcs[0] = fmass;
+    funcs[1] = ksfunc;
+    integrator->setFunctions(2, funcs);
 
-    TacsScalar fval;
-    integrator->evalFunctions(&fval);
-    printf("Function value: %15.10e\n", TacsRealPart(fval));
+    TacsScalar fval[2];
+    integrator->evalFunctions(fval);
+    printf("Function value: %15.10e %15.10e \n", TacsRealPart(fval[0]), TacsRealPart(fval[1]));
 
     // Evaluate the adjoint
     integrator->integrateAdjoint();
