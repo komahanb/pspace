@@ -1,14 +1,15 @@
-#ifndef __DETOPT_HPP__
-#define __DETOPT_HPP__
+#ifndef PROJECTION_OUU
+#define PROJECTION_OUU
 
 #include "IpTNLP.hpp"
 #include "TACSAssembler.h"
 #include "TACSIntegrator.h"
+#include "ParameterContainer.h"
 
 using namespace Ipopt;
 
 /** C++ Example NLP for interfacing a problem with IPOPT.
- *  DetOpt implements a C++ example showing how to interface with IPOPT
+ *  ProjectionOUU implements a C++ example showing how to interface with IPOPT
  *  through the TNLP interface. This example is designed to go along with
  *  the tutorial document (see Examples/CppTutorial/).
  *  This class implements the following NLP.
@@ -19,17 +20,16 @@ using namespace Ipopt;
  *       -1 <= x1 <= 1
  *
  */
-class DetOpt : public TNLP
+class ProjectionOUU : public TNLP
 {
 public:
   /** default constructor */
-  DetOpt( int nA, int nB, int nC, double tf, int num_steps,
-          double abstol, double reltol );
-
-  /** default destructor */
-  virtual ~DetOpt();
+  ProjectionOUU( int nA, int nB, int nC, double tf, int num_steps,
+                 double abstol, double reltol, ParameterContainer *pc, 
+                 double _alpha, double _beta );
   
-  void evaluateFuncGrad( Index n, const Number* x );
+  /** default destructor */
+  virtual ~ProjectionOUU();
 
   /**@name Overloaded from TNLP */
   //@{
@@ -81,9 +81,11 @@ public:
                                  const IpoptData* ip_data,
                                  IpoptCalculatedQuantities* ip_cq);
 
+  void evaluateFuncGrad( Index n, const Number* x );
+
 private:
-  DetOpt(const DetOpt&);
-  DetOpt& operator=(const DetOpt&);
+  ProjectionOUU(const ProjectionOUU&);
+  ProjectionOUU& operator=(const ProjectionOUU&);
   
   TACSIntegrator *integrator;
   TACSAssembler *assembler;
@@ -91,6 +93,8 @@ private:
   double *fvals;
   double *dfdx;
   double *dgdx;
+  ParameterContainer *pc;
+  double alpha, beta;
 };
 
 #endif
