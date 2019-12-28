@@ -246,14 +246,15 @@ TacsScalar TACSKSStochasticFunction::getFunctionValue(){
   TacsScalar *zq = new TacsScalar[nsparams];
   TacsScalar *yq = new TacsScalar[nsparams];
   TacsScalar wq;
-  TacsScalar fmean = 0.0; 
+  
+  TacsScalar fmean = 0.0;
+  for (int q = 0; q < nsqpts; q++){
+    wq = pc->quadrature(q, zq, yq);
+    fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
+  }
+
   TacsScalar ffmean = 0.0;       
-  if (moment_type == FUNCTION_MEAN) {   
-    for (int q = 0; q < nsqpts; q++){
-      wq = pc->quadrature(q, zq, yq);
-      fmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q];
-    }
-  } else {
+  if (moment_type == FUNCTION_VARIANCE) {   
     for (int q = 0; q < nsqpts; q++){
       wq = pc->quadrature(q, zq, yq);
       ffmean += wq*pc->basis(0,zq)*fvals[0*nsqpts+q]*fvals[0*nsqpts+q];
@@ -267,7 +268,6 @@ TacsScalar TACSKSStochasticFunction::getFunctionValue(){
     return ffmean - fmean*fmean;
   }
 }
-
 
 void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *element,
                                                  double time,
