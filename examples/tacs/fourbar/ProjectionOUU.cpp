@@ -1,18 +1,27 @@
-#include "DetOpt.hpp"
 #include <cassert>
-#include "deterministic.h"
+#include "ProjectionOUU.hpp"
+#include "projection.h"
 #include "TACSKSFailure.h"
 #include "TACSStructuralMass.h"
+#include "ParameterFactory.h"
+#include "TACSKSStochasticFunction.h"
+#include "TACSStochasticFunction.h"
 
-DetOpt::DetOpt( int nA, int nB, int nC, double tf, int num_steps,
-                double abstol, double reltol ){  
+ProjectionOUU::ProjectionOUU( int nA, int nB, int nC, double tf, int num_steps,
+                              double abstol, double reltol, ParameterContainer *_pc, 
+                              double _alpha, double _beta ){
+  // Pointer to parameter container
+  pc  = _pc;
+  alpha = _alpha;
+  beta = _beta;
+
   // Create the finite-element model
-  assembler = four_bar_mechanism(nA, nB, nC);
+  assembler = four_bar_mechanism(nA, nB, nC, pc);
   assembler->incref();
-
+  
   // Create the integrator class
-  integrator = new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
-  // integrator = new TACSDIRKIntegrator(assembler, 0.0, tf, num_steps, 3);
+  // integrator = new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
+  integrator = new TACSDIRKIntegrator(assembler, 0.0, tf, num_steps, 3);
   integrator->incref();
 
   // Set the integrator options
@@ -23,17 +32,32 @@ DetOpt::DetOpt( int nA, int nB, int nC, double tf, int num_steps,
   integrator->setPrintLevel(0);
 
   // Set the functions
-  const int num_funcs = 2;
-  TACSFunction **funcs = new TACSFunction*[num_funcs];  
-  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
+  const int num_funcs = 4; // mean and variance
+  TACSFunction **funcs = new TACSFunction*[num_funcs];
+
+  // Create the deterministic functions
   double ksRho = 10000.0;
-  TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  funcs[0] = fmass;
-  funcs[1] = ksfunc;  
+  TACSKSFailure  *ksfunc = new TACSKSFailure(assembler, ksRho);
+  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
+
+  // Create the stochastic functions for mean and variance
+  TACSFunction *sfuncmass, *sffuncmass;
+  sfuncmass  = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_MEAN);
+  sffuncmass = new TACSStochasticFunction(assembler, fmass, pc, TACS_ELEMENT_DENSITY, FUNCTION_VARIANCE);
+  funcs[0] = sfuncmass;
+  funcs[1] = sffuncmass;  
+
+  TACSFunction *sfuncfail, *sffuncfail;
+  sfuncfail  = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_MEAN, ksRho);
+  sffuncfail = new TACSKSStochasticFunction(assembler, ksfunc, pc, TACS_FAILURE_INDEX, FUNCTION_VARIANCE, ksRho);
+  funcs[2] = sfuncfail;
+  funcs[3] = sffuncfail;
+ 
+  // Create stochastic functions to set into TACS 
   integrator->setFunctions(num_funcs, funcs);
 }
 
-DetOpt::~DetOpt(){
+ProjectionOUU::~ProjectionOUU(){
   assembler->decref();
   integrator->decref();
   delete [] fvals;
@@ -41,7 +65,7 @@ DetOpt::~DetOpt(){
   delete [] dgdx;
 }
 
-void DetOpt::evaluateFuncGrad( Index n, const Number* x ){
+void ProjectionOUU::evaluateFuncGrad( Index n, const Number* x ){
 
   printf("TACS evaluation at %e %e \n", x[0], x[1]);
 
@@ -71,44 +95,86 @@ void DetOpt::evaluateFuncGrad( Index n, const Number* x ){
   // Perform forward TACS Solve
   integrator->integrate();
 
-  TacsScalar ftmp[2];
-  integrator->evalFunctions(ftmp);
-  this->fvals[0] = ftmp[0];
-  this->fvals[1] = ftmp[1];
+  TacsScalar ftmp[4];
+  integrator->evalFunctions(ftmp);   
 
-  printf("mass  : %15.10e\n", this->fvals[0]);
-  printf("fail  : %15.10e\n", this->fvals[1]);
+  TacsScalar massmean = ftmp[0];
+  TacsScalar massvar  = ftmp[1];
+  TacsScalar massstd  = sqrt(massvar);
+  TacsScalar failmean = ftmp[2];
+  TacsScalar failvar  = ftmp[3];
+  TacsScalar failstd  = sqrt(failvar);
+ 
+  // Store the evaluated function values
+  this->fvals[0] = massmean + massstd;
+  this->fvals[1] = failmean + this->beta*failstd;
+
+  printf("mass expectation and std deviation are : %15.10e %15.10e %15.10e\n", massmean, massstd, this->fvals[0]);
+  printf("fail expectation and std deviation are : %15.10e %15.10e %15.10e\n", failmean, failstd, this->fvals[1]);
 
   //----------------------------------------------------------------//
   // setup obj function deriv
   //----------------------------------------------------------------//
 
+  // Do Adjoint solve in TACS
   integrator->integrateAdjoint();
 
-  // Objective derivative
-  TACSBVec *dfdx1;
+  TACSBVec *dfdx1, *dfdx2;
   integrator->getGradient(0, &dfdx1);
-  TacsScalar *objderiv;
-  dfdx1->getArray(&objderiv);
-  for (int i = 0; i < n; i++){
-    this->dfdx[i] = objderiv[i];
-  }
-    
-  // Constraint derivative
-  TACSBVec *dfdx2;
   integrator->getGradient(1, &dfdx2);
-    TacsScalar *conderiv;
-    dfdx2->getArray(&conderiv);
-    for (int i = 0; i < n; i++){
-      this->dgdx[i] = conderiv[i];
-    }
+
+  // Compute the derivative of standard deviation 
+  dfdx2->axpy(-2.0*massmean, dfdx1);
+  if (abs(massvar) > 1.0e-8){
+    dfdx2->scale(1.0/(2.0*massstd));
+  } else {
+    printf("small variance of mass %e \n", massvar);
+    dfdx2->scale(0.0);
+  }
+
+  // Acess mean and std dev derivatives
+  TacsScalar *massmeanderiv, *massstdderiv;
+  dfdx1->getArray(&massmeanderiv);
+  dfdx2->getArray(&massstdderiv);
+
+  // Objective function gradient
+  for (int i = 0; i < n; i++){
+    this->dfdx[i] = massmeanderiv[i] + massstdderiv[i];
+  }
+
+  //----------------------------------------------------------------//
+  // setup constraint function deriv
+  //----------------------------------------------------------------//
+    
+  TACSBVec *dfdx3, *dfdx4;
+  integrator->getGradient(2, &dfdx3);
+  integrator->getGradient(3, &dfdx4);
+
+  // Compute the derivative of standard deviation 
+  dfdx4->axpy(-2.0*failmean, dfdx3);
+  if (abs(failvar) > 1.0e-8){
+    dfdx4->scale(1.0/(2.0*failstd));
+  } else {
+    printf("small variance of failure %e \n", failvar);
+    dfdx4->scale(0.0);
+  }
+
+  // Acess mean and std dev derivatives
+  TacsScalar *failmeanderiv, *failstdderiv;
+  dfdx3->getArray(&failmeanderiv);
+  dfdx4->getArray(&failstdderiv);
+
+  // constraint function gradient
+  for (int i = 0; i < n; i++){
+    this->dgdx[i] = failmeanderiv[i] + this->beta*failstdderiv[i];
+  }
 
 }
 
-bool DetOpt::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
-                          Index& nnz_h_lag, IndexStyleEnum& index_style)
+bool ProjectionOUU::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
+                                 Index& nnz_h_lag, IndexStyleEnum& index_style)
 {
-  // The problem described in DetOpt.hpp has 2 variables, x1, & x2,
+  // The problem described in ProjectionOUU.hpp has 2 variables, x1, & x2,
   n = 2;
 
   // one equality constraint,
@@ -134,8 +200,8 @@ bool DetOpt::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   return true;
 }
 
-bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
-                             Index m, Number* g_l, Number* g_u)
+bool ProjectionOUU::get_bounds_info(Index n, Number* x_l, Number* x_u,
+                                    Index m, Number* g_l, Number* g_u)
 {
   assert(n == 2);
   assert(m == 1);
@@ -153,10 +219,10 @@ bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
   return true;
 }
 
-bool DetOpt::get_starting_point(Index n, bool init_x, Number* x,
-                                bool init_z, Number* z_L, Number* z_U,
-                                Index m, bool init_lambda,
-                                Number* lambda)
+bool ProjectionOUU::get_starting_point(Index n, bool init_x, Number* x,
+                                       bool init_z, Number* z_L, Number* z_U,
+                                       Index m, bool init_lambda,
+                                       Number* lambda)
 {
   // Here, we assume we only have starting values for x, if you code
   // your own NLP, you can provide starting values for the others if
@@ -173,7 +239,7 @@ bool DetOpt::get_starting_point(Index n, bool init_x, Number* x,
   return true;
 }
 
-bool DetOpt::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
+bool ProjectionOUU::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
 
   if (new_x){
@@ -185,7 +251,7 @@ bool DetOpt::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
   return true;
 }
 
-bool DetOpt::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
+bool ProjectionOUU::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
 {
 
   if (new_x){
@@ -199,7 +265,7 @@ bool DetOpt::eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f)
   return true;
 }
 
-bool DetOpt::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
+bool ProjectionOUU::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
 {
   
   if (new_x){
@@ -211,9 +277,9 @@ bool DetOpt::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
   return true;
 }
 
-bool DetOpt::eval_jac_g(Index n, const Number* x, bool new_x,
-                        Index m, Index nele_jac, Index* iRow, Index *jCol,
-                        Number* values)
+bool ProjectionOUU::eval_jac_g(Index n, const Number* x, bool new_x,
+                               Index m, Index nele_jac, Index* iRow, Index *jCol,
+                               Number* values)
 {
   if (values == NULL) {
     // return the structure of the jacobian of the constraints
@@ -241,10 +307,10 @@ bool DetOpt::eval_jac_g(Index n, const Number* x, bool new_x,
   return true;
 }
 
-bool DetOpt::eval_h(Index n, const Number* x, bool new_x,
-                    Number obj_factor, Index m, const Number* lambda,
-                    bool new_lambda, Index nele_hess, Index* iRow,
-                    Index* jCol, Number* values)
+bool ProjectionOUU::eval_h(Index n, const Number* x, bool new_x,
+                           Number obj_factor, Index m, const Number* lambda,
+                           bool new_lambda, Index nele_hess, Index* iRow,
+                           Index* jCol, Number* values)
 {
 
   if (values == NULL) {
@@ -270,12 +336,12 @@ bool DetOpt::eval_h(Index n, const Number* x, bool new_x,
   return true;
 }
 
-void DetOpt::finalize_solution(SolverReturn status,
-                               Index n, const Number* x, const Number* z_L, const Number* z_U,
-                               Index m, const Number* g, const Number* lambda,
-                               Number obj_value,
-                               const IpoptData* ip_data,
-                               IpoptCalculatedQuantities* ip_cq)
+void ProjectionOUU::finalize_solution(SolverReturn status,
+                                      Index n, const Number* x, const Number* z_L, const Number* z_U,
+                                      Index m, const Number* g, const Number* lambda,
+                                      Number obj_value,
+                                      const IpoptData* ip_data,
+                                      IpoptCalculatedQuantities* ip_cq)
 {
 
   // here is where we would store the solution to variables, or write to a file, etc
@@ -311,12 +377,25 @@ int main(int argc, char *argv[] ){
 
   MPI_Init(&argc, &argv);
 
+  ParameterFactory *factory  = new ParameterFactory();
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 4);
+  ParameterContainer *pc = new ParameterContainer();
+  pc->addParameter(ptheta);  
+  pc->initialize();
+
+  const int nsterms  = pc->getNumBasisTerms();
+  const int nsqpts   = pc->getNumQuadraturePoints();
+
+  double alpha = 0.5; // objective robustness
+  double beta  = 3.0;  // constraint reliability
   int nA = 4, nB = 8, nC = 4;
   double tf = 12.0;
   int num_steps = 1200;
   double abstol = 1.0e-7;
   double reltol = 1.0e-12;
-  SmartPtr<TNLP> mynlp = new DetOpt(nA, nB, nC, tf, num_steps, abstol, reltol);
+  SmartPtr<TNLP> mynlp = new ProjectionOUU(nA, nB, nC, tf, num_steps, 
+                                           abstol, reltol, pc,
+                                           alpha, beta);
   SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
 
   // Change some options
