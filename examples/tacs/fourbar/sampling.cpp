@@ -220,6 +220,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _theta ){
   return assembler;
 }
 
+#ifndef OPT
 int main( int argc, char *argv[] ){
   // Initialize MPI
   MPI_Init(&argc, &argv);
@@ -387,3 +388,4 @@ int main( int argc, char *argv[] ){
   MPI_Finalize();
   return 0;
 }
+#endif

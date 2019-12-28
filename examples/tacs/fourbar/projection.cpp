@@ -184,7 +184,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   TacsScalar nu = 0.3;
   TacsScalar G = 0.5*E/(1.0 + nu);
 
-  TacsScalar wA = 0.016 + 1.0e-30j;
+  TacsScalar wA = 0.016; // + 1.0e-30j;
   TacsScalar wB = 0.008;
   int wANum = 0, wBNum = 1;
 
@@ -357,6 +357,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
   return assembler;
 }
 
+#ifndef OPT
 int main( int argc, char *argv[] ){
   // Initialize MPI
   MPI_Init(&argc, &argv);
@@ -634,3 +635,4 @@ int main( int argc, char *argv[] ){
   MPI_Finalize();
   return 0;
 }
+#endif
