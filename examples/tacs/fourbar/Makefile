@@ -21,13 +21,16 @@ IPOPT_LD_FLAGS = -Wl,--rpath -Wl,${HOME}/git/ipopt/build/lib
 	@echo "        --- Compiled $*.cpp successfully ---"
 	@echo
 
-OBJS =  deterministic.o projection.o sampling.o # DetOpt.o
+OBJS =  deterministic.o projection.o sampling.o
 
 default: ${OBJS}
 	${CXX} -o deterministic deterministic.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} 
 	${CXX} -o projection projection.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} 
 	${CXX} -o sampling sampling.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB}
-	#${CXX} -o detopt deterministic.o DetOpt.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB} ${IPOPT_LD_FLAGS}
+
+opt: TACS_CC_FLAGS+= -DOPT
+opt: ${OBJS} DetOpt.o
+	${CXX} -o detopt deterministic.o DetOpt.o ${TACS_LD_FLAGS} ${PSPACE_LIB} ${PSPACE_TACS_LIB} ${IPOPT_LIB} ${IPOPT_LD_FLAGS}
 
 debug: TACS_CC_FLAGS=${TACS_DEBUG_CC_FLAGS}
 debug: default
