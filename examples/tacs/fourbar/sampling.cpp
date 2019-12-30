@@ -82,7 +82,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, TacsScalar _theta ){
   TacsScalar nu = 0.3;
   TacsScalar G = 0.5*E/(1.0 + nu);
 
-  TacsScalar wA = 0.016;
+  TacsScalar wA = 0.016; // + 1.0e-30j;
   TacsScalar wB = 0.008;
   int wANum = 0, wBNum = 1;
 
@@ -227,36 +227,22 @@ int main( int argc, char *argv[] ){
 
   // The number of total steps (100 per second)
   const int num_steps = 1200;  
-  const int num_bars = 3;
-  int pnqpts[1] = {15};
+  int pnqpts[1] = {20};
   ParameterFactory *factory = new ParameterFactory();
-  //AbstractParameter *pspeed = factory->createNormalParameter(-0.6, 0.06, 0);  
-  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 0);  
+  AbstractParameter *ptheta = factory->createNormalParameter(5.0, 2.5, 0);
 
   ParameterContainer *pc = new ParameterContainer();
-  //  pc->addParameter(pspeed);
   pc->addParameter(ptheta);
   pc->initializeQuadrature(pnqpts);
 
   const int nqpoints = pc->getNumQuadraturePoints();
   const int nvars = pc->getNumParameters();
 
-  TacsScalar ***data = new TacsScalar**[nqpoints];
+  // Store mass, failure, mass deriv, failure deriv
+  TacsScalar **data = new TacsScalar*[nqpoints];
   for (int i = 0; i < nqpoints; i++){
-    data[i] = new TacsScalar*[num_bars];
-    for (int j = 0; j < num_bars; j++){
-      data[i][j] = new TacsScalar[num_steps];
-    }
+    data[i] = new TacsScalar[4];
   }
-
-  TacsScalar *failmeanbar1 = new TacsScalar[num_steps];
-  memset(failmeanbar1, 0, num_steps*sizeof(TacsScalar));
-
-  TacsScalar *fail2meanbar1 = new TacsScalar[num_steps];
-  memset(fail2meanbar1, 0, num_steps*sizeof(TacsScalar));
-
-  TacsScalar *failvarbar1 = new TacsScalar[num_steps];
-  memset(failvarbar1, 0, num_steps*sizeof(TacsScalar));
 
   TacsScalar *zq = new TacsScalar[nvars];
   TacsScalar *yq = new TacsScalar[nvars];
@@ -301,89 +287,83 @@ int main( int argc, char *argv[] ){
 
     TacsScalar fval[2];
     integrator->evalFunctions(fval);
-    printf("Function value: %15.10e %15.10e \n", TacsRealPart(fval[0]), TacsRealPart(fval[1]));
+    printf("Function value: %.17e %.17e \n", TacsRealPart(fval[0]), TacsRealPart(fval[1]));
 
     // Evaluate the adjoint
     integrator->integrateAdjoint();
 
     // Get the gradient
-    TACSBVec *dfdx;
-    integrator->getGradient(0, &dfdx);
+    TACSBVec *massdfdx;
+    TACSBVec *faildfdx;
+    integrator->getGradient(0, &massdfdx);
+    integrator->getGradient(1, &faildfdx);
 
-#ifdef TACS_USE_COMPLEX
-    //  integrator->checkGradients(1e-30);
-#else
-    //  integrator->checkGradients(1e-6);
-#endif // TACS_USE_COMPLEX
+    TacsScalar *massdfdxvals, *faildfdxvals;
+    massdfdx->getArray(&massdfdxvals);
+    faildfdx->getArray(&faildfdxvals);
 
-    // Set the output options/locations
-    int elem[3];
-    elem[0] = nA/2;
-    elem[1] = nA + nB/2;
-    elem[2] = nA + nB + nC/2;
-    double param[][1] = {{-1.0}, {-1.0}, {0.0}};
+    data[iq][0] = fval[0];
+    data[iq][1] = fval[1];
 
-    // Extra the data to a file
-    for ( int pt = 0; pt < 3; pt++ ){
-      char filename[128];
-      sprintf(filename, "mid_beam_%d_%d.dat", pt+1, iq);
-      FILE *fp = fopen(filename, "w");
-
-      fprintf(fp, "Variables = t, u0, v0, w0, quantity\n");
-
-      // Write out data from the beams
-      TACSBVec *q = NULL;
-      for ( int k = 0; k < num_steps+1; k++ ){
-        TacsScalar X[3*3], vars[8*3], dvars[8*3], ddvars[8*3];
-        double time = integrator->getStates(k, &q, NULL, NULL);
-        assembler->setVariables(q);
-        TACSElement *element = assembler->getElement(elem[pt], X, vars, dvars, ddvars);
-
-        TacsScalar quantity;
-        element->evalPointQuantity(elem[pt], TACS_FAILURE_INDEX, time,
-                                   0, param[pt], X, vars, dvars, ddvars, &quantity);
-
-        fprintf(fp, "%e  %e %e %e  %e\n",
-                time, TacsRealPart(vars[0]), TacsRealPart(vars[1]),
-                TacsRealPart(vars[2]), TacsRealPart(quantity));
-
-        // Store 
-        data[iq][pt][k] = quantity;
-      }
-      fclose(fp);
-    }
-
+    data[iq][2] = massdfdxvals[0];
+    data[iq][3] = faildfdxvals[0];
+    
     integrator->decref();
     assembler->decref();
 
   } // end quadrature
 
-  char filename[128];
-  sprintf(filename, "sampling_mean_variance_mid_beam_0.dat");
-  FILE *fp = fopen(filename, "w");
-          
+  TacsScalar failmean, fail2mean, failvar;
+  TacsScalar massmean, mass2mean, massvar;
+
+  TacsScalar massmeanderiv, massderivtmp, massvarderiv;
+  TacsScalar failmeanderiv, failderivtmp, failvarderiv;
+
   // Compute mean and variance of mid point of beam 1
   for (int q = 0; q < nqpoints; q++){
-    wq = pc->quadrature(q, zq, yq);
-    for (int i = 0; i < num_steps; i++){
-      failmeanbar1[i] += wq*data[q][0][i]; // E[F]
-      fail2meanbar1[i] += wq*data[q][0][i]*data[q][0][i]; // E{F*F}
-    }
-  }
-  for (int i = 0; i < num_steps; i++){
-    failvarbar1[i] = fail2meanbar1[i] - failmeanbar1[i]*failmeanbar1[i]; //E{F^2} - E[f]*E[f]
-  }
 
-  // Print mean and variance
-  for (int i = 0; i < num_steps; i++){
-    double time = i*(12.0/num_steps);
-    fprintf(fp, "%e %e %e\n",
-            time,
-            TacsRealPart(failmeanbar1[i]), 
-            TacsRealPart(failvarbar1[i])
-            );
+    wq = pc->quadrature(q, zq, yq);
+
+    // mass 
+    massmean += wq*data[q][0]; // E[F]
+    mass2mean += wq*data[q][0]*data[q][0]; // E{F*F}
+
+    // failure
+    failmean += wq*data[q][1]; // E[F]
+    fail2mean += wq*data[q][1]*data[q][1]; // E{F*F}
+
+    // massmean deriv
+    massmeanderiv += wq*data[q][2]; // E[F]
+    massderivtmp  += wq*2.0*data[q][0]*data[q][2]; // E{F*F}
+
+    failmeanderiv += wq*data[q][3]; // E[F]
+    failderivtmp  += wq*2.0*data[q][1]*data[q][3]; // E{F*F}
+  
   }
-  fclose(fp);
+  
+  // Compute mean and variance
+  massvar = mass2mean - massmean*massmean;
+  failvar = fail2mean - failmean*failmean;
+  massvarderiv = massderivtmp - 2.0*massmean*massmeanderiv;
+  failvarderiv = failderivtmp - 2.0*failmean*failmeanderiv;
+
+  printf("%.17e %.17e %.17e %.17e %.17e %.17e \n",       
+         TacsRealPart(massmean), 
+         TacsRealPart(massmeanderiv),
+         TacsImagPart(massmean)/1.0e-30,
+         TacsRealPart(massvar),
+         TacsRealPart(massvarderiv),
+         TacsImagPart(massvar)/1.0e-30
+         );
+
+  printf("%.17e %.17e %.17e %.17e %.17e %.17e \n",       
+         TacsRealPart(failmean), 
+         TacsRealPart(failmeanderiv),
+         TacsImagPart(failmean)/1.0e-30,
+         TacsRealPart(failvar),
+         TacsRealPart(failvarderiv),
+         TacsImagPart(failvar)/1.0e-30
+         );
 
   MPI_Finalize();
   return 0;
