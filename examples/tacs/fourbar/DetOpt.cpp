@@ -21,7 +21,7 @@ integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
 integrator->setAbsTol(reltol);
 integrator->setRelTol(abstol);
 integrator->setOutputFrequency(0);
-integrator->setJacAssemblyFreq(5);
+integrator->setJacAssemblyFreq(3);
 integrator->setPrintLevel(0);
 
 // Set the functions
@@ -160,7 +160,7 @@ bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
   // set upper and lower bounds on DV
   for (int i = 0; i < n; i++){
     x_l[i] = 0.005;
-    x_u[i] = 0.020;
+    x_u[i] = 0.025;
   }
 
   // Set bounds on inequatlity constraint
@@ -169,6 +169,32 @@ bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
 
   g_l[1] = -1.0e19; // -inf
   g_u[1] = 10.0e-3;
+ 
+  // plot design space
+  /*
+  if (plot_design_space){
+    char filename[128];
+    sprintf(filename, "fourbar_design_space.dat");
+    FILE *fp = fopen(filename, "w");
+    fprintf(fp, "Variables = x, y, mass, failure, displacement \n");
+    int nxpoints = 50;
+    int nypoints = 50;
+    double dx = fabs(x_u[0] - x_l[0]);
+    double dy = fabs(x_u[1] - x_l[1]);
+    for (int i = 0; i < nxpoints+1; i++){
+      double xval = x_l[0] + i*dx;
+      for (int j = 0; j < nypoints+1; j++){
+        double yval = x_l[1] + j*dy;
+        double x[2] = {xval, yval};
+        this->evaluateFuncGrad(n, x);
+        fprintf(fp, "%.17e %.17e %.17e %.17e %.17e \n", 
+                xval, yval, 
+                fvals[0], fvals[1], fvals[2]);
+      }
+    }
+    fclose(fp);
+  }
+  */
 
   return true;
 }
@@ -198,7 +224,6 @@ bool DetOpt::get_starting_point(Index n, bool init_x, Number* x,
 
 bool DetOpt::eval_f(Index n, const Number* x, bool new_x, Number& obj_value)
 {
-
   if (new_x){
     this->evaluateFuncGrad(n, x);
   }
@@ -343,11 +368,11 @@ int main(int argc, char *argv[] ){
 
   MPI_Init(&argc, &argv);
 
-  int nA = 4, nB = 8, nC = 4;
+  int nA = 2, nB = 4, nC = 2;
   double tf = 12.0;
   int num_steps = 1200;
   double abstol = 1.0e-6;
-  double reltol = 1.0e-10;
+  double reltol = 1.0e-8;
   SmartPtr<TNLP> mynlp = new DetOpt(nA, nB, nC, tf, num_steps, abstol, reltol);
   SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
 
@@ -363,7 +388,7 @@ int main(int argc, char *argv[] ){
   app->Options()->SetNumericValue("acceptable_tol", 1.0e-3);
   
   app->Options()->SetStringValue("derivative_test", "first-order");
-  app->Options()->SetNumericValue("derivative_test_perturbation", 1.0e-6);
+  app->Options()->SetNumericValue("derivative_test_perturbation", 1.0e-5);
   app->Options()->SetStringValue("derivative_test_print_all", "yes");
     
   // The following overwrites the default name (ipopt.opt) of the options file
