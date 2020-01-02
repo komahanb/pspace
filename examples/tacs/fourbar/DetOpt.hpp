@@ -90,7 +90,8 @@ private:
   double *y;
   double *fvals;
   double *dfdx;
-  double *dgdx;
+  double *dg1dx;
+  double *dg2dx;
 };
 
 #endif

@@ -2,35 +2,39 @@
 #include <cassert>
 #include "deterministic.h"
 #include "TACSKSFailure.h"
+#include "TACSKSDisplacement.h"
 #include "TACSStructuralMass.h"
 
 DetOpt::DetOpt( int nA, int nB, int nC, double tf, int num_steps,
-                double abstol, double reltol ){  
-  // Create the finite-element model
-  assembler = four_bar_mechanism(nA, nB, nC);
-  assembler->incref();
+                  double abstol, double reltol ){  
+// Create the finite-element model
+assembler = four_bar_mechanism(nA, nB, nC);
+assembler->incref();
 
-  // Create the integrator class
-  integrator = new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
-  // integrator = new TACSDIRKIntegrator(assembler, 0.0, tf, num_steps, 3);
-  integrator->incref();
+// Create the integrator class
+integrator = new TACSBDFIntegrator(assembler, 0.0, tf, num_steps, 2);
+// integrator = new TACSDIRKIntegrator(assembler, 0.0, tf, num_steps, 3);
+integrator->incref();
 
-  // Set the integrator options
-  integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
-  integrator->setAbsTol(reltol);
-  integrator->setRelTol(abstol);
-  integrator->setOutputFrequency(0);
-  integrator->setPrintLevel(0);
+// Set the integrator options
+integrator->setUseSchurMat(1, TACSAssembler::TACS_AMD_ORDER);
+integrator->setAbsTol(reltol);
+integrator->setRelTol(abstol);
+integrator->setOutputFrequency(0);
+integrator->setJacAssemblyFreq(5);
+integrator->setPrintLevel(0);
 
-  // Set the functions
-  const int num_funcs = 2;
-  TACSFunction **funcs = new TACSFunction*[num_funcs];  
-  TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
-  double ksRho = 10000.0;
-  TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
-  funcs[0] = fmass;
-  funcs[1] = ksfunc;  
-  integrator->setFunctions(num_funcs, funcs);
+// Set the functions
+const int num_funcs = 3;
+TACSFunction **funcs = new TACSFunction*[num_funcs];  
+TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
+double ksRho = 100000.0;
+TACSKSFailure *ksfail = new TACSKSFailure(assembler, ksRho);
+TACSKSDisplacement *ksdisp = new TACSKSDisplacement(assembler, ksRho);
+funcs[0] = fmass;
+funcs[1] = ksfail;  
+funcs[2] = ksdisp;  
+integrator->setFunctions(num_funcs, funcs);
 }
 
 DetOpt::~DetOpt(){
@@ -38,7 +42,8 @@ DetOpt::~DetOpt(){
   integrator->decref();
   delete [] fvals;
   delete [] dfdx;
-  delete [] dgdx;
+  delete [] dg1dx;
+  delete [] dg2dx;
 }
 
 void DetOpt::evaluateFuncGrad( Index n, const Number* x ){
@@ -71,13 +76,15 @@ void DetOpt::evaluateFuncGrad( Index n, const Number* x ){
   // Perform forward TACS Solve
   integrator->integrate();
 
-  TacsScalar ftmp[2];
+  TacsScalar ftmp[3];
   integrator->evalFunctions(ftmp);
   this->fvals[0] = ftmp[0];
   this->fvals[1] = ftmp[1];
+  this->fvals[2] = ftmp[2];
 
   printf("mass  : %15.10e\n", this->fvals[0]);
   printf("fail  : %15.10e\n", this->fvals[1]);
+  printf("disp  : %15.10e\n", this->fvals[2]);
 
   //----------------------------------------------------------------//
   // setup obj function deriv
@@ -94,14 +101,23 @@ void DetOpt::evaluateFuncGrad( Index n, const Number* x ){
     this->dfdx[i] = objderiv[i];
   }
     
-  // Constraint derivative
+  // stress Constraint derivative
   TACSBVec *dfdx2;
   integrator->getGradient(1, &dfdx2);
-    TacsScalar *conderiv;
-    dfdx2->getArray(&conderiv);
-    for (int i = 0; i < n; i++){
-      this->dgdx[i] = conderiv[i];
-    }
+  TacsScalar *con1deriv;
+  dfdx2->getArray(&con1deriv);
+  for (int i = 0; i < n; i++){
+    this->dg1dx[i] = con1deriv[i];
+  }
+
+  // disp Constraint derivative
+  TACSBVec *dfdx3;
+  integrator->getGradient(2, &dfdx3);
+  TacsScalar *con2deriv;
+  dfdx3->getArray(&con2deriv);
+  for (int i = 0; i < n; i++){
+    this->dg2dx[i] = con2deriv[i];
+  }
 
 }
 
@@ -111,8 +127,8 @@ bool DetOpt::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   // The problem described in DetOpt.hpp has 2 variables, x1, & x2,
   n = 2;
 
-  // one equality constraint,
-  m = 1;
+  // two inequality constraints,
+  m = 2;
 
   // 2 nonzeros in the jacobian (one for x1, and one for x2),
   nnz_jac_g = m*n;
@@ -129,7 +145,8 @@ bool DetOpt::get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
   y     = new double[n];    
   fvals = new double[m+1];
   dfdx  = new double[n];
-  dgdx  = new double[n];
+  dg1dx  = new double[n];
+  dg2dx  = new double[n];
   
   return true;
 }
@@ -138,7 +155,7 @@ bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
                              Index m, Number* g_l, Number* g_u)
 {
   assert(n == 2);
-  assert(m == 1);
+  assert(m == 2);
 
   // set upper and lower bounds on DV
   for (int i = 0; i < n; i++){
@@ -147,8 +164,11 @@ bool DetOpt::get_bounds_info(Index n, Number* x_l, Number* x_u,
   }
 
   // Set bounds on inequatlity constraint
-  g_l[0] = -2.0e9;
+  g_l[0] = -1.0e19; // -inf
   g_u[0] = 1.0;
+
+  g_l[1] = -1.0e19; // -inf
+  g_u[1] = 10.0e-3;
 
   return true;
 }
@@ -166,9 +186,12 @@ bool DetOpt::get_starting_point(Index n, bool init_x, Number* x,
   assert(init_lambda == false);
 
   // we initialize x in bounds, in the upper right quadrant
-  for (int i = 0; i < n; i++){
-    x[i] = 0.010;
-  }
+  // for (int i = 0; i < n; i++){
+  //   x[i] = 0.010;
+  // }
+
+  x[0] = 0.016;
+  x[1] = 0.008;
 
   return true;
 }
@@ -207,6 +230,7 @@ bool DetOpt::eval_g(Index n, const Number* x, bool new_x, Index m, Number* g)
   }
 
   g[0] = this->fvals[1];
+  g[1] = this->fvals[2];
 
   return true;
 }
@@ -225,16 +249,24 @@ bool DetOpt::eval_jac_g(Index n, const Number* x, bool new_x,
     // element at 1,2: grad_{x2} g_{1}(x)
     iRow[1] = 1;
     jCol[1] = 2;
+
+    iRow[2] = 2;
+    jCol[2] = 1;
+
+    iRow[3] = 2;
+    jCol[3] = 2;
   }
   else {
 
     if (new_x){
       this->evaluateFuncGrad(n, x);
     }
-    
-    for (int i = 0; i < n; i++){
-      values[i] = this->dgdx[i];
-    }
+
+    values[0] = this->dg1dx[0];
+    values[1] = this->dg1dx[1];
+
+    values[2] = this->dg2dx[0];
+    values[3] = this->dg2dx[1];    
 
   }
 
@@ -314,8 +346,8 @@ int main(int argc, char *argv[] ){
   int nA = 4, nB = 8, nC = 4;
   double tf = 12.0;
   int num_steps = 1200;
-  double abstol = 1.0e-7;
-  double reltol = 1.0e-12;
+  double abstol = 1.0e-6;
+  double reltol = 1.0e-10;
   SmartPtr<TNLP> mynlp = new DetOpt(nA, nB, nC, tf, num_steps, abstol, reltol);
   SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
 
