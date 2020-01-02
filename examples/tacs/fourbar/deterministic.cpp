@@ -4,6 +4,7 @@
 #include "TACSKinematicConstraints.h"
 #include "MITC3.h"
 #include "TACSKSFailure.h"
+#include "TACSKSDisplacement.h"
 #include "TACSStructuralMass.h"
 #include "TACSConstitutiveVerification.h"
 #include "TACSElementVerification.h"
@@ -80,7 +81,7 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC ){
   TacsScalar nu = 0.3;
   TacsScalar G = 0.5*E/(1.0 + nu);
 
-  TacsScalar wA = 0.016; //  + 1.0e-30j;
+  TacsScalar wA = 0.016 + 1.0e-30j;
   TacsScalar wB = 0.008; // 
   int wANum = 0, wBNum = 1;
 
@@ -243,7 +244,7 @@ int main( int argc, char *argv[] ){
   integrator->setAbsTol(1e-7);
   integrator->setRelTol(1e-12);
   integrator->setOutputFrequency(0);
-  integrator->setPrintLevel(2);
+  integrator->setPrintLevel(0);
 
   // Integrate the equations of motion forward in time
   integrator->integrate();
@@ -251,23 +252,27 @@ int main( int argc, char *argv[] ){
   // Create the continuous KS function
   double ksRho = 10000.0;
   TACSKSFailure *ksfunc = new TACSKSFailure(assembler, ksRho);
+  TACSKSDisplacement *ksdisp = new TACSKSDisplacement(assembler, ksRho);
   TACSStructuralMass *fmass = new TACSStructuralMass(assembler);
 
   // Set the functions
-  const int num_funcs = 2;
+  const int num_funcs = 3;
   TACSFunction **funcs = new TACSFunction*[num_funcs];
   funcs[0] = fmass;
   funcs[1] = ksfunc;
+  funcs[2] = ksdisp;
   
   integrator->setFunctions(num_funcs, funcs);
 
-  TacsScalar fval[2];
+  TacsScalar fval[num_funcs];
   integrator->evalFunctions(fval);
-  printf("Function value  : %15.10e\n", TacsRealPart(fval[0]));
-  printf("Function value  : %15.10e\n", TacsRealPart(fval[1]));
+  printf("Function value  : %.17e\n", TacsRealPart(fval[0]));
+  printf("Function value  : %.17e\n", TacsRealPart(fval[1]));
+  printf("Function value  : %.17e\n", TacsRealPart(fval[2]));
 
-  printf("CSD    value : %15.10e\n", TacsImagPart(fval[0])/1.0e-30);
-  printf("CSD    value : %15.10e\n", TacsImagPart(fval[1])/1.0e-30);
+  printf("CSD    value : %.17e\n", TacsImagPart(fval[0])/1.0e-30);
+  printf("CSD    value : %.17e\n", TacsImagPart(fval[1])/1.0e-30);
+  printf("CSD    value : %.17e\n", TacsImagPart(fval[2])/1.0e-30);
 
   // Evaluate the adjoint
   integrator->integrateAdjoint();
@@ -277,19 +282,25 @@ int main( int argc, char *argv[] ){
   integrator->getGradient(0, &dfdx1);
   TacsScalar *objgrad;
   dfdx1->getArray(&objgrad);
-  printf("adjoint dfdx : %15.10e %15.10e\n", TacsRealPart(objgrad[0]), TacsRealPart(objgrad[1]));
+  printf("adjoint dfdx : %.17e %.17e\n", TacsRealPart(objgrad[0]), TacsRealPart(objgrad[1]));
   
   TACSBVec *dfdx2;
   integrator->getGradient(1, &dfdx2);
   TacsScalar *congrad;
   dfdx2->getArray(&congrad);
-  printf("adjoint dfdx : %15.10e %15.10e\n", TacsRealPart(congrad[0]), TacsRealPart(congrad[1]));
+  printf("adjoint dfdx : %.17e %.17e\n", TacsRealPart(congrad[0]), TacsRealPart(congrad[1]));
+  
+  TACSBVec *dfdx3;
+  integrator->getGradient(2, &dfdx3);
+  TacsScalar *congrad2;
+  dfdx3->getArray(&congrad2);
+  printf("adjoint dfdx : %.17e %.17e\n", TacsRealPart(congrad2[0]), TacsRealPart(congrad2[1]));
 
-#ifdef TACS_USE_COMPLEX
-  integrator->checkGradients(1e-30);
-#else
-  integrator->checkGradients(1e-6);
-#endif // TACS_USE_COMPLEX
+// #ifdef TACS_USE_COMPLEX
+//   integrator->checkGradients(1e-30);
+// #else
+//   integrator->checkGradients(1e-6);
+// #endif // TACS_USE_COMPLEX
 
   // Set the output options/locations
   int elem[3];
