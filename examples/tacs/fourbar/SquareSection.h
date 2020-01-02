@@ -1,17 +1,19 @@
 #include "TACSTimoshenkoConstitutive.h"
-
+#define M_PI 3.14159265358979323846
 class SquareSection : public TACSTimoshenkoConstitutive {
 public:
   static const double kcorr = 5.0/6.0;
   
   SquareSection( TacsScalar _density, TacsScalar _E, TacsScalar _G,
                  TacsScalar _w, int _wNum,
-                 const TacsScalar axis[] ):
+                 const TacsScalar axis[] ,
+                 TacsScalar _L = 0.12):
     TACSTimoshenkoConstitutive(NULL, NULL, axis){
     density = _density;
     E = _E;
     G = _G;
     w = _w;
+    L = _L;
     wNum = _wNum;
     if (wNum < 0){
       wNum = 0;
@@ -42,6 +44,8 @@ public:
     rho[1] = density*Iy;
     rho[2] = density*Iz;
     rho[3] = density*Iyz;
+
+    pcr = E*Iy*M_PI*M_PI/(L*L);
   }
 
   int getDesignVarNums( int elemIndex, int dvLen, int dvNums[] ){
@@ -89,27 +93,28 @@ public:
 
   TacsScalar evalFailure( int elemIndex, const double pt[],
                           const TacsScalar X[], const TacsScalar e[] ){
-    return E*w*w*fabs(e[0])/10e3;
+    return E*w*w*fabs(e[0])/pcr;
   }
   TacsScalar evalFailureStrainSens( int elemIndex, const double pt[],
                                     const TacsScalar X[], const TacsScalar e[],
                                     TacsScalar sens[] ){
     memset(sens, 0, 6*sizeof(TacsScalar));
     if (TacsRealPart(e[0]) >= 0.0){
-      sens[0] = E*w*w/10e3;
+      sens[0] = E*w*w/pcr;
     }
     else {
-      sens[0] = -E*w*w/10e3;
+      sens[0] = -E*w*w/pcr;
     }
-    return E*w*w*fabs(e[0])/10e3;
+    return E*w*w*fabs(e[0])/pcr;
   }
   void addFailureDVSens( int elemIndex, const double pt[],
                          const TacsScalar X[], const TacsScalar e[],
                          TacsScalar scale, int dvLen, TacsScalar dfdx[] ){
-    dfdx[0] += 2.0*scale*E*w*fabs(e[0])/10e3;
+    dfdx[0] += -scale*24.0*fabs(e[0])*L*L/(M_PI*M_PI*w*w*w);
   }
 
-  TacsScalar density, E, G;
+  double pcr;
+  TacsScalar density, E, G, L;
   TacsScalar w;
   int wNum;
 };

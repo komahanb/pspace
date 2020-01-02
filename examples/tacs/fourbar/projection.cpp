@@ -187,18 +187,18 @@ TACSAssembler *four_bar_mechanism( int nA, int nB, int nC, ParameterContainer *p
 
   //TacsScalar wA = 5.624455e-03;
   //TacsScalar wB = 1.181739e-02;
-  TacsScalar wA = 0.016 + 1.0e-30j;
+  TacsScalar wA = 0.016;// + 1.0e-30j;
   TacsScalar wB = 0.008;
   int wANum = 0, wBNum = 1;
 
   TACSTimoshenkoConstitutive *stiffA =
-    new SquareSection(density, E, G, wA, wANum, axis_A);
+    new SquareSection(density, E, G, wA, wANum, axis_A, 0.12);
 
   TACSTimoshenkoConstitutive *stiffB =
-    new SquareSection(density, E, G, wA, wANum, axis_B);
+    new SquareSection(density, E, G, wA, wANum, axis_B, 0.24);
 
   TACSTimoshenkoConstitutive *stiffC =
-    new SquareSection(density, E, G, wB, wBNum, axis_C);
+    new SquareSection(density, E, G, wB, wBNum, axis_C, 0.12);
 
   // Set up the connectivity
   MITC3 *beamA = new MITC3(stiffA, gravity);

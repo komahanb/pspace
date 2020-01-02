@@ -92,6 +92,7 @@ private:
   double *dfdx;
   double *dg1dx;
   double *dg2dx;
+  int plot_design_space;
 };
 
 #endif
