@@ -5,7 +5,10 @@
 #include"UniformParameter.h"
 #include"ExponentialParameter.h"
 
-QuadratureHelper::QuadratureHelper(){}
+QuadratureHelper::QuadratureHelper(int _quadrature_type){
+  this->quadrature_type = _quadrature_type;
+}
+
 QuadratureHelper::~QuadratureHelper(){}
 
 void QuadratureHelper::tensorProduct( const int nvars,
