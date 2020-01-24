@@ -9,8 +9,12 @@
 
 using namespace std;
 
-// Constructor and Destructor
-BasisHelper::BasisHelper(){}
+// Constructor
+BasisHelper::BasisHelper(int _basis_type){
+  basis_type = _basis_type;
+}
+
+// Destructor
 BasisHelper::~BasisHelper(){}
 
 /*
@@ -263,3 +267,58 @@ void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax,
     delete dmap[k];
   }
 }
+
+// Compute the factorial of an integer
+int factorial(int n) {
+  unsigned long long fact = 1;
+  for(int i = 1; i <=n; ++i){
+    fact *= i;
+  }
+  return (int) fact;
+}
+
+void BasisHelper::bivariateBasisDegreesComplete(const int nvars, const int *pmax, 
+                                                int *nindices, int **indx){
+  // Number of terms from tensor product
+  // int nterms = 1;
+  // for (int i = 0; i < nvars; i++){
+  //   nterms *= 1 + pmax[i];
+  // }
+  
+  // Number of terms from factorials
+  int maxpmax = pmax[0]; //max(pmax);  
+  int nterms = factorial(nvars+maxpmax)/factorial(nvars)*factorial(maxpmax);
+  
+  int num_total_degrees = 1;
+  for (int i = 0; i < nvars; i++){
+    num_total_degrees += pmax[i];
+  }
+
+  // Create a map of empty array lists
+  std::map<int,ArrayList*> dmap;
+  for (int k = 0; k < num_total_degrees; k++){
+    dmap.insert(pair<int, ArrayList*>(k, new ArrayList(nterms, nvars)));
+  }
+
+  // Add degree wise tuples into each arraylist
+  for (int ii = 0; ii <= pmax[0]; ii++){
+    for (int jj = 0; jj <= pmax[1]; jj++){
+      int tuple[] = {ii,jj};
+      dmap[ii+jj]->addEntry(tuple);
+    }
+  }
+
+  int ctr = 0;
+  for (int k = 0; k < num_total_degrees; k++){    
+    int nrecords = dmap[k]->getNumEntries();
+    dmap[k]->getEntries(&indx[ctr]);
+    ctr = ctr + nrecords;
+  }  
+  nindices[0] = ctr;
+
+  // Delete the array lists
+  for (int k = 0; k < num_total_degrees; k++){
+    delete dmap[k];
+  }
+}
+
