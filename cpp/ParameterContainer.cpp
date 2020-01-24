@@ -2,9 +2,12 @@
 
 using namespace std;
 
-ParameterContainer::ParameterContainer(){
+ParameterContainer::ParameterContainer(int basis_type, int quadrature_type){
   this->tnum_parameters = 0;
+  bhelper = new BasisHelper(basis_type);
+  qhelper = new QuadratureHelper(quadrature_type);
 }
+
 ParameterContainer::~ParameterContainer(){
   // Clear information about parameters
   if (param_max_degree){ 
@@ -25,6 +28,9 @@ ParameterContainer::~ParameterContainer(){
   delete [] Z;
   delete [] Y;
   delete [] W;
+
+  delete bhelper;
+  delete qhelper;
 }
 
 /*
@@ -75,10 +81,6 @@ void  ParameterContainer::initializeBasis(const int *pmax){
   this->bhelper->basisDegrees(nvars, pmax, 
                               &this->tnum_basis_terms, 
                               this->dindex);
-
-  if (this->tnum_basis_terms != nterms){
-    printf("Error initializing basis\n");
-  };
 }
 
 void ParameterContainer::initializeQuadrature(const int *nqpts){  

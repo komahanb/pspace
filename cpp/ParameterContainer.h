@@ -11,7 +11,7 @@
 class ParameterContainer {
  public:
   // Constructor and Destructor
-  ParameterContainer();
+  ParameterContainer(int basis_type=0, int quadrature_type=0);
   ~ParameterContainer();
   
   // Key funtionalities
