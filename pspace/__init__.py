@@ -1,19 +1,15 @@
-'''
-TACS is a parallel finite-element package for analysis and
-gradient-based design optimization.
-'''
-#from .core import *
+from .python import *
 import os
 
 def get_cython_include():
     '''
-    Get the include directory for the Cython .pxd files in TACS
+    Get the include directory for the Cython .pxd files in PSPACE
     '''
     return [os.path.abspath(os.path.dirname(__file__))]
 
 def get_include():
     '''
-    Get the include directory for the Cython .pxd files in TACS
+    Get the include directory for the Cython .pxd files in PSPACE
     '''
     root_path, tail = os.path.split(os.path.abspath(os.path.dirname(__file__)))
 
@@ -38,4 +34,3 @@ def get_libraries():
     	lib_dirs.append(os.path.join(root_path, path))
 
     return lib_dirs, libs
-
