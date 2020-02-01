@@ -16,9 +16,9 @@ class ParameterFactory {
   AbstractParameter* createExponentialParameter( scalar mu, scalar beta );
 
   // Overloaded constructors
-  AbstractParameter* createNormalParameter( scalar mu, scalar sigma, int dmax);
-  AbstractParameter* createUniformParameter( scalar a, scalar b, int dmax);
-  AbstractParameter* createExponentialParameter( scalar mu, scalar beta, int dmax);
+  AbstractParameter* createNormalParameter(scalar mu, scalar sigma, int dmax);
+  AbstractParameter* createUniformParameter(scalar a, scalar b, int dmax);
+  AbstractParameter* createExponentialParameter(scalar mu, scalar beta, int dmax);
   
  private:
   int next_parameter_id;
