@@ -19,17 +19,17 @@ cdef extern from "ParameterContainer.h":
         void addParameter(AbstractParameter *param)
 
         # Evaluate basis at quadrature points
-        #scalar quadrature(int q, scalar *zq, scalar *yq)
-        #scalar basis(int k, scalar *z)
+        scalar quadrature(int q, scalar *zq, scalar *yq)
+        scalar basis(int k, scalar *z)
 
         # Accessors
         int getNumBasisTerms()
         int getNumParameters()
         int getNumQuadraturePoints()
-        #void getBasisParamDeg(int k, int *degs)
-        #void getBasisParamMaxDeg(int *pmax)
+        ## void getBasisParamDeg(int k, int *degs)
+        ## void getBasisParamMaxDeg(int *pmax)
 
         # Initiliazation tasks
         void initialize();
-        #void initializeBasis(const int *pmax)
-        #void initializeQuadrature(const int *nqpts)
+        void initializeBasis(const int *pmax)
+        void initializeQuadrature(const int *nqpts)

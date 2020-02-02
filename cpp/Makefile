@@ -21,7 +21,7 @@ default:
 	ParameterContainer.o 
 
 	# Create shared object
-	mpicxx -shared -Wall -fPIC -O3 -funroll-loops -fbounds-check -fstack-protector-all --stack-check \
+	mpicxx -shared -Wall -fPIC -O3 -funroll-loops \
 	ArrayList.o OrthogonalPolynomials.o \
 	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
 	ExponentialParameter.o ParameterFactory.o \
