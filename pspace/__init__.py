@@ -1,4 +1,3 @@
-from .python import *
 import os
 
 def get_cython_include():
