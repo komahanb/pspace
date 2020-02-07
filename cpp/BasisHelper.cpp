@@ -49,7 +49,7 @@ void BasisHelper::basisDegrees(const int nvars, const int *pmax,
       pentavariateBasisDegreesComplete(nvars, pmax, nindices, indx);
     }
   } else {
-    printf("Basis not implemented for more than five variables");
+    printf("Basis not implemented for %d variables\n", nvars);
   }
 }
 
