@@ -1,9 +1,10 @@
 # distutils: language = c++
-from cwrap cimport *
+from PSPACE cimport *
 
 # Import numpy
 cimport numpy as np
 import numpy as np
+np.import_array()
 
 include "PspaceDefs.pxi"
 

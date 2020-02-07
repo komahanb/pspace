@@ -58,7 +58,7 @@ inc_dirs.extend(get_global_dir(default_ext_inc))
 inc_dirs.extend([numpy.get_include(), mpi4py.get_include()])
 
 exts = []
-for mod in ['cwrap']:
+for mod in ['PSPACE']:
     exts.append(Ext('pspace.%s'%(mod), sources=['pspace/%s.pyx'%(mod)],
                     include_dirs=inc_dirs, libraries=libs, 
                     library_dirs=lib_dirs, runtime_library_dirs=runtime_lib_dirs,

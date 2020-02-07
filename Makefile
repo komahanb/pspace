@@ -1,4 +1,4 @@
-PYTHON = python
+PYTHON = python3
 
 interface:
 	${PYTHON} setup.py build_ext --inplace
