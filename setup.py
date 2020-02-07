@@ -5,6 +5,7 @@ import sys
 # Numpy/mpi4py must be installed prior to installing TACS
 import numpy
 import mpi4py
+import tacs
 
 # Import distutils
 from setuptools import setup
@@ -43,7 +44,7 @@ runtime_lib_dirs = get_global_dir(['cpp'])
 # Relative paths for the include/library directories
 rel_inc_dirs = ['cpp']
 rel_lib_dirs = ['cpp']
-libs.extend(['pspace'])
+libs.extend(['pspace', 'tacs', 'tacsuq'])
 
 # Convert from relative to absolute directories
 inc_dirs.extend(get_global_dir(rel_inc_dirs))
@@ -54,8 +55,17 @@ lib_dirs.extend(get_global_dir(rel_lib_dirs))
 default_ext_inc = []
 inc_dirs.extend(get_global_dir(default_ext_inc))
 
+inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
+
 # Add the numpy/mpi4py directories
 inc_dirs.extend([numpy.get_include(), mpi4py.get_include()])
+
+inc_dirs.extend(tacs.get_include())
+
+lib_dirs.extend(tacs.get_libraries()[0])
+
+lib_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
+
 
 exts = []
 for mod in ['PSPACE']:

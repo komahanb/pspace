@@ -135,7 +135,7 @@ class TACSStochasticElement : public TACSElement {
   int getDesignVarRange( int elemIndex, int dvLen,
                          TacsScalar lowerBound[],
                          TacsScalar upperBound[] ){
-    this->delem->getDesignVarRange(elemIndex, dvLen, lowerBound, upperBound);
+    return this->delem->getDesignVarRange(elemIndex, dvLen, lowerBound, upperBound);
   }
 
  protected:

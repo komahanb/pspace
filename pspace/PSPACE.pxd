@@ -1,6 +1,10 @@
 # Typdefs required for either real or complex mode
 include "PspaceTypedefs.pxi"
 
+# Include the mpi4py header
+cdef extern from "mpi-compat.h":
+    pass
+
 cdef extern from "AbstractParameter.h":
     cdef cppclass AbstractParameter:
         #void quadrature(int npoints, scalar *z, scalar *y, scalar *w)
@@ -33,3 +37,15 @@ cdef extern from "ParameterContainer.h":
         void initialize();
         void initializeBasis(const int *pmax)
         void initializeQuadrature(const int *nqpts)
+
+# Typdefs required for either real or complex mode
+# include "TacsTypedefs.pxi"
+
+#from TACS cimport *
+from tacs.elements cimport *
+
+cdef extern from "TACSStochasticElement.h":
+    cdef cppclass TACSStochasticElement(TACSElement):
+        TACSStochasticElement( TACSElement *_delem,
+                               ParameterContainer *_pc,
+                               void (*_update)(TACSElement*, TacsScalar*) )
