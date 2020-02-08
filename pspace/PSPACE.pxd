@@ -1,5 +1,6 @@
 # Typdefs required for either real or complex mode
 include "PspaceTypedefs.pxi"
+include "TacsTypedefs.pxi"
 
 # Include the mpi4py header
 cdef extern from "mpi-compat.h":
@@ -48,4 +49,16 @@ cdef extern from "TACSStochasticElement.h":
     cdef cppclass TACSStochasticElement(TACSElement):
         TACSStochasticElement( TACSElement *_delem,
                                ParameterContainer *_pc,
-                               void (*_update)(TACSElement*, TacsScalar*) )
+                               void (*_update)(TACSElement*, TacsScalar*, void*) )
+        TACSElement* getDeterministicElement()
+        void updateElement(TACSElement* elem, TacsScalar* vals)
+        void setPythonCallback(PyObject *cbptr)
+
+# A simple test element for TACS
+cdef extern from "smd.h":
+    cdef cppclass SMD(TACSElement):
+        SMD( TacsScalar, TacsScalar, TacsScalar)
+        void setMass(TacsScalar)
+        void setStiffness(TacsScalar)
+        void setDamping(TacsScalar)
+    
