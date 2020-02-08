@@ -1,7 +1,7 @@
 include ${HOME}/git/tacs/Makefile.in
 include ${HOME}/git/tacs/TACS_Common.mk
 
-PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/
+PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/ -I/usr/include/python2.7
 PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
 # This is the one rule that is used to compile all the
@@ -16,7 +16,7 @@ OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o \
 TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o \
 TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o \
 TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o \
-TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o 
+TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o
 
 library: ${OBJS}
 	ar rcs libtacsuq.a ${OBJS}

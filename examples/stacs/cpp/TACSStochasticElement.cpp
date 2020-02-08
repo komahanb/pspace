@@ -124,7 +124,7 @@ namespace{
 
 TACSStochasticElement::TACSStochasticElement( TACSElement *_delem,
                                               ParameterContainer *_pc,
-                                              void (*_update)(TACSElement*, TacsScalar*) ){
+                                              void (*_update)(TACSElement*, TacsScalar*, void*) ){
   // Store the deterministic element
   delem = _delem;
   delem->incref();

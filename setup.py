@@ -61,6 +61,7 @@ inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
 inc_dirs.extend([numpy.get_include(), mpi4py.get_include()])
 
 inc_dirs.extend(tacs.get_include())
+inc_dirs.extend(tacs.get_cython_include())
 
 lib_dirs.extend(tacs.get_libraries()[0])
 
