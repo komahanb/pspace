@@ -121,7 +121,6 @@ cdef class PySMD(Element):
         if self.ptr:
             self.ptr.decref()
             Py_DECREF(self)
-        return
     def setMass(self, TacsScalar m):
         return self.smd.setMass(m)
     def setStiffness(self, TacsScalar k):
@@ -140,12 +139,10 @@ cdef class PyStochasticElement(Element):
         self.ptr = self.sptr
         Py_INCREF(update)
         Py_INCREF(self)
-        return
     def __dealloc__(self):        
         if self.sptr:
             self.sptr.decref()
             Py_DECREF(self)
-        return
     def getDeterministicElement(self):
         delem = Element()
         delem.ptr = self.sptr.getDeterministicElement() 
