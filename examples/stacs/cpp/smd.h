@@ -9,6 +9,7 @@ static const int TACS_VELOCITY_FUNCTION         = -4;
 class SMD : public TACSElement{  
  public:
   SMD(TacsScalar m, TacsScalar c, TacsScalar k);
+  ~SMD();
 
   /**
      Return the Initial conditions
@@ -193,17 +194,17 @@ class SMD : public TACSElement{
   }
 
   void setMass(TacsScalar m){
-    printf("updating mass [ %e -> %e ] \n", this->m, m);
+    // printf("updating mass [ %e -> %e ] \n", this->m, m);
     this->m = m;
   }
 
   void setStiffness(TacsScalar k){
-    printf("updating stiff [ %e -> %e ] \n", this->k, k);
+    // printf("updating stiff [ %e -> %e ] \n", this->k, k);
     this->k = k;
   }
 
   void setDamping(TacsScalar c){
-    printf("updating damp [ %e -> %e ] \n", this->c, c);
+    // printf("updating damp [ %e -> %e ] \n", this->c, c);
     this->c = c;
   }
 

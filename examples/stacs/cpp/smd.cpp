@@ -15,6 +15,10 @@ SMD::SMD(TacsScalar m, TacsScalar c, TacsScalar k){
   this->k = k;  
 }
 
+SMD::~SMD(){
+  printf("Decrefing SMD deterministic element\n");
+}
+
 void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
                              TacsScalar v[], TacsScalar dv[], TacsScalar ddv[] ){
   int num_vars = getNumNodes()*getVarsPerNode();

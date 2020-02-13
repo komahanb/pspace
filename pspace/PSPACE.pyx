@@ -105,13 +105,8 @@ cdef class PyParameterContainer:
         self.ptr.initializeQuadrature(<int*> nqpts.data)
         return
 
-cdef void addJacobian(TACSElement *elem, TacsScalar *yvals, void *pyptr):
-    print("entering cdef python", yvals[0], yvals[1])
-    #delem = Element()
-    #delem.ptr = elem
-    #delem.ptr.incref()
+cdef void updateCB(TACSElement *elem, TacsScalar *yvals, void *pyptr):
     _yvals = inplace_array_1d(TACS_NPY_SCALAR, 5, <void*> yvals)
-    #delem.update(_yvals)
     (<object>pyptr).update(_yvals)
     return
 
@@ -124,7 +119,6 @@ cdef class PySMD(Element):
         Py_INCREF(self)
     def __dealloc__(self):
         if self.ptr:
-            print("python >> deleting deterministic SMD")
             self.ptr.decref()
             Py_DECREF(self)
         return
@@ -140,15 +134,15 @@ cdef class PyStochasticElement(Element):
     def __cinit__(self, Element elem,
                   PyParameterContainer pc,
                   update):
-        self.sptr = new TACSStochasticElement(elem.ptr, pc.ptr, &addJacobian)
+        self.sptr = new TACSStochasticElement(elem.ptr, pc.ptr, &updateCB)
         self.sptr.incref()        
         self.sptr.setPythonCallback(<PyObject*>update)
         self.ptr = self.sptr
+        Py_INCREF(update)
         Py_INCREF(self)
         return
     def __dealloc__(self):        
         if self.sptr:
-            print("python >> deleting stochastic SMD")
             self.sptr.decref()
             Py_DECREF(self)
         return
