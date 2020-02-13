@@ -25,7 +25,7 @@ library: ${OBJS}
 default: ${OBJS}
 
 debug: TACS_CC_FLAGS=${TACS_DEBUG_CC_FLAGS}
-debug: default
+debug: default library
 
 complex: TACS_DEF=-DTACS_USE_COMPLEX -DUSE_COMPLEX
 complex: default library
