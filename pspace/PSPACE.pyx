@@ -6,6 +6,9 @@ cimport numpy as np
 import numpy as np
 np.import_array()
 
+# Import C methods for python
+from cpython cimport PyObject, Py_INCREF, Py_DECREF
+
 include "PspaceDefs.pxi"
 include "TacsDefs.pxi"
 
@@ -103,11 +106,12 @@ cdef class PyParameterContainer:
         return
 
 cdef void addJacobian(TACSElement *elem, TacsScalar *yvals, void *pyptr):
-    print("calling update from python", yvals[0], yvals[1])
-    delem = Element()
-    delem.ptr = elem
-    delem.ptr.incref()
+    print("entering cdef python", yvals[0], yvals[1])
+    #delem = Element()
+    #delem.ptr = elem
+    #delem.ptr.incref()
     _yvals = inplace_array_1d(TACS_NPY_SCALAR, 5, <void*> yvals)
+    #delem.update(_yvals)
     (<object>pyptr).update(_yvals)
     return
 
@@ -117,9 +121,13 @@ cdef class PySMD(Element):
         self.smd = new SMD(m, c, k)
         self.ptr = self.smd
         self.ptr.incref()
+        Py_INCREF(self)
     def __dealloc__(self):
         if self.ptr:
+            print("python >> deleting deterministic SMD")
             self.ptr.decref()
+            Py_DECREF(self)
+        return
     def setMass(self, TacsScalar m):
         return self.smd.setMass(m)
     def setStiffness(self, TacsScalar k):
@@ -133,13 +141,16 @@ cdef class PyStochasticElement(Element):
                   PyParameterContainer pc,
                   update):
         self.sptr = new TACSStochasticElement(elem.ptr, pc.ptr, &addJacobian)
+        self.sptr.incref()        
         self.sptr.setPythonCallback(<PyObject*>update)
         self.ptr = self.sptr
-        self.ptr.incref()
+        Py_INCREF(self)
         return
-    def __dealloc__(self):
-        if self.ptr:
-            self.ptr.decref()
+    def __dealloc__(self):        
+        if self.sptr:
+            print("python >> deleting stochastic SMD")
+            self.sptr.decref()
+            Py_DECREF(self)
         return
     def getDeterministicElement(self):
         delem = Element()
