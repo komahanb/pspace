@@ -72,8 +72,8 @@ cdef class PyParameterContainer:
         cdef np.ndarray zq = None
         yq = np.zeros(nparams, dtype=dtype)
         zq = np.zeros(nparams, dtype=dtype)
-        self.ptr.quadrature(q, <scalar*> zq.data, <scalar*> yq.data)
-        return zq, yq
+        wq = self.ptr.quadrature(q, <scalar*> zq.data, <scalar*> yq.data)
+        return wq, zq, yq
 
     def getNumBasisTerms(self):        
         return self.ptr.getNumBasisTerms()
