@@ -1,9 +1,9 @@
 import numpy as np
 from mpi4py import MPI
+import matplotlib.pyplot as plt
+
 from pspace import PSPACE
 from tacs import TACS, elements
-
-import matplotlib.pyplot as plt
 
 class SMDUpdate:
     def __init__(self, elem):
@@ -11,12 +11,12 @@ class SMDUpdate:
         return
 
     def update(self, vals):
-        #self.element.setMass(vals[0])
-        #self.element.setStiffness(vals[1])
-        #self.element.setDamping(vals[2])
-        self.element.m = vals[0]
-        self.element.c = vals[1] 
-        self.element.k = vals[2]
+        self.element.setMass(vals[0])
+        self.element.setDamping(vals[1])
+        self.element.setStiffness(vals[2])
+        #self.element.m = vals[0]
+        #self.element.c = vals[1] 
+        #self.element.k = vals[2]
         return
 
 # Define an element in TACS using the pyElement feature
@@ -43,11 +43,11 @@ class SpringMassDamper(elements.pyElement):
         mat[0] += alpha*self.k + beta*self.c + gamma*self.m
         return
 
-def createAssembler(m=4.0, c=0.25, k=5.0, pc=None):
+def createAssembler(m=5.0, c=0.5, k=5.0, pc=None):
     num_disps = 1
     num_nodes = 1
-    spr = SpringMassDamper(num_disps, num_nodes, m, c, k)
-    #spr = PSPACE.PySMD(m, c, k)
+    #spr = SpringMassDamper(num_disps, num_nodes, m, c, k)
+    spr = PSPACE.PySMD(m, c, k)
     elem = spr
     ndof_per_node = 1
     num_owned_nodes = 1
@@ -100,9 +100,9 @@ def moments(bdf, num_steps, nterms):
     return time, umean, udotmean, uddotmean, uvar, udotvar, uddotvar
 
 pfactory = PSPACE.PyParameterFactory()
-y1 = pfactory.createExponentialParameter(mu=4.0, beta=1.0, dmax=2)
-y2 = pfactory.createUniformParameter(a=0.25, b=0.75, dmax=2)
-y3 = pfactory.createExponentialParameter(mu=5.0, beta=0.5, dmax=2)
+y1 = pfactory.createExponentialParameter(mu=4.0, beta=1.0, dmax=0)
+y2 = pfactory.createUniformParameter(a=0.25, b=0.75, dmax=0)
+y3 = pfactory.createNormalParameter(mu=5.0, sigma=0.5, dmax=0)
 
 basis_type = 1
 pc = PSPACE.PyParameterContainer(basis_type)

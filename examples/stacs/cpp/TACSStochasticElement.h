@@ -13,7 +13,6 @@ class TACSStochasticElement : public TACSElement {
   ~TACSStochasticElement();
 
   void setPythonCallback(PyObject *cbptr){
-    printf("setting python callback at address %p", cbptr);
     this->pyptr = cbptr;
   }
 
