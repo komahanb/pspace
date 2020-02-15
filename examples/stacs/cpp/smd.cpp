@@ -27,8 +27,8 @@ void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
   memset(ddv, 0, num_vars*sizeof(TacsScalar));
 
   // set init conditions
-  v[0] = 1.0;
-  dv[0] = 0.0;
+  v[0] = -0.5;
+  dv[0] = 1.0;
 }
 
 void SMD::addResidual( int elemIndex, double time,
