@@ -229,3 +229,7 @@ plt.ylabel('variance')
 plt.legend(loc='best', frameon=False)
 plt.savefig('smd-galerkin-multivariate-variance.pdf',
             bbox_inches='tight', pad_inches=0.05)
+
+
+
+# make mean and standard deviation plot
