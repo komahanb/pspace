@@ -173,7 +173,7 @@ if __name__ == '__main__':
     plt.xlabel('time [s]')
     plt.ylabel('expectation')
     plt.legend(loc='best', frameon=False)
-    plt.savefig('vpl-galerkin-multivariate-expectation.pdf',
+    plt.savefig('vpl-galerkin-expectation.pdf',
                 bbox_inches='tight', pad_inches=0.05)
     
     plt.figure()
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     plt.xlabel('time [s]')
     plt.ylabel('variance')
     plt.legend(loc='best', frameon=False)
-    plt.savefig('vpl-galerkin-multivariate-variance.pdf',
+    plt.savefig('vpl-galerkin-variance.pdf',
                 bbox_inches='tight', pad_inches=0.05)
 
     
@@ -226,15 +226,15 @@ if __name__ == '__main__':
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
     
-    plt.plot(time, umean    , '-', label='${E}[{u}(t)]\pm{S}[{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[2], mec='black')
+    plt.plot(time, umean    , '-', label='${E}[{u}(t)]\pm 2\cdot{S}[{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[2], mec='black')
     plt.fill_between(time, umean, umean + sigma*np.sqrt(uvar), color=tableau20[3], alpha=0.5)
     plt.fill_between(time, umean, umean - sigma*np.sqrt(uvar), color=tableau20[3], alpha=0.5)
     
-    plt.plot(time, udotmean , '-', label='${E}[\dot{u}(t)]\pm{S}[\dot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[4], mec='black')
+    plt.plot(time, udotmean , '-', label='${E}[\dot{u}(t)]\pm 2\cdot{S}[\dot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[4], mec='black')
     plt.fill_between(time, udotmean, udotmean + sigma*np.sqrt(udotvar), color=tableau20[5], alpha=0.5)
     plt.fill_between(time, udotmean, udotmean - sigma*np.sqrt(udotvar), color=tableau20[5], alpha=0.5)
     
-    plt.plot(time[1:], uddotmean[1:], '-', label='${E}[\ddot{u}(t)]\pm{S}[\ddot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[6], mec='black')
+    plt.plot(time[1:], uddotmean[1:], '-', label='${E}[\ddot{u}(t)]\pm 2\cdot{S}[\ddot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[6], mec='black')
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] + sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
     
@@ -253,11 +253,11 @@ if __name__ == '__main__':
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
     
-    plt.plot(time, umean    , '-', label='${E}[{u}(t)]\pm 1\cdot{S}[{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[2], mec='black')
+    plt.plot(time, umean    , '-', label='${E}[{u}(t)]\pm 3\cdot{S}[{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[2], mec='black')
     plt.fill_between(time, umean, umean + sigma*np.sqrt(uvar), color=tableau20[3], alpha=0.5)
     plt.fill_between(time, umean, umean - sigma*np.sqrt(uvar), color=tableau20[3], alpha=0.5)
     
-    plt.plot(time, udotmean , '-', label='${E}[\dot{u}(t)]\pm 2\cdot{S}[\dot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[4], mec='black')
+    plt.plot(time, udotmean , '-', label='${E}[\dot{u}(t)]\pm 3\cdot{S}[\dot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[4], mec='black')
     plt.fill_between(time, udotmean, udotmean + sigma*np.sqrt(udotvar), color=tableau20[5], alpha=0.5)
     plt.fill_between(time, udotmean, udotmean - sigma*np.sqrt(udotvar), color=tableau20[5], alpha=0.5)
     
