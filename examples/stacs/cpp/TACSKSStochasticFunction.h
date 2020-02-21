@@ -52,7 +52,7 @@ class TACSKSStochasticFunction : public TACSFunction {
      @return The numer of elements in the domain
   */
   int getElementNums( const int **_elemNums ){
-    this->dfunc->getElementNums(_elemNums);
+    return this->dfunc->getElementNums(_elemNums);
   }
  
   /**
