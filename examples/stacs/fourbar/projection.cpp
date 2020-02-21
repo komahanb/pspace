@@ -6,7 +6,7 @@
 #include "SquareSection.h"
 #include "MITC3.h"
 #include "TACSKSFailure.h"
-#include "TACSKSDisplacement.h"
+//#include "TACSKSDisplacement.h"
 #include "TACSStructuralMass.h"
 #include "TACSConstitutiveVerification.h"
 #include "TACSElementVerification.h"

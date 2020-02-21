@@ -7,7 +7,7 @@ PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
 # PSPACE CORE
 PSPACE_TACS_INCLUDE = -I${HOME}/git/pspace/examples/tacs/
-PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libtacsuq.a  
+PSPACE_TACS_LIB = ${HOME}/git/pspace/examples/tacs/libstacs.a  
 
 # OPTIMIZATION Package
 IPOPT_INCLUDE = -I${HOME}/git/ipopt/build/include/coin/
