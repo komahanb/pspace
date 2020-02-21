@@ -62,3 +62,14 @@ cdef extern from "smd.h":
         void setStiffness(TacsScalar)
         void setDamping(TacsScalar)
     
+from tacs.functions cimport *
+
+cdef extern from "TACSStochasticFunction.h":
+    cdef cppclass TACSStochasticFunction(TACSFunction):
+        TACSStochasticFunction( TACSAssembler *tacs,
+                                TACSFunction *dfunc,
+                                ParameterContainer *pc,
+                                int quantityType,
+                                int moment_type )
+        TacsScalar getFunctionValue()
+    
