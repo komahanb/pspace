@@ -152,3 +152,24 @@ cdef class PyStochasticElement(Element):
         self.sptr.updateElement(elem.ptr, <TacsScalar*> vals.data)
     def setPythonCallback(self, cb):
         self.sptr.setPythonCallback(<PyObject*>cb)
+
+cdef class PyStochasticFunction(Function):
+    cdef TACSStochasticFunction *sptr
+    def __cinit__(self,
+                  Assembler assembler, Function func, PyParameterContainer pc,
+                  int quantity_type, int moment_type):
+        self.sptr = new TACSStochasticFunction( assembler.ptr, func.ptr, pc.ptr,
+                                                quantity_type, moment_type )
+        self.sptr.incref()        
+        self.ptr = self.sptr
+        Py_INCREF(self) #? do we need this?
+        return
+    
+    def __dealloc__(self):        
+        if self.sptr:
+            self.sptr.decref()
+            Py_DECREF(self)  #? do we need this?
+        return
+
+    def getFunctionValue(self):
+        return self.sptr.getFunctionValue()
