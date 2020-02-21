@@ -5,7 +5,7 @@ PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/ -I/usr/include/python2.7
 PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
 # This is the one rule that is used to compile all the
-# source code in TACSUQ
+# source code in STACS
 %.o: %.cpp
 	${CXX} ${TACS_CC_FLAGS} ${PSPACE_INCLUDE} -c $< -o $*.o
 	@echo
@@ -19,8 +19,8 @@ TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o \
 TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o
 
 library: ${OBJS}
-	ar rcs libtacsuq.a ${OBJS}
-	mpicxx -shared ${TACS_CC_FLAGS} ${OBJS} -o libtacsuq.so
+	ar rcs libstacs.a ${OBJS}
+	mpicxx -shared ${TACS_CC_FLAGS} ${OBJS} -o libstacs.so
 
 default: ${OBJS}
 

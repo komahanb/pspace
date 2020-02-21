@@ -44,7 +44,7 @@ runtime_lib_dirs = get_global_dir(['cpp'])
 # Relative paths for the include/library directories
 rel_inc_dirs = ['cpp']
 rel_lib_dirs = ['cpp']
-libs.extend(['pspace', 'tacs', 'tacsuq'])
+libs.extend(['pspace', 'tacs', 'stacs'])
 
 # Convert from relative to absolute directories
 inc_dirs.extend(get_global_dir(rel_inc_dirs))
