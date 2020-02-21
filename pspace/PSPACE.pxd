@@ -73,3 +73,12 @@ cdef extern from "TACSStochasticFunction.h":
                                 int moment_type )
         TacsScalar getFunctionValue()
     
+cdef extern from "TACSKSStochasticFunction.h":
+    cdef cppclass TACSKSStochasticFunction(TACSFunction):
+        TACSKSStochasticFunction( TACSAssembler *tacs,
+                                  TACSFunction *dfunc,
+                                  ParameterContainer *pc,
+                                  int quantityType,
+                                  int moment_type,
+                                  int ksweight)
+        TacsScalar getFunctionValue()
