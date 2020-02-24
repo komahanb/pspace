@@ -196,3 +196,10 @@ cdef class PyMomentMaxSpaceTimeIntegral(Function):
 
     def getFunctionValue(self):
         return self.sptr.getFunctionValue()
+
+cdef class MutableElement3D(Element3D):
+    cdef TACSMutableElement3D *sptr    
+    def __cinit__(self, ElementModel model, ElementBasis basis):
+        self.sptr = new TACSMutableElement3D(model.ptr, basis.ptr)
+        self.sptr.incref()
+        return
