@@ -82,3 +82,10 @@ cdef extern from "TACSKSStochasticFunction.h":
                                   int moment_type,
                                   int ksweight)
         TacsScalar getFunctionValue()
+
+cdef extern from "TACSMutableElement3D.h":
+    cdef cppclass TACSMutableElement3D(TACSElement3D):
+        TACSMutableElement3D( TACSElementModel *_model,
+                              TACSElementBasis *_basis )
+    
+
