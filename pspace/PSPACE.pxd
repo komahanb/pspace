@@ -1,3 +1,4 @@
+
 # Typdefs required for either real or complex mode
 include "PspaceTypedefs.pxi"
 include "TacsTypedefs.pxi"
@@ -84,8 +85,6 @@ cdef extern from "TACSKSStochasticFunction.h":
         TacsScalar getFunctionValue()
 
 cdef extern from "TACSMutableElement3D.h":
-    cdef cppclass TACSMutableElement3D(TACSElement3D):
-        TACSMutableElement3D( TACSElementModel *_model,
-                              TACSElementBasis *_basis )
-    
-
+    cdef cppclass TACSMutableElement3D(TACSElement):
+        TACSMutableElement3D( TACSElement *_elem )
+        void setDensity( TacsScalar _rho )
