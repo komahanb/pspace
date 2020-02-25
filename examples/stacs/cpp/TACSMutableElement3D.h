@@ -9,7 +9,6 @@
 #include "TACSElement.h"
 #include "TACSElementModel.h"
 #include "TACSElementBasis.h"
-#include "TMROctConstitutive.h"
 
 class TACSMutableElement3D : public TACSElement {
  public:
