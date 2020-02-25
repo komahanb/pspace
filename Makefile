@@ -1,5 +1,8 @@
 PYTHON = python3
 
+default:
+	./build.sh
+
 interface:
 	${PYTHON} setup.py build_ext --inplace
 
