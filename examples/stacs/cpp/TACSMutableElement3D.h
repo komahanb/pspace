@@ -526,7 +526,7 @@ class TACSMutableElement3D : public TACSElement {
                                        const TacsScalar dfdq[],
                                        int dvLen,
                                        TacsScalar dfdx[] ){
-    this->element->addPointQuantityDVSens(elemIndex, quantiyType, time, scale,
+    this->element->addPointQuantityDVSens(elemIndex, quantityType, time, scale,
                                           n, pt,
                                           Xpts, vars, dvars, ddvars,
                                           dfdq, dvLen, dfdx);
