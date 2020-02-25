@@ -6,6 +6,7 @@ import sys
 import numpy
 import mpi4py
 import tacs
+import tmr
 
 # Import distutils
 from setuptools import setup
@@ -38,38 +39,45 @@ def get_mpi_flags():
 
 inc_dirs, lib_dirs, libs = get_mpi_flags()
 
-# Relative paths for the include/library directories
-rel_inc_dirs = ['cpp']
-rel_lib_dirs = ['cpp']
-libs.extend(['pspace', 'tacs', 'stacs'])
-
-# Convert from relative to absolute directories
-inc_dirs.extend(get_global_dir(rel_inc_dirs))
-lib_dirs.extend(get_global_dir(rel_lib_dirs))
-
-# This should be made more general so that you can specify alternate
-# locations for the installation of AMD/METIS
-default_ext_inc = []
-inc_dirs.extend(get_global_dir(default_ext_inc))
-inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
-
 # Add the numpy/mpi4py directories
 inc_dirs.extend([numpy.get_include(), mpi4py.get_include()])
+
+# PSPACE
+inc_dirs.extend(get_global_dir(['cpp']))
+lib_dirs.extend(get_global_dir(['cpp']))
+
+# TACS
 inc_dirs.extend(tacs.get_include())
 inc_dirs.extend(tacs.get_cython_include())
 lib_dirs.extend(tacs.get_libraries()[0])
+
+# STACS
+inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
 lib_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
 
+# TMR
+inc_dirs.extend(tmr.get_include())
+inc_dirs.extend(tmr.get_cython_include())
+lib_dirs.extend(tmr.get_libraries()[0])
 
 # The provide where the run time libraries are present
 runtime_lib_dirs = [] 
 runtime_lib_dirs.extend(lib_dirs)
 
+libs.extend(['pspace', 'tacs', 'stacs', 'tmr'])
+
+print(inc_dirs)
+print(libs)
+print(lib_dirs)
+print(runtime_lib_dirs)
+
 exts = []
 for mod in ['PSPACE']:
     exts.append(Ext('pspace.%s'%(mod), sources=['pspace/%s.pyx'%(mod)],
-                    include_dirs=inc_dirs, libraries=libs, 
-                    library_dirs=lib_dirs, runtime_library_dirs=runtime_lib_dirs,
+                    include_dirs=inc_dirs,
+                    libraries=libs, 
+                    library_dirs=lib_dirs,
+                    runtime_library_dirs=runtime_lib_dirs,
                     cython_directives={"embedsignature": True, "binding": True}))
 
 setup(name='pspace',

@@ -1,4 +1,3 @@
-
 # Typdefs required for either real or complex mode
 include "PspaceTypedefs.pxi"
 include "TacsTypedefs.pxi"
@@ -55,6 +54,11 @@ cdef extern from "TACSStochasticElement.h":
         void updateElement(TACSElement* elem, TacsScalar* vals)
         void setPythonCallback(PyObject *cbptr)
 
+cdef extern from "TACSMutableElement3D.h":
+    cdef cppclass TACSMutableElement3D(TACSElement):
+        TACSMutableElement3D( TACSElement *_elem )
+        void setDensity( TacsScalar _rho )
+
 # A simple test element for TACS
 cdef extern from "smd.h":
     cdef cppclass SMD(TACSElement):
@@ -83,8 +87,4 @@ cdef extern from "TACSKSStochasticFunction.h":
                                   int moment_type,
                                   int ksweight)
         TacsScalar getFunctionValue()
-
-cdef extern from "TACSMutableElement3D.h":
-    cdef cppclass TACSMutableElement3D(TACSElement):
-        TACSMutableElement3D( TACSElement *_elem )
-        void setDensity( TacsScalar _rho )
+  
