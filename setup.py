@@ -66,10 +66,10 @@ runtime_lib_dirs.extend(lib_dirs)
 
 libs.extend(['pspace', 'tacs', 'stacs', 'tmr'])
 
-print(inc_dirs)
-print(libs)
-print(lib_dirs)
-print(runtime_lib_dirs)
+## print(inc_dirs)
+## print(libs)
+## print(lib_dirs)
+## print(runtime_lib_dirs)
 
 exts = []
 for mod in ['PSPACE']:
