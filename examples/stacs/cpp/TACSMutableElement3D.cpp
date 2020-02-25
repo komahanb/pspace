@@ -11,7 +11,7 @@ TACSMutableElement3D::~TACSMutableElement3D() {}
 
 */
 
-void TACSMutableElement3D::setDensity( TacsScalar *_rho ){
+void TACSMutableElement3D::setDensity( TacsScalar _rho ){
   TACSLinearElasticity3D *model = dynamic_cast<TACSLinearElasticity3D*>(this->getElementModel());
   if (!model) return;
   printf("model OK\n");

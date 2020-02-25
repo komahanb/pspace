@@ -23,7 +23,7 @@ class TACSMutableElement3D : public TACSElement {
   /* } */
   //virtual ~TACSElement(){}
 
-  void setDensity( TacsScalar *_rho );
+  void setDensity( TacsScalar _rho );
 
   /**
      Set the component number for this element.
