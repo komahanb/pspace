@@ -14,16 +14,17 @@ TACSMutableElement3D::~TACSMutableElement3D(){
 // Setter for density
 void TACSMutableElement3D::setDensity( TacsScalar _rho ){
   TACSLinearElasticity3D *model = dynamic_cast<TACSLinearElasticity3D*>(this->getElementModel());
-  if (!model) return;
-  printf("model OK\n");
+  if (!model){
+    printf(">> Casting to TACSLinearElasticity3D failed\n");
+    return;
+  }
   TMROctConstitutive *con = dynamic_cast<TMROctConstitutive*>(model->getConstitutive());
-  if (!con) return;
-  printf("con OK\n");
+  if (!con){
+    printf(">> Casting to TMROctConstitutive failed\n");
+    return;
+  }
   TMRStiffnessProperties *stiff = con->getStiffnessProperties();
-  printf("stiff OK\n");
   TACSMaterialProperties **props = stiff->getMaterialProperties();
-  printf("props OK\n");
   props[0]->setDensity(_rho);
-  printf("set density OK %e \n", _rho);    
 }
 
