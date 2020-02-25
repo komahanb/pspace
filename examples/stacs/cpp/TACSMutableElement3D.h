@@ -9,20 +9,18 @@
 #include "TACSElement.h"
 #include "TACSElementModel.h"
 #include "TACSElementBasis.h"
+#include "TMROctConstitutive.h"
+#include "TACSLinearElasticity.h"
+#include "TACSMaterialProperties.h"
 
 class TACSMutableElement3D : public TACSElement {
  public:
   TACSMutableElement3D( TACSElement *_elem );
+  ~TACSMutableElement3D();
 
-  //  ~TACSMutableElement();
-  /* TACSMutableElement3D( TACSElementModel *_model, TACSElementBasis *_basis ); */
-  /* ~TACSMutableElement3D(); */
-  /* TACSElement( int _componentNum = 0 ){ */
-  /*   this->elem-> */
-  /*   componentNum = _componentNum; */
-  /* } */
-  //virtual ~TACSElement(){}
-
+  /**
+     Update constitutive object and set density
+  */
   void setDensity( TacsScalar _rho );
 
   /**

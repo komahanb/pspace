@@ -1,16 +1,17 @@
 #include "TACSMutableElement3D.h"
-#include "TMROctConstitutive.h"
-#include "TACSLinearElasticity.h"
-#include "TACSMaterialProperties.h"
 
-/*
-TACSMutableElement3D::TACSMutableElement3D( TACSElementModel *_model, TACSElementBasis *_basis ) 
-  : TACSElement3D(_model, _basis) {}
+// Constructor
+TACSMutableElement3D::TACSMutableElement3D( TACSElement *_elem ){
+  this->element = _elem;
+  this->element->incref();
+}
 
-TACSMutableElement3D::~TACSMutableElement3D() {}
+// Destructor
+TACSMutableElement3D::~TACSMutableElement3D(){
+  this->element->decref();
+}
 
-*/
-
+// Setter for density
 void TACSMutableElement3D::setDensity( TacsScalar _rho ){
   TACSLinearElasticity3D *model = dynamic_cast<TACSLinearElasticity3D*>(this->getElementModel());
   if (!model) return;
