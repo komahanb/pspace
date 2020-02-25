@@ -5,10 +5,8 @@ include ${HOME}/git/tmr/Makefile.in
 include ${HOME}/git/tmr/TMR_Common.mk
 
 PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/ -I/usr/include/python2.7
-PSPACE_LIB = ${HOME}/git/pspace/cpp/libpspace.a
 
-# This is the one rule that is used to compile all the
-# source code in STACS
+# This is the one rule that is used to compile
 %.o: %.cpp
 	${CXX} ${TACS_CC_FLAGS} ${TMR_CC_FLAGS} ${PSPACE_INCLUDE} -c $< -o $*.o
 	@echo
@@ -38,7 +36,7 @@ complex_debug: TACS_DEF=-DTACS_USE_COMPLEX -DUSE_COMPLEX
 complex_debug: debug
 
 clean:
-	rm -f *.o libtacsuq.a libtacsuq.so smd ppa vpl fourbar
+	rm -f *.o libstacs.a libstacs.so
 
 test: default
 
