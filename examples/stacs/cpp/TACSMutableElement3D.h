@@ -406,11 +406,12 @@ class TACSMutableElement3D : public TACSElement {
      @param vars The values of element degrees of freedom
      @param mat The element matrix output
   */
-  virtual void getMatType( int elemIndex, ElementMatrixType matType,
+  virtual void getMatType( ElementMatrixType matType, 
+                           int elemIndex, double time, 
                            const TacsScalar Xpts[],
                            const TacsScalar vars[],
                            TacsScalar mat[] ){
-    this->element->getMatType(elemIndex, matType, Xpts, vars, mat);
+    this->element->getMatType(matType, elemIndex, time, Xpts, vars, mat);
   }
 
   /**
@@ -430,17 +431,18 @@ class TACSMutableElement3D : public TACSElement {
      @param vars The values of element degrees of freedom
      @param mat The element matrix output
   */
-  virtual void addMatDVSensInnerProduct( int elemIndex,
-                                         ElementMatrixType matType,
+  virtual void addMatDVSensInnerProduct( ElementMatrixType matType,
+                                         int elemIndex,
+                                         double time,                                         
                                          TacsScalar scale,
                                          const TacsScalar psi[],
                                          const TacsScalar phi[],
                                          const TacsScalar Xpts[],
                                          const TacsScalar vars[],
                                          int dvLen,
-                                         TacsScalar dvSens[] ){
-    this->element->addMatDVSensInnerProduct(elemIndex, matType, scale,
-                                            psi, phi, Xpts, vars, dvLen, dvSens);
+                                         TacsScalar dfdx[] ){
+    this->element->addMatDVSensInnerProduct(matType, elemIndex, time, scale,
+                                            psi, phi, Xpts, vars, dvLen, dfdx);
   }
 
   /**
@@ -457,17 +459,18 @@ class TACSMutableElement3D : public TACSElement {
      @param phi The right-hand vector
      @param Xpts The element node locations
      @param vars The values of element degrees of freedom
-     @param res The residual output The element matrix output
+     @param dfdu The residual output The element matrix output
   */
-  virtual void getMatSVSensInnerProduct( int elemIndex,
-                                         ElementMatrixType matType,
+  virtual void getMatSVSensInnerProduct( ElementMatrixType matType,
+                                         int elemIndex,
+                                         double time,
                                          const TacsScalar psi[],
                                          const TacsScalar phi[],
                                          const TacsScalar Xpts[],
                                          const TacsScalar vars[],
-                                         TacsScalar res[] ){
-    this->element->getMatSVSensInnerProduct(elemIndex, matType,
-                                            psi, phi, Xpts, vars, res);
+                                         TacsScalar dfdu[] ){
+    this->element->getMatSVSensInnerProduct(matType, elemIndex, time,
+                                            psi, phi, Xpts, vars, dfdu);
   }
 
   /**
