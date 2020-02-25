@@ -153,6 +153,19 @@ cdef class PyStochasticElement(Element):
     def setPythonCallback(self, cb):
         self.sptr.setPythonCallback(<PyObject*>cb)
 
+cdef class MutableElement3D(Element):
+    cdef TACSMutableElement3D *sptr    
+    def __cinit__(self, Element elem):
+        self.sptr = new TACSMutableElement3D(elem.ptr)
+        self.ptr = self.sptr
+        self.ptr.incref()
+        return
+    def __dealloc__(self):        
+        if self.ptr:
+            self.ptr.decref()
+    def setDensity(self, int rho):
+        self.sptr.setDensity(rho)
+
 cdef class PyMomentSpaceTimeIntegral(Function):
     cdef TACSStochasticFunction *sptr
     def __cinit__(self,
@@ -196,15 +209,3 @@ cdef class PyMomentMaxSpaceTimeIntegral(Function):
 
     def getFunctionValue(self):
         return self.sptr.getFunctionValue()
-
-cdef class MutableElement3D(Element):
-    cdef TACSMutableElement3D *sptr    
-    def __cinit__(self, Element elem):
-        self.sptr = new TACSMutableElement3D(elem.ptr)
-        self.ptr = self.sptr
-        self.ptr.incref()
-    def __dealloc__(self):        
-        if self.ptr:
-            self.ptr.decref()
-    def setDensity(self, int rho):
-        self.sptr.setDensity(rho)
