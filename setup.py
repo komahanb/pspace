@@ -38,9 +38,6 @@ def get_mpi_flags():
 
 inc_dirs, lib_dirs, libs = get_mpi_flags()
 
-# Add tacs-dev/lib as a runtime directory
-runtime_lib_dirs = get_global_dir(['cpp'])
-
 # Relative paths for the include/library directories
 rel_inc_dirs = ['cpp']
 rel_lib_dirs = ['cpp']
@@ -54,19 +51,19 @@ lib_dirs.extend(get_global_dir(rel_lib_dirs))
 # locations for the installation of AMD/METIS
 default_ext_inc = []
 inc_dirs.extend(get_global_dir(default_ext_inc))
-
 inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
 
 # Add the numpy/mpi4py directories
 inc_dirs.extend([numpy.get_include(), mpi4py.get_include()])
-
 inc_dirs.extend(tacs.get_include())
 inc_dirs.extend(tacs.get_cython_include())
-
 lib_dirs.extend(tacs.get_libraries()[0])
-
 lib_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
 
+
+# The provide where the run time libraries are present
+runtime_lib_dirs = [] 
+runtime_lib_dirs.extend(lib_dirs)
 
 exts = []
 for mod in ['PSPACE']:
