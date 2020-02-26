@@ -62,11 +62,13 @@ cdef extern from "TACSMutableElement3D.h":
 # A simple test element for TACS
 cdef extern from "smd.h":
     cdef cppclass SMD(TACSElement):
-        SMD( TacsScalar, TacsScalar, TacsScalar)
+        SMD( TacsScalar, TacsScalar, TacsScalar, TacsScalar, TacsScalar)
         void setMass(TacsScalar)
         void setStiffness(TacsScalar)
         void setDamping(TacsScalar)
-    
+        void setInitPosition(TacsScalar)
+        void setInitVelocity(TacsScalar)
+        
 from tacs.functions cimport *
 
 cdef extern from "TACSStochasticFunction.h":

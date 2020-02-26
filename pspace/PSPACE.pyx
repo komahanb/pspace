@@ -112,8 +112,9 @@ cdef void updateCB(TACSElement *elem, TacsScalar *yvals, void *pyptr):
 
 cdef class PySMD(Element):
     cdef SMD *smd
-    def __cinit__(self, TacsScalar m, TacsScalar c, TacsScalar k):
-        self.smd = new SMD(m, c, k)
+    def __cinit__(self, TacsScalar m, TacsScalar c, TacsScalar k,
+                  TacsScalar u0, TacsScalar udot0):
+        self.smd = new SMD(m, c, k, u0, udot0)
         self.ptr = self.smd
         self.ptr.incref()
         Py_INCREF(self)
@@ -127,6 +128,10 @@ cdef class PySMD(Element):
         return self.smd.setStiffness(k)
     def setDamping(self, TacsScalar c):
         return self.smd.setDamping(c)
+    def setInitPosition(self, TacsScalar u0):
+        return self.smd.setInitPosition(u0)
+    def setInitVelocity(self, TacsScalar udot0):
+        return self.smd.setInitVelocity(udot0)
 
 cdef class PyStochasticElement(Element):
     cdef TACSStochasticElement *sptr
