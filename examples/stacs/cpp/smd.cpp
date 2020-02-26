@@ -9,10 +9,16 @@ void updateSMD( TACSElement *elem, TacsScalar *vals ){
   }
 }
 
-SMD::SMD(TacsScalar m, TacsScalar c, TacsScalar k){
+SMD::SMD(TacsScalar m, TacsScalar c, TacsScalar k,
+         TacsScalar u0, TacsScalar udot0){
+  // coefficients
   this->m = m;
   this->c = c;
   this->k = k;  
+  
+  // initial conditions
+  this->u0 = u0;
+  this->udot0 = udot0;
 }
 
 SMD::~SMD(){
@@ -27,8 +33,8 @@ void SMD::getInitConditions( int elemIndex, const TacsScalar X[],
   memset(ddv, 0, num_vars*sizeof(TacsScalar));
 
   // set init conditions
-  v[0] = -0.5;
-  dv[0] = 1.0;
+  v[0] = u0;
+  dv[0] = udot0;
 }
 
 void SMD::addResidual( int elemIndex, double time,

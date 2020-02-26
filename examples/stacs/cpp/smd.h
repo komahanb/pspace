@@ -8,7 +8,7 @@ static const int TACS_VELOCITY_FUNCTION         = -4;
 
 class SMD : public TACSElement{  
  public:
-  SMD(TacsScalar m, TacsScalar c, TacsScalar k);
+  SMD(TacsScalar m, TacsScalar c, TacsScalar k, TacsScalar u0, TacsScalar udot0);
   ~SMD();
 
   /**
@@ -208,5 +208,17 @@ class SMD : public TACSElement{
     this->c = c;
   }
 
+  void setInitPosition(TacsScalar u0){
+    this->u0 = u0;
+  }
+
+  void setInitVelocity(TacsScalar udot0){
+    this->udot0 = udot0;
+  }
+
+  // coefficients
   TacsScalar m, c, k;
+
+  // initial conditions
+  TacsScalar u0, udot0;
 };

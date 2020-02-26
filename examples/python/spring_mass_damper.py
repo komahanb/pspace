@@ -11,12 +11,24 @@ class SMDUpdate:
         return
 
     def update(self, vals):
-        self.element.setMass(vals[0])
-        self.element.setDamping(vals[1])
-        self.element.setStiffness(vals[2])
+        #self.element.setMass(vals[0])
+        #self.element.setDamping(vals[1])
+        #self.element.setStiffness(vals[2])
+        #self.element.setInitPosition(vals[3])
+        #self.element.setInitVelocity(vals[0])
         #self.element.m = vals[0]
         #self.element.c = vals[1] 
         #self.element.k = vals[2]
+        return
+
+class ForceUpdate:
+    def __init__(self, elem):
+        self.element = elem
+        return
+
+    def update(self, vals):
+        print("updating force magnitude")
+        self.element.amplitude = vals[0]
         return
 
 # Define an element in TACS using the pyElement feature
@@ -43,19 +55,43 @@ class SpringMassDamper(elements.pyElement):
         mat[0] += alpha*self.k + beta*self.c + gamma*self.m
         return
 
-def createAssembler(m=5.0, c=0.5, k=5.0, pc=None):
+# Define an element in TACS using the pyElement feature
+class ForcingElement(elements.pyElement):
+    def __init__(self, num_disps, num_nodes, amplitude, omega):
+        self.amplitude = amplitude
+        self.omega = omega
+
+    def getInitConditions(self, index, X, v, dv, ddv):
+        '''Define the initial conditions'''
+        return
+
+    def addResidual(self, index, time, X, v, dv, ddv, res):
+        '''Add the residual of the governing equations'''
+        res[0] += self.amplitude*np.sin(self.omega*time)
+        return    
+
+    def addJacobian(self, index, time, alpha, beta, gamma, X, v, dv, ddv, res, mat):
+        '''Add the Jacobian of the governing equations'''
+        self.addResidual(index, time, X, v, dv, ddv, res)
+        return
+    
+def createAssembler(m=5.0, c=0.5, k=5.0, u0=-0.5, udot0=1.0, pc=None):
     num_disps = 1
     num_nodes = 1
+
+    # Spring element
     #spr = SpringMassDamper(num_disps, num_nodes, m, c, k)
-    spr = PSPACE.PySMD(m, c, k)
-    elem = spr
-    ndof_per_node = 1
+    dspr  = PSPACE.PySMD(m, c, k, u0, udot0)
+    sprcb = SMDUpdate(dspr)
+    sspr  = PSPACE.PyStochasticElement(dspr, pc, sprcb)
+
+    dforce = ForcingElement(num_disps, num_nodes, amplitude=1.0, omega=10.0)
+    forcecb = ForceUpdate(dforce)
+    sforce = PSPACE.PyStochasticElement(dforce, pc, forcecb)
+
+    ndof_per_node = 1*pc.getNumBasisTerms()
     num_owned_nodes = 1
-    num_elems = 1
-    if pc is not None:
-        cb = SMDUpdate(spr)
-        elem = PSPACE.PyStochasticElement(spr, pc, cb)
-        ndof_per_node = ndof_per_node*pc.getNumBasisTerms()
+    num_elems = 1        
     
     # Add user-defined element to TACS
     comm = MPI.COMM_WORLD
@@ -64,7 +100,15 @@ def createAssembler(m=5.0, c=0.5, k=5.0, pc=None):
     ptr = np.array([0, 1], dtype=np.intc)
     conn = np.array([0], dtype=np.intc)
     assembler.setElementConnectivity(ptr, conn)
-    assembler.setElements([elem])
+
+    # Set elements
+    assembler.setElements([sspr])
+
+    # set Auxiliary elements
+    aux = TACS.AuxElements()
+    aux.addElement(0, sforce)
+    assembler.setAuxElements(aux)
+    
     assembler.initialize()
 
     return assembler
@@ -100,29 +144,37 @@ def moments(bdf, num_steps, nterms):
     return time, umean, udotmean, uddotmean, uvar, udotvar, uddotvar
 
 pfactory = PSPACE.PyParameterFactory()
-y1 = pfactory.createExponentialParameter(mu=4.0, beta=1.0, dmax=3)
-y2 = pfactory.createUniformParameter(a=0.25, b=0.75, dmax=3)
-y3 = pfactory.createNormalParameter(mu=5.0, sigma=0.5, dmax=3)
+#y1 = pfactory.createExponentialParameter(mu=4.0, beta=1.0, dmax=3)
+#y2 = pfactory.createUniformParameter(a=0.25, b=0.75, dmax=3)
+#y3 = pfactory.createNormalParameter(mu=5.0, sigma=0.5, dmax=3)
+#y4 = pfactory.createNormalParameter(mu=-0.5, sigma=0.1, dmax=3)
+y5 = pfactory.createNormalParameter(mu=1.0, sigma=0.1, dmax=2)
 
 basis_type = 1
 pc = PSPACE.PyParameterContainer(basis_type)
-pc.addParameter(y1)
-pc.addParameter(y2)
-pc.addParameter(y3)
+## pc.addParameter(y1)
+## pc.addParameter(y2)
+## pc.addParameter(y3)
+## pc.addParameter(y4)
+pc.addParameter(y5)
 
 pc.initialize()
+
+print("nterms ", pc.getNumBasisTerms())
 
 # Create TACS
 m = 1.0
 c = 0.5
 k = 5.0
 tf = 100.0
-assembler = createAssembler(m=m, c=c, k=k, pc=pc)
+u0 = -0.5
+udot0 = 1.0
+assembler = createAssembler(m=m, c=c, k=k, u0=u0, udot0=udot0, pc=pc)
 
 # Create Integrator
 t0 = 0.0
 tf = 10.0
-num_steps = 100
+num_steps = 1000
 order = 2
 integrator = TACS.BDFIntegrator(assembler, t0, tf, num_steps, order)
 integrator.setPrintLevel(1)
@@ -174,7 +226,7 @@ plt.rcParams['text.latex.preamble'] = [r'\usepackage{sfmath}']
 #plt.rcParams['font.sans-serif'] = 'courier'
 plt.rcParams['font.size'] = 18
 plt.rcParams['font.weight'] = 'bold'
-plt.rcParams['lines.linewidth'] = 4
+plt.rcParams['lines.linewidth'] = 2
 plt.rcParams['lines.color'] = 'r'
 
 # Make sure everything is within the frame
@@ -230,7 +282,6 @@ plt.legend(loc='best', frameon=False)
 plt.savefig('smd-galerkin-variance.pdf',
             bbox_inches='tight', pad_inches=0.05)
 
-
 plt.figure()
 sigma = 1.0
 fig, ax = plt.subplots()
@@ -253,7 +304,7 @@ plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar
 
 plt.xlabel('time [s]')
 #plt.ylabel('response')
-plt.legend(loc='best', frameon=False)
+plt.legend(loc='upper right', frameon=False)
 plt.savefig('smd-galerkin-one-sigma.pdf',
             bbox_inches='tight', pad_inches=0.05)
 
@@ -279,7 +330,7 @@ plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar
 
 plt.xlabel('time [s]')
 #plt.ylabel('response')
-plt.legend(loc='best', frameon=False)
+plt.legend(loc='upper right', frameon=False)
 plt.savefig('smd-galerkin-two-sigma.pdf',
             bbox_inches='tight', pad_inches=0.05)
 
@@ -306,6 +357,6 @@ plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar
 
 plt.xlabel('time [s]')
 #plt.ylabel('response')
-plt.legend(loc='best', frameon=False)
+plt.legend(loc='upper right', frameon=False)
 plt.savefig('smd-galerkin-three-sigma.pdf',
             bbox_inches='tight', pad_inches=0.05)
