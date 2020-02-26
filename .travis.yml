@@ -3,6 +3,7 @@ language: c++
 # command to install dependencies
 install:
   - cd cpp
+  - make
   
 # command to run tests
 script:
