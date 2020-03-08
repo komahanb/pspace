@@ -192,7 +192,7 @@ void TACSKSStochasticFunction::elementWiseEval( EvaluationType evalType,
             } else {
               // Evaluate the determinant of the Jacobian
               TacsScalar Xd[9], J[9];
-              TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+              TacsScalar detJ = basis->getJacobianTransform(i, pt, Xpts, Xd, J);
               ksSum[j*nsqpts+q] += tscale*weight*detJ*exp(ksWeight*(value - maxValue[j*nsqpts+q]));
             }      
 
@@ -350,7 +350,7 @@ void TACSKSStochasticFunction::getElementSVSens( int elemIndex, TACSElement *ele
                                      &quantity);
 
             TacsScalar Xd[9], J[9];
-            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+            TacsScalar detJ = basis->getJacobianTransform(i, pt, Xpts, Xd, J);
           
             TacsScalar ksPtWeight = exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
             ksPtWeight *= weight*detJ*wt;
@@ -466,7 +466,7 @@ void TACSKSStochasticFunction::addElementDVSens( int elemIndex, TACSElement *ele
                                      &quantity);        
           
             TacsScalar Xd[9], J[9];
-            TacsScalar detJ = basis->getJacobianTransform(pt, Xpts, Xd, J);
+            TacsScalar detJ = basis->getJacobianTransform(i, pt, Xpts, Xd, J);
 
             TacsScalar dfdq = wt*weight*detJ*exp(ksWeight*(quantity - maxValue[j*nsqpts+q]))/ksSum[j*nsqpts+q];
             if (moment_type == 1){
