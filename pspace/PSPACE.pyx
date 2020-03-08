@@ -23,7 +23,6 @@ cdef inplace_array_1d(int nptype, int dim1, void *data_ptr):
     return ndarray
 
 cdef class PyAbstractParameter:
-    cdef AbstractParameter *ptr
     def __cinit__(self):
         self.ptr = NULL
         return
@@ -31,7 +30,6 @@ cdef class PyAbstractParameter:
         return self.ptr.basis(z,d)
 
 cdef class PyParameterFactory:
-    cdef ParameterFactory *ptr
     def __cinit__(self):
         self.ptr = new ParameterFactory()
         return
@@ -49,7 +47,6 @@ cdef class PyParameterFactory:
         return pyparam
 
 cdef class PyParameterContainer:
-    cdef ParameterContainer *ptr
     def __cinit__(self, int basis_type=0, int quadrature_type=0):
         self.ptr = new ParameterContainer(basis_type, quadrature_type)
         return
