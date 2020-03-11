@@ -22,6 +22,8 @@ inc_dirs = []
 lib_dirs = []
 libs = []
 
+runtime_lib_dirs = []
+
 # Add the numpy/mpi4py directories
 inc_dirs.extend([numpy.get_include()])
 
@@ -31,8 +33,28 @@ lib_dirs.extend(get_global_dir(['cpp']))
 
 # The provide where the run time libraries are present
 runtime_lib_dirs = []
-runtime_lib_dirs.extend(lib_dirs)
 
+# Add the TACS libraries
+import tacs
+if 'tacs' in sys.modules:
+    inc_dirs.extend(tacs.get_include())
+    inc_dirs.extend(tacs.get_cython_include())
+    tacs_lib_dirs, tacs_libs = tacs.get_libraries()
+    lib_dirs.extend(tacs_lib_dirs)
+    libs.extend(tacs_libs)
+    runtime_lib_dirs.extend(tacs_lib_dirs)
+
+# STACS
+inc_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
+lib_dirs.extend(get_global_dir(["examples/stacs/cpp"]))
+
+# TMR
+inc_dirs.extend(tmr.get_include())
+inc_dirs.extend(tmr.get_cython_include())
+lib_dirs.extend(tmr.get_libraries()[0])
+
+# The provide where the run time libraries are present
+runtime_lib_dirs.extend(lib_dirs)
 libs.extend(['pspace'])
 
 exts = []
