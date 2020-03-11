@@ -3,10 +3,9 @@
 
 #include <stdlib.h>
 #include <complex>
-#include "mpi.h"
 
 /*
-  Use the cplx type 
+  Use the cplx type
 */
 using namespace std;
 
@@ -14,7 +13,7 @@ typedef std::complex<double> Complex;
 typedef double Real;
 
 /*
-  Define the basic scalar type 
+  Define the basic scalar type
 */
 #ifdef USE_COMPLEX
 #define MPI_TYPE MPI_DOUBLE_COMPLEX
