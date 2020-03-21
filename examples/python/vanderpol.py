@@ -2,6 +2,7 @@ import numpy as np
 from mpi4py import MPI
 import matplotlib.pyplot as plt
 from pspace import PSPACE
+from stacs import STACS
 from tacs import TACS, elements
 
 def moments(bdf, num_steps, nterms):
@@ -83,7 +84,7 @@ if __name__ == '__main__':
     pc.initialize()
 
     callback = VPLUpdate(vpl)
-    vpl = PSPACE.PyStochasticElement(vpl, pc, callback)
+    vpl = STACS.PyStochasticElement(vpl, pc, callback)
     
     # Add user-defined element to TACS
     comm = MPI.COMM_WORLD
