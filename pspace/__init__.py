@@ -12,7 +12,7 @@ def get_include():
     '''
     root_path, tail = os.path.split(os.path.abspath(os.path.dirname(__file__)))
 
-    rel_inc_dirs = ['cpp']
+    rel_inc_dirs = ['src/include']
 
     inc_dirs = []
     for path in rel_inc_dirs:
@@ -26,7 +26,7 @@ def get_libraries():
     '''
     root_path, tail = os.path.split(os.path.abspath(os.path.dirname(__file__)))
 
-    rel_lib_dirs = ['cpp']
+    rel_lib_dirs = ['lib']
     libs = ['pspace']
     lib_dirs = []
     for path in rel_lib_dirs:
