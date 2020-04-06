@@ -1,4 +1,4 @@
-![alt text](https://github.com/komahanb/pspace/tree/master/docs/sgm.png)
+![alt text](https://github.com/komahanb/pspace/sgm.png)
 
 # Probabilistic Space
 
