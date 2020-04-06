@@ -3,6 +3,10 @@
 
 #include "scalar.h"
 
+/**
+   Class that performs multivariate quadrature from univariate
+   quadrature.
+ */
 class QuadratureHelper {
  public:
   // Constructor and destructor
