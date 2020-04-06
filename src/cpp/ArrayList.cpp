@@ -1,9 +1,15 @@
 #include<stdio.h>
 #include"ArrayList.h"
 
-ArrayList::ArrayList(int max_num_tuples, int max_tuple_length){
+/**
+   Constructor implementation for ArrayList
+
+   @param max_num_tuples
+   @param max_tuple_length
+*/
+ArrayList::ArrayList( int max_num_tuples, int max_tuple_length ){
   this->max_num_tuples  = max_num_tuples;
-  this->max_tuple_length  = max_tuple_length;  
+  this->max_tuple_length  = max_tuple_length;
   this->table = new int*[max_num_tuples];
   for (int i = 0 ; i < max_num_tuples; i++){
     this->table[i] = new int[max_tuple_length];
@@ -11,6 +17,9 @@ ArrayList::ArrayList(int max_num_tuples, int max_tuple_length){
   this->num_entries = 0;
 }
 
+/**
+   Destructor for ArrayList
+*/
 ArrayList::~ArrayList(){
   for (int i = 0 ; i < max_num_tuples; i++){
     delete [] this->table[i];
@@ -18,10 +27,17 @@ ArrayList::~ArrayList(){
   delete [] this->table;
 }
 
+/**
+   Returns the number of entries in the list
+*/
 int ArrayList::getNumEntries(){
   return num_entries;
 }
 
+/**
+   Adds the tuple in to the list
+   @param tuple
+*/
 void ArrayList::addEntry(const int *tuple){
   for (int i = 0; i < this->max_tuple_length; i++){
     this->table[this->num_entries][i] = tuple[i];
@@ -29,22 +45,23 @@ void ArrayList::addEntry(const int *tuple){
   this->num_entries++;
 }
 
+/**
+   Gets the pointer to list entries
+*/
 void ArrayList::getEntries(int **entries){
   // Copy values for return
   for (int j = 0; j < this->num_entries; j++){
     for (int i = 0; i < this->max_tuple_length; i++){
       entries[j][i] = this->table[j][i];
-      //       printf("%d ", this->table[j][i]);
     }
-    // printf("\n");
   }
 }
 
 /*
-
+  Test function
 */
 void mainz( int argc, char *argv[] ){
-  
+
   ArrayList *dlist = new ArrayList(5,2);
 
   int d1[] = {2,4};
@@ -67,21 +84,14 @@ void mainz( int argc, char *argv[] ){
     printf("allocated\n");
   }
 
-  // if(*indx[0]){
-    
-  // };
-  
-  //  for (int j = 0; j < dlist->getNumEntries(); j++){
-  // for (int i = 0; i < 2; i++){
   printf("%d %d\n", indx[0][0], indx[0][1]);
   printf("%d %d\n", indx[1][0], indx[1][1]);
-  
-  // }     
-      //}
 
   for (int i = 0 ; i < 5; i++){
     delete [] indx[i];
   }
+
   delete [] indx;
   delete dlist;
+
 }

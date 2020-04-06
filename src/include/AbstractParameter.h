@@ -8,6 +8,9 @@
 #include <list>
 #include <map>
 
+/**
+   Abstract base class for parameters
+*/
 class AbstractParameter {
  public:
   // Constructor and destructor
@@ -22,7 +25,7 @@ class AbstractParameter {
 
   // Accessors
   //--------------------
-  int getParameterID();  
+  int getParameterID();
   int getMaxDegree();
 
   // Mutators
@@ -33,7 +36,7 @@ class AbstractParameter {
  protected:
   GaussianQuadrature *gauss;
   OrthogonalPolynomials *polyn;
-  
+
  private:
   int parameter_id;
   int dmax;
