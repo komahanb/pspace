@@ -1,6 +1,6 @@
-/*
+/**
   Class to return points and weights for Gaussian Quadrature
-  
+
   Author: Komahan Boopathy (komahanboopathy@gmail.com)
 */
 
@@ -8,31 +8,29 @@
 #include <math.h>
 #include "GaussianQuadrature.h"
 
-//===================================================================//
-// Constructor and Destructor
-//===================================================================//
-
-/*
-  Constructor
+/**
+  Constructor for gaussian quadrature
 */
 GaussianQuadrature::GaussianQuadrature(){}
 
-/*
-  Destructor
+/**
+  Destructor for gaussian quadrature
 */
 GaussianQuadrature::~GaussianQuadrature(){}
 
-
-//===================================================================//
-// Public functions
-//===================================================================//
-
-/*
+/**
   Return hermite quadrature points and weights
+
+  @param npoints number of quadrature points
+  @param mu mean
+  @param sigma standard deviation
+  @param z array of quadrature points in standard space
+  @param y array of quadrature points in general space
+  @param w array of weights
 */
-void GaussianQuadrature::hermiteQuadrature(int npoints, 
-                                           scalar mu, scalar sigma, 
-                                           scalar *z, scalar *y, scalar *w){
+void GaussianQuadrature::hermiteQuadrature( int npoints,
+                                            scalar mu, scalar sigma,
+                                            scalar *z, scalar *y, scalar *w ){
   scalar x[npoints];
   if ( npoints == 1 ){
     // points
@@ -46,7 +44,7 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
     // weights
     w[0] = 0.8862269254527579;
     w[1] = 0.8862269254527579;
-  } else if ( npoints == 3 ){ 
+  } else if ( npoints == 3 ){
     // points
     x[0] = -1.224744871391589;
     x[1] = 0.0;
@@ -93,7 +91,7 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
     w[2] = 0.7246295952243924;
     w[3] = 0.7246295952243924;
     w[4] = 0.15706732032285647;
-    w[5] = 0.004530009905508835;    
+    w[5] = 0.004530009905508835;
   } else if ( npoints == 7 ){
     // points
     x[0] = -2.6519613568352334;
@@ -120,7 +118,7 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
     x[4] = 0.3811869902073221;
     x[5] = 1.1571937124467802;
     x[6] = 1.981656756695843;
-    x[7] = 2.930637420257244;    
+    x[7] = 2.930637420257244;
     // weights
     w[0] = 0.00019960407221136783;
     w[1] = 0.017077983007413467;
@@ -516,12 +514,19 @@ void GaussianQuadrature::hermiteQuadrature(int npoints,
   }
 }
 
-/*
+/**
   Return legendre quadrature points and weights
+
+  @param npoints number of quadrature points
+  @param a lower bound
+  @param b upper bound
+  @param z array of quadrature points in standard space
+  @param y array of quadrature points in general space
+  @param w array of weights
 */
-void GaussianQuadrature::legendreQuadrature(int npoints, 
-                                            scalar a, scalar b, 
-                                            scalar *z, scalar *y, scalar *w){
+void GaussianQuadrature::legendreQuadrature( int npoints,
+                                             scalar a, scalar b,
+                                             scalar *z, scalar *y, scalar *w ){
   scalar x[npoints];
   if ( npoints == 1 ){
     // points
@@ -1027,11 +1032,19 @@ void GaussianQuadrature::legendreQuadrature(int npoints,
   }
 }
 
-/*
+
+/**
   Return laguerre quadrature points and weights
+
+  @param npoints number of quadrature points
+  @param mu location parameter
+  @param beta stretch parameter
+  @param z array of quadrature points in standard space
+  @param y array of quadrature points in general space
+  @param w array of weights
 */
-void GaussianQuadrature::laguerreQuadrature(int npoints, 
-                                            scalar mu, scalar beta, 
+void GaussianQuadrature::laguerreQuadrature(int npoints,
+                                            scalar mu, scalar beta,
                                             scalar *z, scalar *y, scalar *w){
   scalar x[npoints];
   if ( npoints == 1 ){
@@ -1473,7 +1486,7 @@ void test(int argc, char *argv[] ){
 
   // Create quadrature object
   GaussianQuadrature *gaussQuad = new GaussianQuadrature();
-  
+
   // Allocate memory on heap
   int npoints = 10;
   scalar *z = new scalar[npoints];
@@ -1483,8 +1496,8 @@ void test(int argc, char *argv[] ){
   // Hermite Quadrature
   scalar mun = 0.0;
   scalar sigman = 1.0;
-  gaussQuad->hermiteQuadrature(npoints, mun, sigman, 
-                               &z[0], &y[0], &w[0]);  
+  gaussQuad->hermiteQuadrature(npoints, mun, sigman,
+                               &z[0], &y[0], &w[0]);
   printf("Hermite Quadrature\n");
   scalar wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
@@ -1495,8 +1508,8 @@ void test(int argc, char *argv[] ){
   // Legendre Quadrature
   scalar a = 0.0;
   scalar b = 1.0;
-  gaussQuad->legendreQuadrature(npoints, a, b, 
-                                &z[0], &y[0], &w[0]);  
+  gaussQuad->legendreQuadrature(npoints, a, b,
+                                &z[0], &y[0], &w[0]);
   printf("\nLegendre Quadrature\n");
   wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
@@ -1507,8 +1520,8 @@ void test(int argc, char *argv[] ){
   // Laguerre Quadrature
   scalar mu = 0.0;
   scalar beta = 1.0;
-  gaussQuad->laguerreQuadrature(npoints, mu, beta, 
-                                &z[0], &y[0], &w[0]);  
+  gaussQuad->laguerreQuadrature(npoints, mu, beta,
+                                &z[0], &y[0], &w[0]);
   printf("\nLaguerre Quadrature\n");
   wsum = 0.0;
   for ( int i = 0 ; i < npoints; i++ ){
@@ -1522,4 +1535,3 @@ void test(int argc, char *argv[] ){
   delete[] y;
   delete[] w;
 }
-

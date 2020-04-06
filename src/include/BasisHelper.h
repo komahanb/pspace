@@ -6,6 +6,8 @@
 /**
    Class for constructing multivariate basis from univariate basis
    functions
+
+   @author Komahan Boopathy
  */
 class BasisHelper{
  public:

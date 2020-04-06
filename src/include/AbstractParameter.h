@@ -9,7 +9,9 @@
 #include <map>
 
 /**
-   Abstract base class for parameters
+   Abstract base class for probabilistically modeled parameters
+
+   @author Komahan Boopathy
 */
 class AbstractParameter {
  public:

@@ -8,6 +8,8 @@
 /**
    Factory class for creating new probabilistically modeled random
    parameters
+
+   @author Komahan Boopathy
  */
 class ParameterFactory {
  public:
