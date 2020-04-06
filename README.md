@@ -1,8 +1,4 @@
-[![Build Status](https://travis-ci.org/komahanb/pspace.svg?branch=master)](https://travis-ci.org/komahanb/pspace)
-
-<object data="https://github.com/komahanb/pspace/tree/master/docs/sgm.png" type="application/pdf" width="700px" height="700px">
-    <embed src="https://github.com/komahanb/pspace/tree/master/docs/sgm.png"> </embed>
-</object>
+![alt text](https://github.com/komahanb/pspace/tree/master/docs/sgm.png)
 
 # Probabilistic Space
 
@@ -18,7 +14,7 @@ Module for uncertainty quantification and optimization under uncertainty applica
 
 ## Distributions
 1. Gaussian/Normal
-2. Exponential 
+2. Exponential
 3. Uniform
 
 ## Quadratures
