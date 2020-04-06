@@ -3,6 +3,10 @@
 
 #include "scalar.h"
 
+/**
+   Class for constructing multivariate basis from univariate basis
+   functions
+ */
 class BasisHelper{
  public:
   // Constructor and destructor
@@ -10,24 +14,24 @@ class BasisHelper{
   ~BasisHelper();
 
   // Find tensor product of 1d rules
-  void basisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
+  void basisDegrees(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
   void sparse(const int nvars, int *dmapi, int *dmapj, int *dmapk, bool *sparse);
 
  private:
-  void univariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
+  void uniVariateBasisDegrees(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
 
   // Tensor product basis
-  void bivariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
-  void trivariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
-  void quadvariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
-  void pentavariateBasisDegrees(const int nvars, const int *pmax, int *nindices, int **indx);
+  void biVariateBasisDegreesTensor(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void triVariateBasisDegreesTensor(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void quadVariateBasisDegreesTensor(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void pentaVariateBasisDegreesTensor(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
 
   // Complete polynomial basis
-  void bivariateBasisDegreesComplete(const int nvars, const int *pmax, int *nindices, int **indx);
-  void trivariateBasisDegreesComplete(const int nvars, const int *pmax, int *nindices, int **indx);
-  void quadvariateBasisDegreesComplete(const int nvars, const int *pmax, int *nindices, int **indx);
-  void pentavariateBasisDegreesComplete(const int nvars, const int *pmax, int *nindices, int **indx);
-  
+  void biVariateBasisDegreesComplete(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void triVariateBasisDegreesComplete(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void quadVariateBasisDegreesComplete(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+  void pentaVariateBasisDegreesComplete(const int nvars, const int *pmax, int *nbasis, int **basis_degrees);
+
   // basis types available: tensor=0, complete=1
   int basis_type;
 };

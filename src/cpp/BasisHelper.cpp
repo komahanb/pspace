@@ -1,65 +1,83 @@
 #include<stdio.h>
-#include<stdlib.h>
 #include<map>
-#include<list>
-#include<vector>
 
 #include"BasisHelper.h"
 #include"ArrayList.h"
 
 using namespace std;
 
-// Constructor
-BasisHelper::BasisHelper(int _basis_type){
+/**
+   Constructor for helper class for creating orthonormal basis
+   functions from univariate basis functions.
+
+   @param basis_type the basis function type (tensor=0/complete=1)
+*/
+BasisHelper::BasisHelper( int _basis_type ){
   this->basis_type = _basis_type;
 }
 
-// Destructor
+/**
+   Destructor for BasisHelper class
+*/
 BasisHelper::~BasisHelper(){}
 
-/*
-  Return the index set corresponding to maximum degrees of each parameter
+/**
+  Return the degree index set and number of indices corresponding to
+  maximum degrees of each parameter.
+
+  @param nvars number of variables (parameters)
+  @param pmax maximum degree of each variable (parameter)
+  @param nbasis returns the number of basis entries
+  @param basis_degrees returns the index set for each basis
 */
-void BasisHelper::basisDegrees(const int nvars, const int *pmax, 
-                               int *nindices, int **indx){
+void BasisHelper::basisDegrees( const int nvars,
+                                const int *pmax,
+                                int *nbasis,
+                                int **basis_degrees ){
   if ( nvars == 1 ) {
-    univariateBasisDegrees(nvars, pmax, nindices, indx);
+    uniVariateBasisDegrees(nvars, pmax, nbasis, basis_degrees);
   } else if ( nvars == 2 ) {
     if (this->basis_type == 0) {
-      bivariateBasisDegrees(nvars, pmax, nindices, indx);
+      biVariateBasisDegreesTensor(nvars, pmax, nbasis, basis_degrees);
     } else {
-      bivariateBasisDegreesComplete(nvars, pmax, nindices, indx);
-    } 
+      biVariateBasisDegreesComplete(nvars, pmax, nbasis, basis_degrees);
+    }
   } else if ( nvars == 3 ) {
     if (this->basis_type == 0) {
-      trivariateBasisDegrees(nvars, pmax, nindices, indx);
+      triVariateBasisDegreesTensor(nvars, pmax, nbasis, basis_degrees);
     } else {
-      trivariateBasisDegreesComplete(nvars, pmax, nindices, indx);
-    } 
+      triVariateBasisDegreesComplete(nvars, pmax, nbasis, basis_degrees);
+    }
   } else if ( nvars == 4 ) {
     if (this->basis_type == 0) {
-      quadvariateBasisDegrees(nvars, pmax, nindices, indx);
+      quadVariateBasisDegreesTensor(nvars, pmax, nbasis, basis_degrees);
     } else {
-      quadvariateBasisDegreesComplete(nvars, pmax, nindices, indx);
-    }    
-  } else if ( nvars == 5 ) {   
+      quadVariateBasisDegreesComplete(nvars, pmax, nbasis, basis_degrees);
+    }
+  } else if ( nvars == 5 ) {
     if (this->basis_type == 0) {
-      pentavariateBasisDegrees(nvars, pmax, nindices, indx);
+      pentaVariateBasisDegreesTensor(nvars, pmax, nbasis, basis_degrees);
     } else {
-      pentavariateBasisDegreesComplete(nvars, pmax, nindices, indx);
+      pentaVariateBasisDegreesComplete(nvars, pmax, nbasis, basis_degrees);
     }
   } else {
-    printf("Basis not implemented for %d variables\n", nvars);
+    printf("Multivariate basis construction is not implemented for %d variables\n", nvars);
   }
 }
 
-/*
+/**
   Helps determine whether the evaluation is necessary as many terms
   are non-zero in jacobian matrix
+
+  @param dmapi degree of i-th entry of jacobian
+  @param dmapj degree of j-th entry of jacobian
+  @param dmapf degree of integrand
 */
-void BasisHelper::sparse(const int nvars, 
-                         int *dmapi, int *dmapj, int *dmapk, 
-                         bool *filter){
+void BasisHelper::sparse( const int nvars,
+                          int *dmapi,
+                          int *dmapj,
+                          int *dmapk,
+                          bool *filter ){
   for( int i = 0; i < nvars; i++ ){
     if (abs(dmapi[i] - dmapj[i]) <= dmapk[i]){
       filter[i] = true;
@@ -69,8 +87,18 @@ void BasisHelper::sparse(const int nvars,
   }
 }
 
-void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax, 
-                                         int *nindices, int **indx){
+/**
+   Function that constructs a uni-variate basis
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::uniVariateBasisDegrees( const int nvars,
+                                          const int *pmax,
+                                          int *nbasis,
+                                          int **basis_degrees ){
   // Number of terms from tensor product
   int nterms = 1;
   for (int i = 0; i < nvars; i++){
@@ -95,12 +123,12 @@ void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax,
   }
 
   int ctr = 0;
-  for (int k = 0; k < num_total_degrees; k++){    
+  for (int k = 0; k < num_total_degrees; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k < num_total_degrees; k++){
@@ -108,8 +136,18 @@ void BasisHelper::univariateBasisDegrees(const int nvars, const int *pmax,
   }
 }
 
-void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax, 
-                                        int *nindices, int **indx){
+/**
+   Function that constructs a bi-variate basis
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::biVariateBasisDegreesTensor( const int nvars,
+                                               const int *pmax,
+                                               int *nbasis,
+                                               int **basis_degrees ){
   // Number of terms from tensor product
   int nterms = 1;
   for (int i = 0; i < nvars; i++){
@@ -136,12 +174,12 @@ void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax,
   }
 
   int ctr = 0;
-  for (int k = 0; k < num_total_degrees; k++){    
+  for (int k = 0; k < num_total_degrees; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k < num_total_degrees; k++){
@@ -149,8 +187,18 @@ void BasisHelper::bivariateBasisDegrees(const int nvars, const int *pmax,
   }
 }
 
-void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax, 
-                                         int *nindices, int **indx){
+/**
+   Function that constructs a tri-variate basis
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::triVariateBasisDegreesTensor( const int nvars,
+                                                const int *pmax,
+                                                int *nbasis,
+                                                int **basis_degrees ){
   // Number of terms from tensor product
   int nterms = 1;
   for (int i = 0; i < nvars; i++){
@@ -179,12 +227,12 @@ void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax,
   }
 
   int ctr = 0;
-  for (int k = 0; k < num_total_degrees; k++){    
+  for (int k = 0; k < num_total_degrees; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k < num_total_degrees; k++){
@@ -192,8 +240,18 @@ void BasisHelper::trivariateBasisDegrees(const int nvars, const int *pmax,
   }
 }
 
-void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax, 
-                                          int *nindices, int **indx){
+/**
+   Function that constructs a quadVariate basis
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::quadVariateBasisDegreesTensor( const int nvars,
+                                                 const int *pmax,
+                                                 int *nbasis,
+                                                 int **basis_degrees ){
   // Number of terms from tensor product
   int nterms = 1;
   for (int i = 0; i < nvars; i++){
@@ -224,12 +282,12 @@ void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax,
   }
 
   int ctr = 0;
-  for (int k = 0; k < num_total_degrees; k++){    
+  for (int k = 0; k < num_total_degrees; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k < num_total_degrees; k++){
@@ -237,8 +295,19 @@ void BasisHelper::quadvariateBasisDegrees(const int nvars, const int *pmax,
   }
 }
 
-void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax, 
-                                           int *nindices, int **indx){
+/**
+   Function that constructs a penta-variate basis using tensor product
+   rule.
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::pentaVariateBasisDegreesTensor( const int nvars,
+                                                  const int *pmax,
+                                                  int *nbasis,
+                                                  int **basis_degrees ){
   // Number of terms from tensor product
   int nterms = 1;
   for (int i = 0; i < nvars; i++){
@@ -271,12 +340,12 @@ void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax,
   }
 
   int ctr = 0;
-  for (int k = 0; k < num_total_degrees; k++){    
+  for (int k = 0; k < num_total_degrees; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k < num_total_degrees; k++){
@@ -284,7 +353,11 @@ void BasisHelper::pentavariateBasisDegrees(const int nvars, const int *pmax,
   }
 }
 
-// Compute the factorial of an integer
+/**
+   Compute the factorial of an integer
+
+   @param n integer number for factorial
+*/
 int factorial(const int n) {
   unsigned long long fact = 1;
   for(int i = 1; i <=n; ++i){
@@ -293,6 +366,12 @@ int factorial(const int n) {
   return (int) fact;
 }
 
+/**
+   Returns the maximum of an array
+
+   @param n length of array
+   @param vals values
+ */
 int maxval(const int n, const int *vals){
   int mval = vals[0];
   for(int i = 1; i < n; i++){
@@ -303,16 +382,26 @@ int maxval(const int n, const int *vals){
   return mval;
 }
 
-void BasisHelper::bivariateBasisDegreesComplete(const int nvars, const int *pmax, 
-                                                int *nindices, int **indx){
+/**
+   Creates bi-variate basis using complete polynomial rule
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::biVariateBasisDegreesComplete( const int nvars,
+                                                 const int *pmax,
+                                                 int *nbasis,
+                                                 int **basis_degrees ){
   // Number of terms from factorials
   int maxpmax = maxval(nvars, pmax);
   int nterms = factorial(nvars+maxpmax)/(factorial(nvars)*factorial(maxpmax));
-  
+
   // Create a map of empty array lists
   std::map<int,ArrayList*> dmap;
   for (int k = 0; k <= maxpmax; k++){
-    dmap.insert(pair<int, ArrayList*>(k, new ArrayList(nterms, nvars)));    
+    dmap.insert(pair<int, ArrayList*>(k, new ArrayList(nterms, nvars)));
   }
 
   // Add degree wise tuples into each arraylist
@@ -326,14 +415,14 @@ void BasisHelper::bivariateBasisDegreesComplete(const int nvars, const int *pmax
     }
   }
 
-  // Fill the indx array with basis entries of increasing degree
+  // Fill the basis_degrees array with basis entries of increasing degree
   int ctr = 0;
-  for (int k = 0; k <= maxpmax; k++){  
+  for (int k = 0; k <= maxpmax; k++){
     int nbasis = dmap[k]->getNumEntries(); // of degree k
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nbasis; // add nbasis
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k <= maxpmax; k++){
@@ -341,8 +430,18 @@ void BasisHelper::bivariateBasisDegreesComplete(const int nvars, const int *pmax
   }
 }
 
-void BasisHelper::trivariateBasisDegreesComplete(const int nvars, const int *pmax, 
-                                                 int *nindices, int **indx){
+/**
+   Creates tri-variate basis using complete polynomial rule
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::triVariateBasisDegreesComplete( const int nvars,
+                                                  const int *pmax,
+                                                  int *nbasis,
+                                                  int **basis_degrees ){
   // Number of terms from factorials
   int maxpmax = maxval(nvars, pmax);
   int nterms = factorial(nvars+maxpmax)/(factorial(nvars)*factorial(maxpmax));
@@ -367,12 +466,12 @@ void BasisHelper::trivariateBasisDegreesComplete(const int nvars, const int *pma
   }
 
   int ctr = 0;
-  for (int k = 0; k <= maxpmax; k++){   
+  for (int k = 0; k <= maxpmax; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k <= maxpmax; k++){
@@ -380,8 +479,18 @@ void BasisHelper::trivariateBasisDegreesComplete(const int nvars, const int *pma
   }
 }
 
-void BasisHelper::quadvariateBasisDegreesComplete(const int nvars, const int *pmax, 
-                                                  int *nindices, int **indx){
+/**
+   Creates quad-variate basis using complete polynomial rule
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::quadVariateBasisDegreesComplete( const int nvars,
+                                                   const int *pmax,
+                                                   int *nbasis,
+                                                   int **basis_degrees ){
   // Number of terms from factorials
   int maxpmax = maxval(nvars, pmax);
   int nterms = factorial(nvars+maxpmax)/(factorial(nvars)*factorial(maxpmax));
@@ -408,12 +517,12 @@ void BasisHelper::quadvariateBasisDegreesComplete(const int nvars, const int *pm
   }
 
   int ctr = 0;
-  for (int k = 0; k <= maxpmax; k++){    
+  for (int k = 0; k <= maxpmax; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
   }
-  nindices[0] = ctr;
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k <= maxpmax; k++){
@@ -421,12 +530,22 @@ void BasisHelper::quadvariateBasisDegreesComplete(const int nvars, const int *pm
   }
 }
 
-void BasisHelper::pentavariateBasisDegreesComplete(const int nvars, const int *pmax, 
-                                                   int *nindices, int **indx){
+/**
+   Creates pentaVariate basis using complete polynomial rule
+
+   @param nvars number of variables (parameters)
+   @param pmax maximum degree of each variable (parameter)
+   @param nbasis returns the number of basis entries
+   @param basis_degrees returns the index set for each basis
+*/
+void BasisHelper::pentaVariateBasisDegreesComplete( const int nvars,
+                                                    const int *pmax,
+                                                    int *nbasis,
+                                                    int **basis_degrees ){
   // Number of terms from factorials
   int maxpmax = maxval(nvars, pmax);
   int nterms = factorial(nvars+maxpmax)/(factorial(nvars)*factorial(maxpmax));
-  
+
   // Create a map of empty array lists
   std::map<int,ArrayList*> dmap;
   for (int k = 0; k <= maxpmax; k++){
@@ -451,12 +570,12 @@ void BasisHelper::pentavariateBasisDegreesComplete(const int nvars, const int *p
   }
 
   int ctr = 0;
-  for (int k = 0; k <= maxpmax; k++){   
+  for (int k = 0; k <= maxpmax; k++){
     int nrecords = dmap[k]->getNumEntries();
-    dmap[k]->getEntries(&indx[ctr]);
+    dmap[k]->getEntries(&basis_degrees[ctr]);
     ctr = ctr + nrecords;
-  }  
-  nindices[0] = ctr;
+  }
+  nbasis[0] = ctr;
 
   // Delete the array lists
   for (int k = 0; k <= maxpmax; k++){
