@@ -5,7 +5,9 @@
 
 /**
    Class that performs multivariate quadrature from univariate
-   quadrature.
+   quadrature
+
+   @author Komahan Boopathy
  */
 class QuadratureHelper {
  public:

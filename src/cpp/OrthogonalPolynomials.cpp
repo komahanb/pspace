@@ -9,26 +9,21 @@
 
 #include "OrthogonalPolynomials.h"
 
-//===================================================================//
-// Constructor and Destructor
-//===================================================================//
-
-/*
-  Constructor
+/**
+   Constructor for orthogonal polynomials
 */
 OrthogonalPolynomials::OrthogonalPolynomials(){}
 
-/*
-  Destructor
+/**
+   Destructor for orthogonal polynomials
 */
 OrthogonalPolynomials::~OrthogonalPolynomials(){}
 
-//===================================================================//
-// Public functions
-//===================================================================//
+/**
+   Evaluate the Hermite polynomials
 
-/*  
-    Evaluate Hermite polynomials
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::hermite(scalar z, int d){
   if ( d <= 4 ) {
@@ -38,15 +33,21 @@ scalar OrthogonalPolynomials::hermite(scalar z, int d){
   }
 }
 
-/*  
-    Evaluate unit hermite polynomials
+/**
+   Evaluate the unit Hermite polynomials
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::unit_hermite(scalar z, int d){
   return hermite(z,d)/sqrt(factorial(d));
 }
 
-/*  
-    Evaluate Laguerre polynomials
+/**
+   Evaluate the Laguerre polynomials
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::laguerre(scalar z, int d){
   if ( d <= 4 ) {
@@ -56,15 +57,21 @@ scalar OrthogonalPolynomials::laguerre(scalar z, int d){
   }
 }
 
-/*  
-    Evaluate unit Laguerre polynomials (already normalized)
+/**
+   Evaluate unit Laguerre polynomials (already normalized)
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::unit_laguerre(scalar z, int d){
   return laguerre(z,d);
 }
 
-/*  
-    Evaluate Legendre polynomials
+/**
+   Evaluate Legendre polynomials
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::legendre(scalar z, int d){
   if ( d <= 4 ) {
@@ -74,19 +81,18 @@ scalar OrthogonalPolynomials::legendre(scalar z, int d){
   }
 }
 
-/*  
-    Evaluate unit legendre polynomials
+/**
+   Evaluate unit legendre polynomials
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::unit_legendre(scalar z, int d){
   return legendre(z,d)*sqrt(scalar(2*d+1));
 }
 
-//===================================================================//
-// Private functions
-//===================================================================//
-
-/*
-  Combination nCr = n!/((n-r)!r!)
+/**
+   Combination nCr = n!/((n-r)!r!)
 */
 scalar OrthogonalPolynomials::comb(int n, int r){
   scalar nfact  = factorial(n);
@@ -95,27 +101,29 @@ scalar OrthogonalPolynomials::comb(int n, int r){
   return nfact/(rfact*nrfact);
 }
 
-/*
-  Compute the factorial of a number
- */
+/**
+   Compute the factorial of a number
+
+   @param n the numbr for which factorial is needed
+*/
 scalar OrthogonalPolynomials::factorial( int n ){
   scalar factorial;
   if ( n == 0 ){
     factorial = 1.0;
   } else if ( n == 1 ){
     factorial = 1.0;
-  } else if ( n == 2 ){   
+  } else if ( n == 2 ){
     factorial = 2.0;
   } else if ( n == 3 ){
     factorial = 6.0;
   } else if ( n == 4 ){
-    factorial = 24.0;                     
+    factorial = 24.0;
   } else if ( n == 5 ){
-    factorial = 120.0;                            
+    factorial = 120.0;
   } else if ( n == 6 ){
-    factorial = 720.0;                                          
+    factorial = 720.0;
   } else if ( n == 7 ){
-    factorial = 5040.0;                                          
+    factorial = 5040.0;
   } else if ( n == 8 ){
     factorial = 40320.0;
   } else if ( n == 9 ){
@@ -131,8 +139,11 @@ scalar OrthogonalPolynomials::factorial( int n ){
   return factorial;
 }
 
-/*  
-    Hermite polynomials are evaluated using explicit expressions
+/**
+   Hermite polynomials are evaluated using explicit expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::explicit_hermite(scalar z, int d){
   scalar hval = 0.0;
@@ -140,18 +151,21 @@ scalar OrthogonalPolynomials::explicit_hermite(scalar z, int d){
     hval = 1.0;
   } else if ( d == 1 ){
     hval = z;
-  } else if ( d == 2 ){   
+  } else if ( d == 2 ){
     hval = z*z - 1.0;
   } else if ( d == 3 ){
     hval = z*z*z -3.0*z;
   } else if ( d == 4 ){
-    hval = z*z*z*z -6.0*z*z + 3.0;                     
+    hval = z*z*z*z -6.0*z*z + 3.0;
   }
   return hval;
 }
 
-/*  
-    Hermite polynomials are evaluated using recursive expressions
+/**
+   Hermite polynomials are evaluated using recursive expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::recursive_hermite(scalar z, int d){
   scalar hval = 0.0;
@@ -165,8 +179,11 @@ scalar OrthogonalPolynomials::recursive_hermite(scalar z, int d){
   return hval;
 }
 
-/*  
-    Laguerre polynomials are evaluated using explicit expressions
+/**
+   Laguerre polynomials are evaluated using explicit expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::explicit_laguerre(scalar z, int d){
   scalar lval = 0.0;
@@ -174,21 +191,24 @@ scalar OrthogonalPolynomials::explicit_laguerre(scalar z, int d){
     lval = 1.0;
   } else if ( d == 1 ){
     lval = 1.0 - z;
-  } else if ( d == 2 ){   
+  } else if ( d == 2 ){
     lval = z*z - 4.0*z + 2.0;
     lval /= factorial(2);
   } else if ( d == 3 ){
     lval = -z*z*z + 9.0*z*z - 18.0*z + 6.0;
     lval /= factorial(3);
   } else if ( d == 4 ){
-    lval = z*z*z*z - 16.0*z*z*z + 72.0*z*z - 96.0*z + 24.0;                     
+    lval = z*z*z*z - 16.0*z*z*z + 72.0*z*z - 96.0*z + 24.0;
     lval /= factorial(4);
   }
   return lval;
 }
 
-/*  
-    Laguerre polynomials are evaluated using recursive expressions
+/**
+   Laguerre polynomials are evaluated using recursive expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::recursive_laguerre(scalar z, int d){
   scalar lval = 0.0;
@@ -196,15 +216,18 @@ scalar OrthogonalPolynomials::recursive_laguerre(scalar z, int d){
     lval = 1.0;
   } else if ( d == 1 ) {
     lval = 1.0 - z;
-  } else {    
+  } else {
     lval = ((scalar(2*d-1)-z)*recursive_laguerre(z,d-1) - scalar(d-1)*recursive_laguerre(z,d-2));
     lval /= scalar(d);
   }
   return lval;
 }
 
-/*  
-    Legendre polynomials are evaluated using explicit expressions
+/**
+   Legendre polynomials are evaluated using explicit expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::explicit_legendre(scalar z, int d){
   scalar pval = 0.0;
@@ -212,18 +235,21 @@ scalar OrthogonalPolynomials::explicit_legendre(scalar z, int d){
     pval = 1.0;
   } else if ( d == 1 ){
     pval = 2.0*z - 1.0;
-  } else if ( d == 2 ){   
+  } else if ( d == 2 ){
     pval = 6.0*z*z - 6.0*z + 1.0;
   } else if ( d == 3 ){
     pval = 20.0*z*z*z - 30.0*z*z + 12.0*z - 1.0;
   } else if ( d == 4 ){
-    pval = 70.0*z*z*z*z - 140.0*z*z*z + 90.0*z*z - 20.0*z + 1.0;                     
+    pval = 70.0*z*z*z*z - 140.0*z*z*z + 90.0*z*z - 20.0*z + 1.0;
   }
   return pval;
 }
 
-/*  
-    Legendre polynomials are evaluated using general expressions
+/**
+   Legendre polynomials are evaluated using general expressions
+
+   @param z the point to evaluate the basis
+   @param d the degree of basis function
 */
 scalar OrthogonalPolynomials::general_legendre(scalar z, int d){
   scalar pval = 0.0;
@@ -234,13 +260,16 @@ scalar OrthogonalPolynomials::general_legendre(scalar z, int d){
   return pval;
 }
 
+/**
+   Function to evaluate polynomials
+*/
 void test_polynomials( int argc, char *argv[] ){
-  
+
   OrthogonalPolynomials *poly = new OrthogonalPolynomials();
 
   scalar z = 1.1;
   int max_order = 10;
-  int nruns = 100000;  
+  int nruns = 100000;
   for (int j = 0; j < nruns; j++){
     // Test hermite polynomials
     printf("hermite\n");
@@ -262,4 +291,3 @@ void test_polynomials( int argc, char *argv[] ){
   }
   delete poly;
 }
-

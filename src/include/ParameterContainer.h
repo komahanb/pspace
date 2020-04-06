@@ -8,12 +8,18 @@
 #include"BasisHelper.h"
 #include"QuadratureHelper.h"
 
+/**
+   A container class for holding parameter and evaluating multivariate
+   basis and quarature.
+
+   @author Komahan Boopathy
+ */
 class ParameterContainer {
  public:
   // Constructor and Destructor
   ParameterContainer(int basis_type=0, int quadrature_type=0);
   ~ParameterContainer();
-  
+
   // Key funtionalities
   void addParameter(AbstractParameter *param);
   // void addParameter(AbstractParameter *param, int max_deg, );
@@ -33,7 +39,7 @@ class ParameterContainer {
   void initialize();
   void initializeBasis(const int *pmax);
   void initializeQuadrature(const int *nqpts);
-  
+
  private:
   // Maintain a map of parameters
   std::map<int,AbstractParameter*> pmap;
@@ -44,7 +50,7 @@ class ParameterContainer {
 
   int *param_max_degree;   // maximum monomial degree of each parameter
   int **dindex;         // parameterwise degree for each basis entry
-  scalar **Z, **Y, *W; 
+  scalar **Z, **Y, *W;
 
   // Helpers to access basis evaluation and quadrature points
   BasisHelper *bhelper;
