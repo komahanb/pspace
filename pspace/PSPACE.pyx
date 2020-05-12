@@ -73,18 +73,18 @@ cdef class PyParameterContainer:
     def getNumQuadraturePoints(self):
         return self.ptr.getNumQuadraturePoints()
 
-    ## def getBasisParamDeg(self, int k):
-    ##     nparams = self.getNumParameters()
-    ##     cdef np.ndarray degs = None
-    ##     degs = np.zeros(nparams, dtype=int)
-    ##     #self.ptr.getBasisParamDeg(k, <int*> degs.data)
-    ##     return degs
-    ## def getBasisParamMaxDeg(self):
-    ##     nparams = self.getNumParameters()
-    ##     cdef np.ndarray pmax = None
-    ##     pmax = np.zeros(nparams, dtype=int)
-    ##     self.ptr.getBasisParamMaxDeg(<int*> pmax.data)
-    ##     return pmax
+    def getBasisParamDeg(self, int k):
+        nparams = self.getNumParameters()
+        cdef np.ndarray degs = None
+        degs = np.zeros(nparams, dtype=np.intc)
+        self.ptr.getBasisParamDeg(k, <int*> degs.data)
+        return degs
+    def getBasisParamMaxDeg(self):
+        nparams = self.getNumParameters()
+        cdef np.ndarray pmax = None
+        pmax = np.zeros(nparams, dtype=np.intc)
+        self.ptr.getBasisParamMaxDeg(<int*> pmax.data)
+        return pmax
 
     def initialize(self):
         self.ptr.initialize()
