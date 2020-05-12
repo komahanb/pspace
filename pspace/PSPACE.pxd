@@ -33,6 +33,9 @@ cdef extern from "ParameterContainer.h":
         int getNumParameters()
         int getNumQuadraturePoints()
 
+        void getBasisParamDeg(int k, int *degs)
+        void getBasisParamMaxDeg(int *pmax)
+
         # Initiliazation tasks
         void initialize();
         void initializeBasis(const int *pmax)
