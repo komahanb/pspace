@@ -18,6 +18,7 @@ import numpy as np
 class Spring:
     def __init__(self, k):
         self.k = k
+        self.dtype = type(k)
         return
     def setStiffness(self,k):
         self.k = k
@@ -25,7 +26,7 @@ class Spring:
     def R(self, q, f):
         return self.k*q - f
     def dRdq(self, q):
-        A = np.zeros((1,1))
+        A = np.zeros((1,1), dtype = self.dtype)
         A[0][0] = self.k
         return A
     def dRdk(self, q):
@@ -62,7 +63,8 @@ class Spring:
 if __name__ == "__main__":
     # Test the system
     f = np.pi
-    spr = Spring(k = np.pi/2.)
+    h = 1.0e-30j
+    spr = Spring(k = h + np.pi/2.)
     u = spr.solve(0, f)
     E = spr.F(u)
     print("force   :", f)
@@ -94,3 +96,4 @@ if __name__ == "__main__":
     DFDx = spr.getDirectDeriv(u, lam)
     print("Direct  DFDx  :", DFDx)
     print("Exact   DFDx  :", -0.5*u*u)
+    print("Complex DFDx  :", np.imag(E)/np.imag(h))
