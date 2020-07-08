@@ -13,14 +13,17 @@ Author: Komahan Boopathy
 '''
 from __future__ import print_function
 import numpy as np
+
 from collections import Counter
 from spring import Spring
-from pspace.core import ParameterFactory, ParameterContainer
-from pspace.stochastic_utils import tensor_indices, nqpts, sparse
+
+from core import ParameterFactory, ParameterContainer
+from stochastic_utils import tensor_indices, nqpts, sparse
 
 class  StochasticSpring:
     def __init__(self, dspr, pc):
         self.dspr = dspr
+        self.dtype = type(self.dspr.k)
         self.pc = pc
         self.nddof = 1
         self.nterms = self.pc.getNumStochasticBasisTerms()
@@ -33,7 +36,7 @@ class  StochasticSpring:
         guess
         """
         # Project f and create F    
-        F = np.zeros((self.nsdof))
+        F = np.zeros((self.nsdof), dtype = self.dtype)
         
         for k in range(self.nterms):
 
@@ -67,7 +70,7 @@ class  StochasticSpring:
             F[k] = fktmp
 
         # Initial guess
-        U = np.zeros((self.nsdof))
+        U = np.zeros((self.nsdof), dtype = self.dtype)
 
         # All stochastic parameters are assumed to be of degree 1
         # (constant terms)
@@ -75,7 +78,7 @@ class  StochasticSpring:
         for pid in self.pc.parameter_map.keys():
             dmapf[pid] = 1        
 
-        J = np.zeros((self.nsdof,self.nsdof))
+        J = np.zeros((self.nsdof,self.nsdof), dtype = self.dtype)
         for i in range(self.nterms):            
             imap = self.pc.basistermwise_parameter_degrees[i]
             
@@ -93,7 +96,7 @@ class  StochasticSpring:
                     # necessary for i,j-th jacobian entry
                     self.pc.initializeQuadrature(nqpts_map)
 
-                    jtmp = np.zeros((self.nddof, self.nddof))
+                    jtmp = np.zeros((self.nddof, self.nddof), dtype = self.dtype)
                                     
                     # Quadrature Loop
                     for q in self.pc.quadrature_map.keys():
@@ -107,7 +110,7 @@ class  StochasticSpring:
   
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
-                        uq = np.zeros((self.nddof))
+                        uq = np.zeros((self.nddof), dtype = self.dtype)
                         for k in range(self.nterms):
                             psiky = self.pc.evalOrthoNormalBasis(k,q)
                             uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
@@ -132,7 +135,7 @@ class  StochasticSpring:
     def adjoint_solve(self, U):
 
         # Project f and create F
-        dFdQ = np.zeros((self.nsdof))
+        dFdQ = np.zeros((self.nsdof), dtype = self.dtype)
         
         for i in range(self.nterms):
 
@@ -156,7 +159,7 @@ class  StochasticSpring:
 
                 # Create space for fetching deterministic
                 # jacobian, and state vectors that go as input
-                uq = np.zeros((self.nddof))
+                uq = np.zeros((self.nddof), dtype = self.dtype)
                 for k in range(self.nterms):
                     psiky = self.pc.evalOrthoNormalBasis(k,q)
                     uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
@@ -178,7 +181,7 @@ class  StochasticSpring:
         for pid in self.pc.parameter_map.keys():
             dmapf[pid] = 1        
 
-        J = np.zeros((self.nsdof,self.nsdof))
+        J = np.zeros((self.nsdof,self.nsdof), dtype = self.dtype)
         for i in range(self.nterms):            
             imap = self.pc.basistermwise_parameter_degrees[i]
             
@@ -196,7 +199,7 @@ class  StochasticSpring:
                     # necessary for i,j-th jacobian entry
                     self.pc.initializeQuadrature(nqpts_map)
 
-                    jtmp = np.zeros((self.nddof, self.nddof))
+                    jtmp = np.zeros((self.nddof, self.nddof), dtype = self.dtype)
                                     
                     # Quadrature Loop
                     for q in self.pc.quadrature_map.keys():
@@ -210,7 +213,7 @@ class  StochasticSpring:
   
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
-                        uq = np.zeros((self.nddof))
+                        uq = np.zeros((self.nddof), dtype = self.dtype)
                         for k in range(self.nterms):
                             psiky = self.pc.evalOrthoNormalBasis(k,q)
                             uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
@@ -247,7 +250,10 @@ def get_func_deriv(k):
 
 # Create random parameters
 pfactory = ParameterFactory()
-K = pfactory.createNormalParameter('K', dict(mu=np.pi/2., sigma=0.1*(np.pi/2.)), 7)
+h = 1.0e-30j
+#K = pfactory.createNormalParameter('K', dict(mu= h + np.pi/2., sigma=0.1*(np.pi/2.)), 7)
+#K = pfactory.createExponentialParameter('K', dict(mu= h + np.pi/2., beta=0.1*(np.pi/2.)), 7)
+K = pfactory.createUniformParameter('K', dict(a = h + 0.9*np.pi/2., b = h + 1.1*np.pi/2.), 7)
 
 # Add random parameters into a container and initialize
 pc = ParameterContainer()
@@ -255,7 +261,7 @@ pc.addParameter(K)
 pc.initialize()
 
 # Create deterministic and stochastic spring elements
-dspr = Spring(k=np.pi/2.)
+dspr = Spring(k=h + np.pi/2.)
 sspr = StochasticSpring(dspr, pc)
 
 #######################################################################
@@ -269,10 +275,12 @@ U = sspr.solve(0, f)
 # print("force   :", f)
 # print("disp    :", U)
 
+dtype = type(h)
+
 # Decompose f(y) and dfdx(y) in stochastic basis
-E = np.zeros((sspr.nsdof))
-dFdX = np.zeros((sspr.nsdof))
-dRdX = np.zeros((sspr.nsdof))
+E = np.zeros((sspr.nsdof), dtype = dtype)
+dFdX = np.zeros((sspr.nsdof), dtype = dtype)
+dRdX = np.zeros((sspr.nsdof), dtype = dtype)
 for i in range(sspr.nterms):
     # Determine num quadrature point required for k-th
     # projection
@@ -293,7 +301,7 @@ for i in range(sspr.nterms):
       
         # Create space for fetching deterministic
         # jacobian, and state vectors that go as input
-        uq = np.zeros((1)) # dspr.nddof
+        uq = np.zeros((1), dtype = dtype) # dspr.nddof
         for k in range(sspr.nterms):
             psiky = pc.evalOrthoNormalBasis(k,q)
             uq[:] += U[k*1:(k+1)*1]*psiky
@@ -334,8 +342,8 @@ nsdof = sspr.nsdof
 nddof = 1
 nterms = sspr.nterms
 
-dFdX = np.zeros((nsdof))
-e2ffprime = np.zeros((nsdof))
+dFdX = np.zeros((nsdof), dtype = dtype)
+e2ffprime = np.zeros((nsdof), dtype = dtype)
 for i in range(nterms):
 
     # Determine num quadrature point required for k-th
@@ -359,8 +367,8 @@ for i in range(nterms):
 
         # Create space for fetching deterministic
         # jacobian, and state vectors that go as input
-        uq = np.zeros((nddof))
-        lamq = np.zeros((nddof))
+        uq = np.zeros((nddof), dtype = dtype)
+        lamq = np.zeros((nddof), dtype = dtype)
         for k in range(nterms):
             psiky = pc.evalOrthoNormalBasis(k,q)
             uq[:] += U[k*nddof:(k+1)*nddof]*psiky
@@ -385,7 +393,13 @@ fvarprime = np.sum(2*E[1:]*dFdX[1:])
 fvarprime2 = e2ffprime[0] - 2.0*fmean*fmeanprime
 fstdprime = fvarprime/(2.0*np.sqrt(fvar))
 
+
+print(h)
 print('stochastic galerkin adjoint')
-print("fmean : %15.14f" % fmean, "fmeanprime : %15.14f" % fmeanprime)
-print("fvar  : %15.14f" % fvar , "fvar prime : %15.14f %15.14f" % (fvarprime, fvarprime2))
-print("fstd  : %15.14f" % fstd , "fstd prime : %15.14f" % fstdprime)
+print("fmean : %15.14f" % np.real(fmean), "fmeanprime : %15.14f" % np.real(fmeanprime))
+print("fvar  : %15.14f" % np.real(fvar) , "fvar prime : %15.14f %15.14f" % (np.real(fvarprime), np.real(fvarprime2)))
+print("fstd  : %15.14f" % np.real(fstd) , "fstd prime : %15.14f" % np.real(fstdprime))
+
+print("fmeanprime : %15.14f" % (np.imag(fmean)/1.0e-30), "fmeanprime : %15.14f" % np.real(fmeanprime))
+print("fvarprime  : %15.14f" % (np.imag(fvar)/1.0e-30) , "fvar prime : %15.14f %15.14f" % (np.real(fvarprime), np.real(fvarprime2)))
+print("fstdprime  : %15.14f" % (np.imag(fstd)/1.0e-30) , "fstd prime : %15.14f" % np.real(fstdprime))

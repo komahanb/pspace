@@ -22,6 +22,7 @@ class Spring:
         return
     def setStiffness(self,k):
         self.k = k
+        self.dtype = type(k)
         return
     def R(self, q, f):
         return self.k*q - f
