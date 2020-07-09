@@ -174,6 +174,7 @@ if __name__ == '__main__':
     plt.xlabel('time [s]')
     plt.ylabel('expectation')
     plt.legend(loc='best', frameon=False)
+    plt.ylim(top=6.0,bottom=-6.0)
     plt.savefig('vpl-galerkin-expectation.pdf',
                 bbox_inches='tight', pad_inches=0.05)
     
@@ -188,6 +189,7 @@ if __name__ == '__main__':
     plt.plot(time, uddotvar, '-', label='$\ddot{u}(t)$', mew=mew, ms=markerSize, color=tableau20[6], mec='black')
     plt.xlabel('time [s]')
     plt.ylabel('variance')
+    plt.ylim(top=6.0,bottom=-6.0)
     plt.legend(loc='best', frameon=False)
     plt.savefig('vpl-galerkin-variance.pdf',
                 bbox_inches='tight', pad_inches=0.05)
@@ -214,6 +216,7 @@ if __name__ == '__main__':
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
     
     plt.xlabel('time [s]')
+    plt.ylim(top=6.0,bottom=-6.0)
     #plt.ylabel('response')
     plt.legend(loc='best', frameon=False)
     plt.savefig('vpl-galerkin-one-sigma.pdf',
@@ -240,6 +243,7 @@ if __name__ == '__main__':
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
     
     plt.xlabel('time [s]')
+    plt.ylim(top=6.0,bottom=-6.0)
     #plt.ylabel('response')
     plt.legend(loc='best', frameon=False)
     plt.savefig('vpl-galerkin-two-sigma.pdf',
@@ -265,7 +269,8 @@ if __name__ == '__main__':
     plt.plot(time[1:], uddotmean[1:], '-', label='${E}[\ddot{u}(t)]\pm 3\cdot{S}[\ddot{u}(t)]$', mew=mew, ms=markerSize, color=tableau20[6], mec='black')
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] + sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
     plt.fill_between(time[1:], uddotmean[1:], uddotmean[1:] - sigma*np.sqrt(uddotvar[1:]), color=tableau20[7], alpha=0.5)
-    
+
+    plt.ylim(top=6.0,bottom=-6.0)
     plt.xlabel('time [s]')
     #plt.ylabel('response')
     plt.legend(loc='best', frameon=False)
