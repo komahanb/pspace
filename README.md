@@ -26,3 +26,7 @@ Module for uncertainty quantification and optimization under uncertainty applica
 1. Hermite
 2. Laguerre
 3. Legendre
+
+---
+
+Komahan Boopathy
