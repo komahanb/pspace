@@ -13,13 +13,13 @@ from collections import Counter
 ##         return [k,0,0]
 ##     elif nqpt[0] - k:
 ##         return [
-    
+
 ##     for (pid,nqpt) in zip(pids,nqpts):
 ##         print pid, nqpt
-##         if k < nqpt:mod(nqpt-k,k) 
+##         if k < nqpt:mod(nqpt-k,k)
 ##         pidx[pid] = mod(
-        
-##     return 
+
+##     return
 
 def sparse(dmapi, dmapj, dmapf):
     smap = {}
@@ -27,7 +27,7 @@ def sparse(dmapi, dmapj, dmapf):
         if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
             smap[key] = True
         else:
-            smap[key] = False    
+            smap[key] = False
     return smap
 
 def nqpts(pdeg):
@@ -41,11 +41,12 @@ def tensor_indices(phdmap):
     """
     Get basis functions indices based on tensor product
     """
-    pids  = phdmap.keys() # parameter IDs
-    pdegs = phdmap.values() # parameter degrees
+
+    pids  = list(phdmap.keys())   # parameter IDs
+    pdegs = list(phdmap.values()) # parameter degrees
 
     # Exclude deterministic terms
-    total_tensor_basis_terms = np.prod(pdegs)
+    total_tensor_basis_terms = int(np.prod(pdegs))
     num_vars = len(pdegs)
 
     # Initialize map with empty values corresponding to each key
@@ -85,7 +86,7 @@ def tensor_indices(phdmap):
                                                          pids[1]:k1,
                                                          pids[2]:k2,
                                                          pids[3]:k3})) # add four element tuple to map
-                        ctr += 1 
+                        ctr += 1
     elif num_vars == 5:
         ctr = 0
         for k0 in range(pdegs[0]):

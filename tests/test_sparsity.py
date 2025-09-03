@@ -37,14 +37,14 @@ def sparse(dmapi, dmapj, dmapf):
         if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
             smap[key] = True
         else:
-            smap[key] = False    
+            smap[key] = False
     return smap
 
 def getSymmetricNonZeroIndices(pc, dmapf):
     nz = {}
     N = pc.getNumStochasticBasisTerms()
     for i in range(N):
-        dmapi = pc.basistermwise_parameter_degrees[i]        
+        dmapi = pc.basistermwise_parameter_degrees[i]
         for j in range(i,N):
             dmapj = pc.basistermwise_parameter_degrees[j]
             smap = sparse(dmapi, dmapj, dmapf)
@@ -74,14 +74,14 @@ def getSparseJacobian(pc, f, dmapf):
 
 def getJacobian(f, dmapf):
     """
-    """    
+    """
     # Test getting ND quadrature points
     N = pc.getNumStochasticBasisTerms()
     A = np.zeros((N, N))
 
     for i in range(N):
         dmapi = pc.basistermwise_parameter_degrees[i]
-        
+
         for j in range(N):
             dmapj = pc.basistermwise_parameter_degrees[j]
 
@@ -89,7 +89,7 @@ def getJacobian(f, dmapf):
             dmap.update(dmapi)
             dmap.update(dmapj)
             dmap.update(dmapf)
-                        
+
             # add up the degree of both participating functions psizi
             # and psizj to determine the total degree of integrand
             nqpts_map = pc.getNumQuadraturePointsFromDegree(dmap)
@@ -103,10 +103,10 @@ def getJacobian(f, dmapf):
     return A
 
 if __name__ == '__main__':
-    """    
+    """
     """
     start = timer()
-    
+
     # Create "Parameter" using "Parameter Factory" object
     pfactory = ParameterFactory()
     c = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 4)
@@ -120,11 +120,11 @@ if __name__ == '__main__':
     pc.addParameter(k)
     pc.addParameter(m)
     pc.addParameter(d)
-    
+
     pc.initialize()
 
     suffix = 'eee'
-    
+
     # rename for readability
     w    = lambda q    : pc.W(q)
     psiz = lambda i, q : pc.evalOrthoNormalBasis(i,q)
@@ -136,7 +136,7 @@ if __name__ == '__main__':
         for paramid in paramids:
             ans = ans*ymap[paramid]
         return ans
-    
+
     def gy(q,pid):
         ymap = pc.Y(q)
         return ymap[pid]
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     A = getSparseJacobian(pc, func, dmap)
     #A = getJacobian(func, dmap)
     plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
-    
+
     # Nonzero constant
     func = lambda q : 1.0
     dmap[0] = 0 ;  dmap[1] = 0; dmap[2] = 0
@@ -234,17 +234,17 @@ if __name__ == '__main__':
     A = getSparseJacobian(pc, func, dmap)
     #A = getJacobian(func, dmap)
     plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
-        
+
     # y_1 * y_2 * y_3*y_4
     func = lambda q : gy(q,0) * gy(q,1) * gy(q,2) * gy(q,3)
     dmap[0] = 1; dmap[1] = 1; dmap[2] = 1; dmap[3] = 1
-    print 'first'
+    print('first')
     A = getSparseJacobian(pc, func, dmap)
-    print 'second'
+    print('second')
     A = getSparseJacobian(pc, func, dmap)
-    print 'third'
+    print('third')
     A = getSparseJacobian(pc, func, dmap)
     #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y1y2y3y4-' + suffix + '.pdf')    
+    plot_jacobian(A, 'sparsity-y1y2y3y4-' + suffix + '.pdf')
     end = timer()
-    print "elapsed time:", end - start
+    print("elapsed time:", end - start)

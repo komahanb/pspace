@@ -1,6 +1,6 @@
-import numpy as np
 import math
-from scipy import misc as sp
+import numpy as np
+import scipy.special as sp
 
 def tensor_indices(nterms):
     """
@@ -8,9 +8,9 @@ def tensor_indices(nterms):
     """
     tot_terms = np.prod(nterms)
     num_vars  = len(nterms)
-    
+
     #print tot_terms, num_vars
-    
+
     idx = {}
     for key in range(tot_terms):
         idx[key] = []
@@ -18,19 +18,19 @@ def tensor_indices(nterms):
     ## for term in nterms:
     ##     for k in range(term):
     ##         print k
-        
+
     ctr = 0
     for i in range(nterms[0]):
         for j in range(nterms[1]):
             for k in range(nterms[2]):
                 ctr += 1
                 idx[i+j+k].append((i, j, k))
-            
+
     ## for key in idx:
     ##     print idx[key], len(idx[key])
-    
+
     flat_list = [item for sublist in idx.values() for item in sublist]
-    
+
     return flat_list
 
 def laguerre(z,d):
@@ -57,7 +57,7 @@ def hermite(z, d):
 
     Hermite polynomials are produced using exp(-z^2)/sqrt(2*pi) as the
     weight on trivial monomials on interval [-inf,inf].
-    
+
     """
     if d == 0:
         return 1.0 - 0*z
@@ -71,7 +71,7 @@ def unit_hermite(z,d):
     Returns units hermite polynomial of degree n evaluated at z
     """
     return hermite(z,d)/np.sqrt(math.factorial(d))
-    
+
 ## def rlegendre(z,d):
 ##     y = 2*z-1 #(z+1)/2.0
 ##     if d == 0:
@@ -86,7 +86,7 @@ def legendre(z, d):
     Use recursion to generate Legendre polynomials
 
     Hermite polynomials are produced using rho(z) = 1.0 as the weight
-    on trivial monomials in interval [0,1].    
+    on trivial monomials in interval [0,1].
     """
     p = 0.0
     for k in range(d+1):
@@ -98,11 +98,11 @@ def unit_legendre(z,d):
     return legendre(z,d)*np.sqrt(2*d+1)
 
 if __name__ == "__main__":
-    
+
     """
     Test hermite polynomials
     """
-    
+
     print (unit_hermite(1.2,0), hermite(1.2,0)/np.sqrt(math.factorial(0)))
     print (unit_hermite(1.2,1), hermite(1.2,1)/np.sqrt(math.factorial(1)))
     print (unit_hermite(1.2,2), hermite(1.2,2)/np.sqrt(math.factorial(2)))
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     """
     Test Legendre polynomials
     """
-    
+
     print ("legendre")
     print (unit_legendre(1.2,0), legendre(1.2,0), rlegendre(1.2,0))
     print (unit_legendre(1.2,1), legendre(1.2,1), rlegendre(1.2,1))
