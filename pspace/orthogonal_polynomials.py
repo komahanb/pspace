@@ -38,7 +38,7 @@ def laguerre(z,d):
     Polynomials such that <f(z), g(z)>_{exp(-z)}^{0,inf} = 0
     """
     if d == 0:
-        return 1.0 - 0*z
+        return 1.0
     elif d == 1:
         return 1.0 - z
     else:
@@ -60,7 +60,7 @@ def hermite(z, d):
 
     """
     if d == 0:
-        return 1.0 - 0*z
+        return 1.0
     elif d == 1:
         return z
     else:
@@ -72,20 +72,19 @@ def unit_hermite(z,d):
     """
     return hermite(z,d)/np.sqrt(math.factorial(d))
 
-## def rlegendre(z,d):
-##     y = 2*z-1 #(z+1)/2.0
-##     if d == 0:
-##         return 1.0
-##     elif d == 1:
-##         return y
-##     else:
-##         return ((2*(d-1)+1)*y*rlegendre(y,d-1)-(d-1)*rlegendre(y,d-2))/(1.0*d)
+def rlegendre(z, d):
+    if d == 0:
+        return 1.0
+    if d == 1:
+        return 2.0*z - 1.0
+    return ((2*d - 1) * (2*z - 1) * rlegendre(z, d-1)
+            - (d - 1) * rlegendre(z, d-2)) / d
 
 def legendre(z, d):
     """
     Use recursion to generate Legendre polynomials
 
-    Hermite polynomials are produced using rho(z) = 1.0 as the weight
+    Legendre polynomials are produced using rho(z) = 1.0 as the weight
     on trivial monomials in interval [0,1].
     """
     p = 0.0
@@ -102,7 +101,7 @@ if __name__ == "__main__":
     """
     Test hermite polynomials
     """
-
+    print("    Test Hermite polynomials   ")
     print (unit_hermite(1.2,0), hermite(1.2,0)/np.sqrt(math.factorial(0)))
     print (unit_hermite(1.2,1), hermite(1.2,1)/np.sqrt(math.factorial(1)))
     print (unit_hermite(1.2,2), hermite(1.2,2)/np.sqrt(math.factorial(2)))
@@ -113,9 +112,20 @@ if __name__ == "__main__":
     Test Legendre polynomials
     """
 
-    print ("legendre")
+    print("    Test Legendre polynomials   ")
     print (unit_legendre(1.2,0), legendre(1.2,0), rlegendre(1.2,0))
     print (unit_legendre(1.2,1), legendre(1.2,1), rlegendre(1.2,1))
     print (unit_legendre(1.2,2), legendre(1.2,2), rlegendre(1.2,2))
     print (unit_legendre(1.2,3), legendre(1.2,3), rlegendre(1.2,3))
     print (unit_legendre(1.2,4), legendre(1.2,4), rlegendre(1.2,4))
+
+
+    """
+    Test laguerre polynomials
+    """
+    print("    Test Laguerre polynomials   ")
+    print (unit_laguerre(1.2,0), laguerre(1.2,0))
+    print (unit_laguerre(1.2,1), laguerre(1.2,1))
+    print (unit_laguerre(1.2,2), laguerre(1.2,2))
+    print (unit_laguerre(1.2,3), laguerre(1.2,3))
+    print (unit_laguerre(1.2,4), laguerre(1.2,4))
