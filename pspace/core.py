@@ -10,9 +10,9 @@ from enum import Enum
 
 # Local modules
 from .stochastic_utils import tensor_indices, nqpts, sparse
-from .orthogonal_polynomials import unit_hermite as Hhat
-from .orthogonal_polynomials import unit_legendre as Phat
-from .orthogonal_polynomials import unit_laguerre as Lhat
+from .orthogonal_polynomials import unit_hermite
+from .orthogonal_polynomials import unit_legendre
+from .orthogonal_polynomials import unit_laguerre
 from .plotter import plot_jacobian, plot_vector
 
 def index(ii):
@@ -168,7 +168,7 @@ class ExponentialParameter(Parameter):
         """
         Evaluate the orthonormal basis at supplied coordinate.
         """
-        return Lhat(z,d)
+        return unit_laguerre(z,d)
 
 class NormalParameter(Parameter):
     def __init__(self, pdata):
@@ -203,7 +203,7 @@ class NormalParameter(Parameter):
         """
         Evaluate the orthonormal basis at supplied coordinate.
         """
-        return Hhat(z, d)
+        return unit_hermite(z, d)
 
 class UniformParameter(Parameter):
     def __init__(self, pdata):
@@ -238,7 +238,7 @@ class UniformParameter(Parameter):
         """
         Evaluate the orthonormal basis at supplied coordinate.
         """
-        return Phat(z,d)
+        return unit_legendre(z,d)
 
 class HashableDict(dict):
     def __hash__(self):
