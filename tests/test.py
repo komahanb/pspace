@@ -190,6 +190,24 @@ def test_nonstandard_exponential():
     assert ok, f"Non-standard Exponential consistency failed: {errors}"
     print("Non-standard ExponentialParameter consistency check passed.")
 
+def test_container_consistency():
+    factory = ParameterFactory()
+    pc = ParameterContainer()
+
+    # Standard + non-standard parameters
+    pc.addParameter(factory.createUniformParameter("u", {"a":-1.0,"b":1.0}, monomial_degree=3))
+    pc.addParameter(factory.createNormalParameter("n", {"mu":2.0,"sigma":1.5}, monomial_degree=3))
+    pc.addParameter(factory.createExponentialParameter("e", {"mu":3.0,"beta":2.0}, monomial_degree=2))
+
+    # Initialize container
+    pc.initialize()
+
+    # Run check
+    ok, errors = pc.checkConsistency(max_degree=5, tol=1e-10)
+
+    assert ok, f"ParameterContainer consistency failed: {errors}"
+    print("ParameterContainer consistency check passed.")
+
 if __name__ == "__main__":
     test_standard_uniform()
     test_nonstandard_uniform()
@@ -197,6 +215,8 @@ if __name__ == "__main__":
     test_nonstandard_normal()
     test_standard_exponential()
     test_nonstandard_exponential()
+
+    test_container_consistency()
 
     #for n in range(5):
     #    testall(n+1)
