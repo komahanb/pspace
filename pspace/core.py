@@ -7,6 +7,7 @@ np.set_printoptions(precision=3,suppress=True)
 import math
 from collections import Counter
 from enum import Enum
+from itertools import product
 
 # Local modules
 from .stochastic_utils import tensor_indices, nqpts, sparse
@@ -101,6 +102,7 @@ class Parameter(object):
 
     def evalOrthoNormalBasis(self, z, d):
         pass
+
 
     def checkConsistency(self, max_degree=5, npoints=20, tol=1e-12, verbose=True):
         """
@@ -511,7 +513,6 @@ class ParameterContainer:
     def evalOrthoNormalBasis(self, k, q):
         return self.psi(k, self.Z(q))
 
-    from itertools import product
 
     def getQuadraturePointsWeights(self, param_nqpts_map):
         """
@@ -990,3 +991,61 @@ class ParameterContainer:
             ##     vdd[np.abs(vdd) < eps] = 0
 
         return
+
+    def checkConsistency(self, max_degree=None, tol=1e-12, verbose=True):
+        """
+        Check orthonormality of the multivariate basis functions
+        under the container's quadrature.
+
+        Parameters
+        ----------
+        max_degree : int or None
+        Maximum polynomial degree to check. If None, uses
+        all available basis terms.
+        tol : float
+        Numerical tolerance for delta_{ij}.
+        verbose : bool
+        Print results if True.
+
+        Returns
+        -------
+        ok : bool
+        True if all checks pass within tolerance.
+        errors : list
+        List of (i,j,value) where error > tol.
+        """
+
+        # Ensure initialization
+        if not hasattr(self, "quadrature_map"):
+            nqpts_map = self.getNumQuadraturePoints()
+            self.initializeQuadrature(nqpts_map)
+
+        nbasis = self.getNumStochasticBasisTerms()
+        if max_degree is not None:
+            nbasis = min(nbasis, max_degree+1)
+
+        errors = []
+        ok = True
+
+        # Loop over basis indices
+        for i in range(nbasis):
+            for j in range(nbasis):
+                s = 0.0
+                # Quadrature loop
+                for q in self.quadrature_map.keys():
+                    psi_i = self.evalOrthoNormalBasis(i,q)
+                    psi_j = self.evalOrthoNormalBasis(j,q)
+                    wq    = self.W(q)
+                    s += psi_i * psi_j * wq
+                target = 1.0 if i == j else 0.0
+                if abs(s - target) > tol:
+                    ok = False
+                    errors.append((i, j, s))
+                    if verbose:
+                        print(f"Fail: <Psi_{i}, Psi_{j}> = {s:.6e} (expected {target})")
+
+        if verbose and ok:
+            print(f"[ParameterContainer] consistency check passed "
+                  f"for {nbasis} basis terms.")
+
+        return ok, errors
