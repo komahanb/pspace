@@ -995,27 +995,29 @@ class ParameterContainer:
     def checkConsistency(self, max_degree=None, tol=1e-12, verbose=True):
         """
         Check orthonormality of the multivariate basis functions
-        under the container's quadrature.
+        under the container's quadrature. Also prints a table of
+        inner products for debugging.
 
         Parameters
         ----------
         max_degree : int or None
-        Maximum polynomial degree to check. If None, uses
-        all available basis terms.
+            Maximum number of basis terms to check. If None, uses
+            all available basis terms.
         tol : float
-        Numerical tolerance for delta_{ij}.
+            Numerical tolerance for delta_{ij}.
         verbose : bool
-        Print results if True.
+            Print results if True.
 
         Returns
         -------
         ok : bool
-        True if all checks pass within tolerance.
+            True if all checks pass within tolerance.
         errors : list
-        List of (i,j,value) where error > tol.
+            List of (i,j,value) where error > tol.
+        gram : np.ndarray
+            Inner product matrix (approximate identity).
         """
-
-        # Ensure initialization
+        # Ensure quadrature is initialized
         if not hasattr(self, "quadrature_map"):
             nqpts_map = self.getNumQuadraturePoints()
             self.initializeQuadrature(nqpts_map)
@@ -1024,28 +1026,34 @@ class ParameterContainer:
         if max_degree is not None:
             nbasis = min(nbasis, max_degree+1)
 
+        gram = np.zeros((nbasis, nbasis))
         errors = []
         ok = True
 
-        # Loop over basis indices
+        # Build Gram matrix
         for i in range(nbasis):
             for j in range(nbasis):
                 s = 0.0
-                # Quadrature loop
                 for q in self.quadrature_map.keys():
                     psi_i = self.evalOrthoNormalBasis(i,q)
                     psi_j = self.evalOrthoNormalBasis(j,q)
                     wq    = self.W(q)
                     s += psi_i * psi_j * wq
+                gram[i,j] = s
                 target = 1.0 if i == j else 0.0
                 if abs(s - target) > tol:
                     ok = False
                     errors.append((i, j, s))
-                    if verbose:
-                        print(f"Fail: <Psi_{i}, Psi_{j}> = {s:.6e} (expected {target})")
 
-        if verbose and ok:
-            print(f"[ParameterContainer] consistency check passed "
-                  f"for {nbasis} basis terms.")
+        if verbose:
+            print(f"[ParameterContainer] Gram matrix for {nbasis} basis terms:")
+            with np.printoptions(precision=3, suppress=True):
+                print(gram)
 
-        return ok, errors
+            if ok:
+                print(f"[ParameterContainer] consistency check passed "
+                      f"for {nbasis} basis terms.")
+            else:
+                print(f"[ParameterContainer] FAILED: {len(errors)} inconsistencies found.")
+
+        return ok, errors, gram

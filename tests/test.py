@@ -194,25 +194,26 @@ def test_container_consistency():
     factory = ParameterFactory()
     pc = ParameterContainer()
 
-    # Standard + non-standard parameters
-    pc.addParameter(factory.createUniformParameter("u", {"a":-1.0,"b":1.0}, monomial_degree=3))
+    # Mix of standard and non-standard
+    pc.addParameter(factory.createUniformParameter("u", {"a":0.0,"b":1.0}, monomial_degree=3))
     pc.addParameter(factory.createNormalParameter("n", {"mu":2.0,"sigma":1.5}, monomial_degree=3))
-    pc.addParameter(factory.createExponentialParameter("e", {"mu":3.0,"beta":2.0}, monomial_degree=2))
+    pc.addParameter(factory.createExponentialParameter("e", {"mu":1.0,"beta":0.5}, monomial_degree=2))
 
-    # Initialize container
     pc.initialize()
 
-    # Run check
-    ok, errors = pc.checkConsistency(max_degree=5, tol=1e-10)
+    ok, errors, gram = pc.checkConsistency(max_degree=5, tol=1e-10, verbose=True)
+    ok, errors, gram = pc.checkConsistency(tol=1e-10, verbose=True)
 
-    assert ok, f"ParameterContainer consistency failed: {errors}"
+    assert ok, f"Container consistency failed with errors: {errors}"
     print("ParameterContainer consistency check passed.")
 
 if __name__ == "__main__":
     test_standard_uniform()
     test_nonstandard_uniform()
+
     test_standard_normal()
     test_nonstandard_normal()
+
     test_standard_exponential()
     test_nonstandard_exponential()
 
