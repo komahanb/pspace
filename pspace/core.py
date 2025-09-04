@@ -102,6 +102,53 @@ class Parameter(object):
     def evalOrthoNormalBasis(self, z, d):
         pass
 
+    def checkConsistency(self, max_degree=5, npoints=20, tol=1e-12, verbose=True):
+        """
+        Check orthonormality of unit polynomials under quadrature.
+
+        Parameters
+        ----------
+        max_degree : int
+            Highest polynomial degree to check.
+        npoints : int
+            Number of quadrature points to use.
+        tol : float
+            Numerical tolerance for delta_{mn}.
+        verbose : bool
+            Print results if True.
+
+        Returns
+        -------
+        ok : bool
+            True if all checks pass within tolerance.
+        errors : list
+            List of (m,n,value) where error > tol.
+        """
+        # 1D quadrature from this parameter
+        qmap = self.getQuadraturePointsWeights(npoints)
+        z = qmap['zq']
+        w = qmap['wq']
+
+        errors = []
+        ok = True
+
+        # check inner products
+        for m in range(max_degree+1):
+            pm = self.evalOrthoNormalBasis(z, m)
+            for n in range(max_degree+1):
+                pn = self.evalOrthoNormalBasis(z, n)
+                ip = np.sum(pm*pn*w)  # quadrature inner product
+                target = 1.0 if m == n else 0.0
+                if abs(ip - target) > tol:
+                    ok = False
+                    errors.append((m, n, ip))
+                    if verbose:
+                        print(f"Fail: <phi_{m}, phi_{n}> = {ip:.6e} (expected {target})")
+        if verbose and ok:
+            print(f"[{self.__class__.__name__}] consistency check passed "
+                  f"for degrees ≤ {max_degree} with {npoints} points.")
+        return ok, errors
+
 class DeterministicParameter(Parameter):
     def __init__(self, pdata):
         super(DeterministicParameter, self).__init__(pdata)
@@ -464,7 +511,36 @@ class ParameterContainer:
     def evalOrthoNormalBasis(self, k, q):
         return self.psi(k, self.Z(q))
 
+    from itertools import product
+
     def getQuadraturePointsWeights(self, param_nqpts_map):
+        """
+        Return a map of quadrature point index → quadrature data (Y,Z,W).
+        Works for arbitrary number of parameters.
+        """
+        pids  = list(param_nqpts_map.keys())
+        nqpts = list(param_nqpts_map.values())
+
+        # fetch 1D quadrature maps for each parameter
+        maps = [self.getParameter(pid).getQuadraturePointsWeights(n)
+                for pid, n in zip(pids, nqpts)]
+
+        qmap = {}
+        ctr = 0
+
+        # Cartesian product of index ranges
+        for idx_tuple in product(*[range(n) for n in nqpts]):
+            yvec, zvec, w = {}, {}, 1.0
+            for pid, i, m in zip(pids, idx_tuple, maps):
+                yvec[pid] = m['yq'][i]
+                zvec[pid] = m['zq'][i]
+                w        *= m['wq'][i]
+            qmap[ctr] = {'Y': yvec, 'Z': zvec, 'W': w}
+            ctr += 1
+        return qmap
+
+
+    def getQuadraturePointsWeightsOld(self, param_nqpts_map):
         """
         Return a map of k : qmap, where k is the global basis index
         """
