@@ -518,8 +518,8 @@ class ParameterContainer:
 
     def getQuadraturePointsWeights(self, param_nqpts_map):
         """
-        Return a map of quadrature point index → quadrature data (Y,Z,W).
-        Works for arbitrary number of parameters.
+        Return a map of quadrature point index : quadrature data (Y,Z,W).
+        Works for arbitrary number of random variables.
         """
         pids  = list(param_nqpts_map.keys())
         nqpts = list(param_nqpts_map.values())
@@ -528,10 +528,9 @@ class ParameterContainer:
         maps = [self.getParameter(pid).getQuadraturePointsWeights(n)
                 for pid, n in zip(pids, nqpts)]
 
+        # Cartesian product of index ranges
         qmap = {}
         ctr = 0
-
-        # Cartesian product of index ranges
         for idx_tuple in product(*[range(n) for n in nqpts]):
             yvec, zvec, w = {}, {}, 1.0
             for pid, i, m in zip(pids, idx_tuple, maps):
@@ -540,220 +539,8 @@ class ParameterContainer:
                 w        *= m['wq'][i]
             qmap[ctr] = {'Y': yvec, 'Z': zvec, 'W': w}
             ctr += 1
+
         return qmap
-
-
-    def getQuadraturePointsWeightsOld(self, param_nqpts_map):
-        """
-        Return a map of k : qmap, where k is the global basis index
-        """
-        params = list(param_nqpts_map.keys())
-        nqpts  = list(param_nqpts_map.values())
-
-        # exclude deterministic terms?
-        total_quadrature_points = int(np.prod(nqpts))
-        num_vars = len(params)
-
-        # Initialize map with empty values corresponding to each key
-        qmap = {}
-        for key in range(total_quadrature_points):
-            qmap[key] = []
-
-        if num_vars == 1:
-
-            # Get 1d-quadrature maps
-            map0 = self.getParameter(0).getQuadraturePointsWeights(nqpts[0])
-            pid0 = self.getParameter(0).getParameterID()
-
-            # Tensor product of 1D-quadrature to get N-D quadrature
-            ctr = 0
-
-            for i0 in range(nqpts[0]):
-
-                yvec = { pid0 : map0['yq'][i0] }
-
-                zvec = { pid0 : map0['zq'][i0] }
-
-                w  = map0['wq'][i0]
-
-                data = {'Y' : yvec, 'Z' : zvec, 'W' : w}
-
-                qmap[ctr] = data
-
-                ctr += 1
-
-
-            return qmap
-
-
-        elif num_vars == 2:
-
-            # Get 1d-quadrature maps
-            map0 = self.getParameter(0).getQuadraturePointsWeights(nqpts[0])
-            map1 = self.getParameter(1).getQuadraturePointsWeights(nqpts[1])
-
-            pid0 = self.getParameter(0).getParameterID()
-            pid1 = self.getParameter(1).getParameterID()
-
-            # Tensor product of 1D-quadrature to get N-D quadrature
-            ctr = 0
-
-            for i0 in range(nqpts[0]):
-                for i1 in range(nqpts[1]):
-
-                    yvec = { pid0 : map0['yq'][i0],
-                             pid1 : map1['yq'][i1] }
-
-                    zvec = { pid0 : map0['zq'][i0],
-                             pid1 : map1['zq'][i1] }
-
-                        ## wvec = { pid0 : map0['wq'][i0],
-                        ##          pid1 : map1['wq'][i1],
-                        ##          pid2 : map2['wq'][i2] }
-
-                    w  = map0['wq'][i0]*map1['wq'][i1]
-
-                    data = {'Y' : yvec, 'Z' : zvec, 'W' : w}
-
-                    qmap[ctr] = data
-
-                    ctr += 1
-
-            # Check if the sum of weights is one
-
-            return qmap
-
-        elif num_vars == 3:
-
-            # Get 1d-quadrature maps
-            map0 = self.getParameter(0).getQuadraturePointsWeights(nqpts[0])
-            map1 = self.getParameter(1).getQuadraturePointsWeights(nqpts[1])
-            map2 = self.getParameter(2).getQuadraturePointsWeights(nqpts[2])
-
-            pid0 = self.getParameter(0).getParameterID()
-            pid1 = self.getParameter(1).getParameterID()
-            pid2 = self.getParameter(2).getParameterID()
-
-            # Tensor product of 1D-quadrature to get N-D quadrature
-            ctr = 0
-
-            for i0 in range(nqpts[0]):
-                for i1 in range(nqpts[1]):
-                    for i2 in range(nqpts[2]):
-
-                        yvec = { pid0 : map0['yq'][i0],
-                                 pid1 : map1['yq'][i1],
-                                 pid2 : map2['yq'][i2] }
-
-                        zvec = { pid0 : map0['zq'][i0],
-                                 pid1 : map1['zq'][i1],
-                                 pid2 : map2['zq'][i2] }
-
-                        ## wvec = { pid0 : map0['wq'][i0],
-                        ##          pid1 : map1['wq'][i1],
-                        ##          pid2 : map2['wq'][i2] }
-
-                        w  = map0['wq'][i0]*map1['wq'][i1]*map2['wq'][i2]
-
-                        data = {'Y' : yvec, 'Z' : zvec, 'W' : w}
-
-                        qmap[ctr] = data
-
-                        ctr += 1
-
-            # Check if the sum of weights is one
-
-            return qmap
-
-        elif num_vars == 4:
-
-            # Get 1d-quadrature maps
-            map0 = self.getParameter(0).getQuadraturePointsWeights(nqpts[0])
-            map1 = self.getParameter(1).getQuadraturePointsWeights(nqpts[1])
-            map2 = self.getParameter(2).getQuadraturePointsWeights(nqpts[2])
-            map3 = self.getParameter(3).getQuadraturePointsWeights(nqpts[3])
-
-            pid0 = self.getParameter(0).getParameterID()
-            pid1 = self.getParameter(1).getParameterID()
-            pid2 = self.getParameter(2).getParameterID()
-            pid3 = self.getParameter(3).getParameterID()
-
-            # Tensor product of 1D-quadrature to get N-D quadrature
-            ctr = 0
-
-            for i0 in range(nqpts[0]):
-                for i1 in range(nqpts[1]):
-                    for i2 in range(nqpts[2]):
-                        for i3 in range(nqpts[3]):
-
-                            yvec = { pid0 : map0['yq'][i0],
-                                     pid1 : map1['yq'][i1],
-                                     pid2 : map2['yq'][i2],
-                                     pid3 : map3['yq'][i3]}
-
-
-                            zvec = { pid0 : map0['zq'][i0],
-                                     pid1 : map1['zq'][i1],
-                                     pid2 : map2['zq'][i2],
-                                     pid3 : map3['zq'][i3]}
-
-                            w  = map0['wq'][i0]*map1['wq'][i1]*map2['wq'][i2]*map3['wq'][i3]
-
-                            data = {'Y' : yvec, 'Z' : zvec, 'W' : w}
-
-                            qmap[ctr] = data
-
-                            ctr += 1
-
-            # Check if the sum of weights is one
-
-            return qmap
-
-        elif num_vars == 5:
-
-            # Get 1d-quadrature maps
-            map0 = self.getParameter(0).getQuadraturePointsWeights(nqpts[0])
-            map1 = self.getParameter(1).getQuadraturePointsWeights(nqpts[1])
-            map2 = self.getParameter(2).getQuadraturePointsWeights(nqpts[2])
-            map3 = self.getParameter(3).getQuadraturePointsWeights(nqpts[3])
-            map4 = self.getParameter(4).getQuadraturePointsWeights(nqpts[4])
-
-            pid0 = self.getParameter(0).getParameterID()
-            pid1 = self.getParameter(1).getParameterID()
-            pid2 = self.getParameter(2).getParameterID()
-            pid3 = self.getParameter(3).getParameterID()
-            pid4 = self.getParameter(4).getParameterID()
-
-            # Tensor product of 1D-quadrature to get N-D quadrature
-            ctr = 0
-
-            for i0 in range(nqpts[0]):
-                for i1 in range(nqpts[1]):
-                    for i2 in range(nqpts[2]):
-                        for i3 in range(nqpts[3]):
-                            for i4 in range(nqpts[4]):
-
-                                yvec = { pid0 : map0['yq'][i0],
-                                         pid1 : map1['yq'][i1],
-                                         pid2 : map2['yq'][i2],
-                                         pid3 : map3['yq'][i3],
-                                         pid4 : map4['yq'][i4]}
-
-
-                                zvec = { pid0 : map0['zq'][i0],
-                                         pid1 : map1['zq'][i1],
-                                         pid2 : map2['zq'][i2],
-                                         pid3 : map3['zq'][i3],
-                                         pid4 : map4['zq'][i4]}
-
-                                w  = map0['wq'][i0]*map1['wq'][i1]*map2['wq'][i2]*map3['wq'][i3]*map4['wq'][i4]
-
-                                data = {'Y' : yvec, 'Z' : zvec, 'W' : w}
-
-                                qmap[ctr] = data
-
-                                ctr += 1
-            return qmap
 
     def projectResidual(self, elem, time, res, X, v, dv, ddv):
         """

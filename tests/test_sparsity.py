@@ -59,10 +59,10 @@ if __name__ == '__main__':
 
     def generate_baseline(F : Function):
         A = pc.getJacobian(F.func, F.dmap)
-        np.save('tests/baseline/matrix-full-assembly-' + F.name + '-.npy', A)
+        np.save(os.path.join(outdir, f"matrix-full-assembly-{F.name}.npy"), A)
 
-        A = pc.getSparseJacobian(func, dmap)
-        np.save('tests/baseline/matrix-sparse-assembly-' + F.name + '-.npy', A)
+        A = pc.getSparseJacobian(F.func, F.dmap)
+        np.save(os.path.join(outdir, f"matrix-sparse-assembly-{F.name}.npy"), A)
 
     # constant: y0^0 * y1^0 * y2^0
     func = lambda q : y(q,0) * y(q,1) * y(q,2)
@@ -79,6 +79,6 @@ if __name__ == '__main__':
     # quadratic : define: y0^2 + y1^2 + y2^2
     dmap = Counter()
     dmap[0] = 2; dmap[1] = 2; dmap[2] = 2
-    func = lambda q : y(q,0) + y(q,1) + y(q,2)
+    func = lambda q : y(q,0)**2 + y(q,1)**2 + y(q,2)**2
     quadratic_function = Function(func, dmap, "y1^2+y2^2+y3^2")
     generate_baseline(quadratic_function)
