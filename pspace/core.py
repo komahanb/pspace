@@ -2,19 +2,21 @@
 from __future__ import print_function
 
 # External modules
+import math
+
 import numpy as np
 np.set_printoptions(precision=3,suppress=True)
-import math
+
 from collections import Counter
-from enum import Enum
-from itertools import product
+from enum        import Enum
+from itertools   import product
 
 # Local modules
-from .stochastic_utils import tensor_indices, nqpts, sparse
+from .stochastic_utils       import tensor_indices, nqpts, sparse
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
 from .orthogonal_polynomials import unit_laguerre
-from .plotter import plot_jacobian, plot_vector
+from .plotter                import plot_jacobian, plot_vector
 
 def index(ii):
     return ii
@@ -1057,3 +1059,77 @@ class ParameterContainer:
                 print(f"[ParameterContainer] FAILED: {len(errors)} inconsistencies found.")
 
         return ok, errors, gram
+
+
+    def sparse(self, dmapi, dmapj, dmapf):
+        smap = {}
+        for key in dmapi.keys():
+            if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
+                smap[key] = True
+            else:
+                smap[key] = False
+        return smap
+
+    def getSymmetricNonZeroIndices(self, dmapf):
+        nz = {}
+        N = self.getNumStochasticBasisTerms()
+        for i in range(N):
+            dmapi = self.basistermwise_parameter_degrees[i]
+            for j in range(i,N):
+                dmapj = self.basistermwise_parameter_degrees[j]
+                smap = self.sparse(dmapi, dmapj, dmapf)
+                if False not in smap.values():
+                    dmap = Counter()
+                    dmap.update(dmapi)
+                    dmap.update(dmapj)
+                    dmap.update(dmapf)
+                    nqpts_map = self.getNumQuadraturePointsFromDegree(dmap)
+                    nz[(i,j)] = nqpts_map
+        return nz
+
+    def getSparseJacobian(self, f, dmapf):
+        # rename member functions for local readability
+        w    = lambda q    : self.W(q)
+        psiz = lambda i, q : self.evalOrthoNormalBasis(i,q)
+
+        nzs = self.getSymmetricNonZeroIndices(dmapf)
+        N   = self.getNumStochasticBasisTerms()
+        A   = np.zeros((N, N))
+        for index, nqpts in nzs.items():
+            self.initializeQuadrature(nqpts)
+            pids = self.getParameters().keys()
+            i    = index[0]
+            j    = index[1]
+            for q in self.quadrature_map.keys():
+                val      = w(q)*psiz(i,q)*psiz(j,q)*f(q)
+                A[i, j] += val
+                A[j, i] += val
+        return A
+
+    def getJacobian(self, f, dmapf):
+        # rename member functions for local readability
+        w    = lambda q    : self.W(q)
+        psiz = lambda i, q : self.evalOrthoNormalBasis(i,q)
+
+        N = self.getNumStochasticBasisTerms()
+        A = np.zeros((N, N))
+        for i in range(N):
+            dmapi = self.basistermwise_parameter_degrees[i]
+            for j in range(N):
+                dmapj = self.basistermwise_parameter_degrees[j]
+
+                dmap = Counter()
+                dmap.update(dmapi)
+                dmap.update(dmapj)
+                dmap.update(dmapf)
+
+                # add up the degree of both participating functions psizi
+                # and psizj to determine the total degree of integrand
+                nqpts_map = self.getNumQuadraturePointsFromDegree(dmap)
+                self.initializeQuadrature(nqpts_map)
+
+                # Loop quadrature points
+                pids = self.getParameters().keys()
+                for q in self.quadrature_map.keys():
+                    A[i,j] += w(q)*psiz(i,q)*psiz(j,q)*f(q)
+        return A
