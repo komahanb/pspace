@@ -22,7 +22,7 @@ from enum        import Enum
 from itertools   import product
 
 # Local modules
-from .stochastic_utils       import minnum_quadrature_points, generate_basis_tensor_degree
+from .stochastic_utils       import minnum_quadrature_points, generate_basis_tensor_degree, sum_degrees, safe_zero_degrees
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
 from .orthogonal_polynomials import unit_laguerre
@@ -220,32 +220,174 @@ class CoordinateSystem:
     3. Manages integrations (inner-product) along these dimensions through quadrature
     """
     def __init__(self, basis_type):
-        self.coordinates        = {}    # p0, p1, p2, ...
+        self.coordinates        = {}    # cid -> Coordinate
         self.basis_construction = basis_type
-        self.basis              = None
+        self.basis              = None  # {basis_id: Counter({cid:deg,...})}
 
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
+
+    def getNumBasisFunctions(self):
+        return len(self.basis)
 
     def getNumCoordinateAxes(self):
         return len(self.coordinates.keys())
 
     def getMonomialDegreeCoordinates(self):
+        # map cid -> configured max degree for that coordinate (basis richness)
         return {cid: coord.degree for cid, coord in self.coordinates.items()}
 
     def addCoordinateAxis(self, coordinate):
         self.coordinates[coordinate.id] = coordinate
 
     def initialize(self):
+        max_deg_map = self.getMonomialDegreeCoordinates()
         if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
-            self.basis = generate_basis_tensor_degree(self.getMonomialDegreeCoordinates())
+            self.basis = generate_basis_tensor_degree(max_deg_map)
         elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
-            self.basis = generate_basis_total_degree(self.getMonomialDegreeCoordinates())
+            self.basis = generate_basis_total_degree(max_deg_map)
         else:
-            raise NOT_IMPLEMENTED
+            raise NotImplementedError("ADAPTIVE_DEGREE path not implemented")
 
-    def evaluateBasis(self, z, counter):
+    def evaluateBasisDegrees(self, z, counter):
         val = 1.0
         for cid, cdeg in counter.items():
             val *= self.coordinates[cid].evaluateBasisFunction(z[cid], cdeg)
         return val
+
+    def evaluateBasisIndex(self, z, basis_id):
+        val = 1.0
+        for cid, cdeg in counter.items():
+            val *= self.coordinates[cid].evaluateBasisFunction(z[cid], self.basis[basis_id])
+        return val
+
+    def print_quadrature(self, qmap):
+        """
+        Pretty-print a quadrature map (qmap) in tabular style.
+        """
+        print("Quadrature rule:")
+        print("-" * 80)
+        for q, data in qmap.items():
+            y_str = ", ".join(f"y{cid} = {val:.4g}" for cid, val in data['Y'].items())
+            z_str = ", ".join(f"z{cid} = {val:.4g}" for cid, val in data['Z'].items())
+            w_str = f"W = {data['W']:.4g}"
+            print(f"q ={q:3d} :  {y_str:<40} | {z_str:<40} | {w_str}")
+        print("-" * 80)
+
+    def build_quadrature(self, degrees: Counter):
+        """
+        Build tensor-product quadrature from per-axis polynomial degree needs.
+        degrees: Counter({cid: p_i}) — degree of the integrand along each axis.
+        Uses each coordinate's 1D rule with n_i = minnum_quadrature_points(p_i).
+
+        qmap =
+        {
+          q_index :
+          {
+            'Y': {cid: physical_value, ...},
+            'Z': {cid: standard_value, ...},
+            'W': weight
+          },
+          ...
+        }
+
+        """
+        cids = list(self.coordinates.keys())
+        q1d  = {}  # cid -> {'yq','zq','wq'}
+        npts = {}  # cid -> Ni
+
+        # obtain 1D rules per axis
+        for cid in cids:
+            p_i = int(degrees.get(cid, 0))
+            one_d = self.coordinates[cid].getQuadraturePointsWeights(p_i)
+            q1d[cid]  = one_d
+            npts[cid] = len(one_d['wq'])
+
+        # tensor them
+        qmap = {}
+        ctr  = 0
+        ranges = [range(npts[cid]) for cid in cids]
+        for idx_tuple in product(*ranges):
+            y, z, w = {}, {}, 1.0
+            for cid, i in zip(cids, idx_tuple):
+                y[cid] = q1d[cid]['yq'][i]
+                z[cid] = q1d[cid]['zq'][i]
+                w     *= q1d[cid]['wq'][i]
+            qmap[ctr] = {'Y': y, 'Z': z, 'W': w}
+            ctr += 1
+
+        self.print_quadrature(qmap)
+
+        self.quadrature = qmap
+
+        return qmap
+
+    # --- inner products & decomposition ---
+
+    def inner_product(self, f_eval, g_eval, f_deg: Counter|None=None, g_deg: Counter|None=None):
+        """
+        <f, g> = ∫ f(z) g(z) ρ(z) dz, evaluated by exact quadrature if f_deg/g_deg supplied.
+        - f_eval, g_eval: callables taking z_by_cid: dict(cid->z)
+        - f_deg, g_deg: Counter({cid: degree}) describing polynomial degrees of f,g per axis.
+                        If None, assumed 0 along each axis (safe but possibly under-integrated).
+        """
+        coord_ids = list(self.coordinates.keys())
+        f_deg = f_deg or safe_zero_degrees(coord_ids)
+        g_deg = g_deg or safe_zero_degrees(coord_ids)
+
+        # Required per-axis polynomial degree for the integrand f*g
+        need = sum_degrees(f_deg, g_deg)
+
+        # Build exact-enough quadrature
+        qmap = self.build_quadrature(need)
+
+        s = 0.0
+        for q in qmap.values():
+            z = q['Z']
+            s += f_eval(z) * g_eval(z) * q['W']
+        return s
+
+    def inner_product_basis(self, i_id: int, j_id: int, f_eval=None, f_deg: Counter|None=None):
+        """
+        <ψ_i, f, ψ_j> with exact quadrature deduced from degrees.
+        - f_eval: callable(z_by_cid) or None (acts as 1.0)
+        - f_deg:  Counter({cid: degree}) or None (treated as zeros)
+        """
+        psi_i = self.basis[i_id]
+        psi_j = self.basis[j_id]
+
+        coord_ids = list(self.coordinates.keys())
+        f_deg = f_deg or safe_zero_degrees(coord_ids)
+
+        # integrand degree per axis = deg(ψ_i)+deg(ψ_j)+deg(f)
+        need = sum_degrees(psi_i, psi_j, f_deg)
+
+        # Quadrature sized to integrate exactly
+        qmap = self.build_quadrature(need)
+
+        s = 0.0
+        for q in qmap.values():
+            z = q['Z']
+            val = self.evaluateBasisDegrees(z, psi_i) * self.evaluateBasisDegrees(z, psi_j)
+            if f_eval is not None:
+                val *= f_eval(z)
+            s += val * q['W']
+        return s
+
+    def decompose(self, f_eval, f_deg: Counter):
+        """
+        Coefficients c_k = <f, ψ_k>, with quadrature sized from deg(f) + deg(ψ_k).
+        Returns dict {basis_id: coefficient}.
+        """
+        coeffs = {}
+        for k, psi_k in self.basis.items():
+            # per-axis degree need = deg(f) + deg(ψ_k)
+            need = sum_degrees(f_deg, psi_k)
+            qmap = self.build_quadrature(need)
+
+            s = 0.0
+            for q in qmap.values():
+                z = q['Z']
+                s += f_eval(z) * self.evaluateBasisDegrees(z, psi_k) * q['W']
+            coeffs[k] = s
+        return coeffs
