@@ -219,10 +219,11 @@ class CoordinateSystem:
     2. Manages basis functions
     3. Manages integrations (inner-product) along these dimensions through quadrature
     """
-    def __init__(self, basis_type):
+    def __init__(self, basis_type, verbose = False):
         self.coordinates        = {}    # cid -> Coordinate
         self.basis_construction = basis_type
         self.basis              = None  # {basis_id: Counter({cid:deg,...})}
+        self.verbose            = True
 
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
@@ -316,9 +317,8 @@ class CoordinateSystem:
             qmap[ctr] = {'Y': y, 'Z': z, 'W': w}
             ctr += 1
 
-        self.print_quadrature(qmap)
-
-        self.quadrature = qmap
+        if self.verbose is True:
+            self.print_quadrature(qmap)
 
         return qmap
 
