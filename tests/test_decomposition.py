@@ -75,15 +75,16 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
     #---------------------------------------------------------------#
     # Cross terms
     #---------------------------------------------------------------#
-    for _ in range(random.randint(0, max_terms)):
-        cids       = random.sample(coords, k=random.randint(2, len(coords)))
-        coeff      = random.randint(1, 3)
-        term       = coeff
-        for cid in cids:
-            d        = random.randint(1, max_deg)
-            term    *= symbols[cid]**d
-            fdeg[cid] = max(fdeg.get(cid, 0), d)
-        terms.append(term)
+    if len(coords) >= 2:
+        for _ in range(random.randint(0, max_terms)):
+            cids       = random.sample(coords, k=random.randint(2, len(coords)))
+            coeff      = random.randint(1, 3)
+            term       = coeff
+            for cid in cids:
+                d        = random.randint(1, max_deg)
+                term    *= symbols[cid]**d
+                fdeg[cid] = max(fdeg.get(cid, 0), d)
+            terms.append(term)
 
     fexpr  = sum(terms)
 
