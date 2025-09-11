@@ -24,33 +24,111 @@ from pspace.core import CoordinateSystem, BasisFunctionType
 
 from pspace.plotter import plot_jacobian
 
-if __name__ == '__main__':
+def check_hermite_functions():
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, False)
+    cf = CoordinateFactory()
+
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 3)
+    cs.addCoordinateAxis(y0)
+
+    cs.initialize()
+
+    # decompose a vector to obtain coefficients
+    func = lambda q : (y(q,0)**4 * y(q,1)) + (y(q,0) * y(q,2)) + (y(q,2)**3)
+
+    dfunc = lambda z: 1.0 + z[0]**2; fdegs  = Counter({0:3})
+    coeffs = cs.decompose(dfunc, fdegs)
+    print(coeffs)
+
+if __name__ == "__main__":
+    # Build a coordinate system
+    cf = CoordinateFactory()
     cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.0, sigma=1.0), 3)
+    y1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y1', dict(a=-1, b=1), 2)
+
+    cs.addCoordinateAxis(y0)
+    cs.addCoordinateAxis(y1)
+
+    cs.initialize()
+
+    # Function: f(y) = 1 + y0^2 + y1
+    dfunc = lambda Y: 1.0 + Y[0]**2 + Y[1]
+    fdegs = Counter({0:2, 1:1})
+
+    ok, diffs = cs.check_decomposition_consistency(dfunc, fdegs, tol=1e-8, verbose=True)
+
+    stop
+
+
+    # Build a simple 1D Gaussian coordinate system
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, verbose=False)
+    cf = CoordinateFactory()
+
+    #y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.0, sigma=1.0), 4)
+    #y0 = cf.createExponentialCoordinate(cf.newCoordinateID(), 'y0', dict(mu = +6.0, beta = 1.0), 3)
+    y0 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y0', dict(a = -5.0, b = 4.0), 3)
+
+    cs.addCoordinateAxis(y0)
+    cs.initialize()
+
+    # f(y) = 1 + y^2  (degrees: up to 2 on axis 0)
+    dfunc = lambda Y: 1.0 - Y[0]**0
+    fdegs = Counter({0:0})
+    coeffs = cs.decompose(dfunc, fdegs)
+    print(coeffs) # coefficients in the Y-frame basis
+
+    import sympy as sp
+    coeffs = cs.decompose_analytic(dfunc, fdegs)
+    #print(coeffs) # coefficients in the Y-frame basis
+    #print(coeffs)
+    print({k: sp.simplify(v) for k, v in coeffs.items()})
+
+    nbasis = cs.getNumBasisFunctions()
+    A = np.zeros((nbasis, nbasis))
+    for ii in range(nbasis):
+        for jj in range(nbasis):
+            A[ii,jj] = cs.inner_product_basis(ii, jj) #, f_eval, f_deg)
+    print(A)
+
+    stop
+
+    check_hermite_functions()
+    stop
+
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, False)
     cf = CoordinateFactory()
 
     #y0 = cf.createNormalCoordinate(0, 'y0', dict(mu=0.0, sigma=1.0), max_monomial_dof=1)
     #y1 = cf.createUniformCoordinate(1, 'y1', dict(a=-1, b=1),        max_monomial_dof=1)
 
-    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 3)
-    y1 = cf.createExponentialCoordinate(cf.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 3)
-    y2 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 3)
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 0)
+    #y1 = cf.createExponentialCoordinate(cf.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 1)
+    #y2 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 1)
 
     cs.addCoordinateAxis(y0)
-    cs.addCoordinateAxis(y1)
-    cs.addCoordinateAxis(y2)
+    #cs.addCoordinateAxis(y1)
+    #cs.addCoordinateAxis(y2)
 
     cs.initialize()
 
     # decompose a vector to obtain coefficients
-    f_eval = lambda z: 2 + 3*z[0] - z[1]
-    f_deg  = Counter({0:1, 1:1, 2:0})
-    coeffs = cs.decompose(f_eval, f_deg)
+    f = lambda z: z[0]
+    fdeg  = Counter({0:0})
+    coeffs = cs.decompose(f, f)
     print(coeffs)
+
+    stop
+
+    # form the mass matrix <psi_i, psi_j>
+
+
+    print(A, np.linalg.eigvals(A))
 
     # inner product of two basis entries with f
     #val = cs.inner_product_basis(i_id=1, j_id=0, f_eval=f_eval, f_deg=f_deg)
     #print(val)
-
 
     stop
 
@@ -64,12 +142,12 @@ if __name__ == '__main__':
 
     # Random coordinates
     y0 = cfactory.createNormalCoordinate(cfactory.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 3)
-    y1 = cfactory.createExponentialCoordinate(cfactory.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 3)
-    y2 = cfactory.createUniformCoordinate(cfactory.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 3)
+    #y1 = cfactory.createExponentialCoordinate(cfactory.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 3)
+    #y2 = cfactory.createUniformCoordinate(cfactory.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 3)
 
     print(y0)
-    print(y1)
-    print(y2)
+    #print(y1)
+    #print(y2)
 
     # Deterministic coordinates (uniform distribution & monomial degree = 0)
     # x1 = cfactory.createUniformCoordinate('x1', dict(a=-2.0, b=2.0), 0)     # space
@@ -81,8 +159,8 @@ if __name__ == '__main__':
     csystem = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
     csystem.addCoordinateAxis(y0)
-    csystem.addCoordinateAxis(y1)
-    csystem.addCoordinateAxis(y2)
+    #csystem.addCoordinateAxis(y1)
+    #csystem.addCoordinateAxis(y2)
 
     csystem.initialize()
 
@@ -90,7 +168,6 @@ if __name__ == '__main__':
 
     for i in range(csystem.getNumBasisFunctions()):
         print(csystem.evaluateBasis([0.0, 0.0, 0.0], csystem.basis[i]))
-
 
     # check inner_product(psi_i, psi_j)
     # check decompose(function)
