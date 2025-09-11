@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 #=====================================================================#
-# சீரற்ற பகுதி வேறுபாட்டுச் சமன்பாடுகளுக்கான
-# சுருக்கமான கணிதப் பகுப்பாய்வு தொகுதி
+# சீரற்றப் பகுதி வேறுபாட்டுச் சமன்பாடுகளுக்கான கணிதப் பகுப்பாய்வுத் தொகுதி
 #————————————————————————————————————————————————————————————————————-#
 # ABSTRACT MATHEMATICAL ANALYSIS MODULE FOR STOCHASTIC PARTIAL
 # DIFFERENTIAL EQUATIONS
@@ -20,10 +19,7 @@
 # Author    : Komahan Boopathy (komahan.boopathy@gmail.com)
 #=====================================================================#
 
-#=====================================================================#
 # External modules
-#=====================================================================#
-
 import math
 import sympy as sp
 import numpy as np
@@ -33,10 +29,7 @@ from collections import Counter
 from enum        import Enum
 from itertools   import product
 
-#=====================================================================#
 # Local modules
-#=====================================================================#
-
 from .stochastic_utils       import (
     minnum_quadrature_points,
     generate_basis_tensor_degree,
