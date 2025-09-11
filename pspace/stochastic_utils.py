@@ -74,7 +74,25 @@ def generate_basis_tensor_degree(max_degree_params):
 
     return term_polynomial_degree
 
-def generate_basis_total_degree(max_degree_params):
+
+def generate_basis_total_degree(max_degrees):
+    """
+    Build total-degree basis: all multi-indices with sum(deg_i) <= max.
+    max_degrees : dict {cid: max_degree}
+    Returns     : dict {basis_id: Counter({cid:deg,...})}
+    """
+    cids     = list(max_degrees.keys())
+    degrees  = list(max_degrees.values())
+    basis    = {}
+    k        = 0
+
+    for deg_tuple in product(*[range(d+1) for d in degrees]):
+        if sum(deg_tuple) <= max(degrees):   # total degree filter
+            basis[k] = Counter({cid: d for cid, d in zip(cids, deg_tuple)})
+            k += 1
+    return basis
+
+def generate_basis_total_degree_old(max_degree_params):
     """
     Construct a total-degree index map for basis functions.
 
