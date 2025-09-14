@@ -162,10 +162,13 @@ class Coordinate(object):
 class NormalCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        self.dist_coords = pdata['dist_coords']
+        mu    = sp.sympify(pdata['dist_coords']['mu'])
+        sigma = sp.sympify(pdata['dist_coords']['sigma'])
+        self.dist_coords = {'mu': mu, 'sigma': sigma}
+        self.rho = sp.exp(-(self.symbol - mu)**2 / (2*sigma**2)) / (sp.sqrt(2*sp.pi) * sigma)
 
-        mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
-        self.rho  = 1/(sp.sqrt(2*sp.pi)*sigma) * sp.exp(-(self.symbol - mu)**2/(2*sigma**2))
+    def domain(self):
+        return -sp.oo, sp.oo
 
     def to_standard(self, y):
         mu, s = self.dist_coords['mu'], self.dist_coords['sigma']
@@ -190,10 +193,13 @@ class NormalCoordinate(Coordinate):
 class UniformCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        self.dist_coords = pdata['dist_coords']
+        a = sp.sympify(pdata['dist_coords']['a'])
+        b = sp.sympify(pdata['dist_coords']['b'])
+        self.dist_coords = {'a': a, 'b': b}
+        self.rho = sp.Rational(1, b - a)
 
-        a, b   = self.dist_coords['a'], self.dist_coords['b']
-        self.rho = sp.Piecewise((1/(b-a), (self.symbol>=a) & (self.symbol<=b)), (0, True))
+    def domain(self):
+        return self.dist_coords['a'], self.dist_coords['b']
 
     def to_standard(self, y):
         a, b = self.dist_coords['a'], self.dist_coords['b']
@@ -215,10 +221,13 @@ class UniformCoordinate(Coordinate):
 class ExponentialCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        self.dist_coords = pdata['dist_coords']
+        mu   = sp.sympify(pdata['dist_coords']['mu'])
+        beta = sp.sympify(pdata['dist_coords']['beta'])
+        self.dist_coords = {'mu': mu, 'beta': beta}
+        self.rho = sp.exp(-(self.symbol - mu)/beta) / beta
 
-        mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
-        self.rho = (1/beta) * sp.exp(-(self.symbol - mu)/beta)
+    def domain(self):
+        return self.dist_coords['mu'], sp.oo
 
     def to_standard(self, y):
         mu, b = self.dist_coords['mu'], self.dist_coords['beta']
@@ -470,18 +479,8 @@ class CoordinateSystem:
             val = integrand
             for cid, coord in coords.items():
                 y = coord.symbol
-                if isinstance(coord, UniformCoordinate):
-                    a, b = coord.dist_coords['a'], coord.dist_coords['b']
-                    val  = sp.integrate(val, (y, a, b))
-                elif isinstance(coord, NormalCoordinate):
-                    val  = sp.integrate(val, (y, -sp.oo, sp.oo))
-                elif isinstance(coord, ExponentialCoordinate):
-                    mu = coord.dist_coords['mu']
-                    val = sp.integrate(val, (y, float(mu), sp.oo))
-                else:
-                    raise NotImplementedError(
-                        f"Analytic integration not set up for {coord}"
-                    )
+                a, b = coord.domain()
+                val = sp.integrate(val, (y, a, b))
 
             coeffs[k] = sp.simplify(val)
 
@@ -543,8 +542,15 @@ class CoordinateSystem:
         """
         Cross-check numerical vs analytic decomposition.
         """
+        from timeit import default_timer as timer
+
+        start_num = timer()
         coeffs_num = self.decompose(f_eval, f_deg)
+        elapsed_num = timer() - start_num
+
+        start_sym = timer()
         coeffs_sym = self.decompose_analytic(f_eval, f_deg)
+        elapsed_sym = timer() - start_sym
 
         diffs, ok = {}, True
         for k in coeffs_num.keys():
@@ -559,9 +565,13 @@ class CoordinateSystem:
             diffs[k] = (num_val, ana_val, err)
 
         if verbose:
-            print(f"[ConsistencyCheck] {'PASSED' if ok else 'FAILED'} "
-                  f"with tol={tol}")
+            print(f"[Consistency Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
+            print(f"[Elapsed Time] numerical {elapsed_num}  analytic = {elapsed_sym}")
+            header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
+            print(header)
+            print("-" * len(header))
             for k, (n, a, e) in diffs.items():
-                print(f"Basis {k}: num={n:.6g}, ana={a:.6g}, err={e:.2e}")
+                print(f"{k:<7d} {n:12.6f} {a:12.6f} {e:12.2e}")
+            print("-" * len(header))
 
         return ok, diffs
