@@ -538,6 +538,14 @@ class CoordinateSystem:
 
         return coeffs
 
+    def check_orthonormality(self):
+        nbasis = self.getNumBasisFunctions()
+        A = np.zeros((nbasis, nbasis))
+        for ii in range(nbasis):
+            for jj in range(nbasis):
+                A[ii,jj] = self.inner_product_basis(ii, jj)
+        return np.linalg.norm(A - np.eye(nbasis), ord=np.inf)
+
     #-----------------------------------------------------------------#
     # Consistency check
     #-----------------------------------------------------------------#
@@ -547,6 +555,10 @@ class CoordinateSystem:
         """
         Cross-check numerical vs analytic decomposition.
         """
+
+        # ensure basis is orthonormal first
+        ortho_tol = self.check_orthonormality()
+
         from timeit import default_timer as timer
 
         start_num = timer()
@@ -570,7 +582,7 @@ class CoordinateSystem:
             diffs[k] = (num_val, ana_val, err)
 
         if verbose:
-            print(f"[Consistency Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
+            print(f"[Consistency Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}, ortho tol = {ortho_tol}")
             print(f"[Elapsed Time] numerical {elapsed_num}  analytic = {elapsed_sym}")
             header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
             print(header)
