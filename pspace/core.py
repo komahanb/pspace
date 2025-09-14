@@ -1,21 +1,14 @@
 #!/usr/bin/env python
 
 #=====================================================================#
-# சீரற்றப் பகுதி வேறுபாட்டுச் சமன்பாடுகளுக்கான கணிதப் பகுப்பாய்வுத் தொகுதி
-#————————————————————————————————————————————————————————————————————-#
-# ABSTRACT MATHEMATICAL ANALYSIS MODULE FOR STOCHASTIC PARTIAL
-# DIFFERENTIAL EQUATIONS
-#=====================================================================#
-# X   பரப்புகள் (சாத்தியவியல், இடவியல், காலவியல்)
-# XX  பரிமாணங்கள் (அச்சுகள்) சாத்தியவியல் பரவல்களுடன்
-# XXX நிலைகள் (அடித்தளச் செயல்பாடுகள் மற்றும் முழுமையாக்கம்)
-#————————————————————————————————————————————————————————————————————-#
-# X   DOMAINS (PROBABILISTIC, SPATIAL, TEMPORAL)
-# XX  DIMENSIONS (AXES) with PROBABILITY DISTRIBUTIONS
-# XXX MODES (BASIS FUNCTIONS AND QUADRATURES)
-#=====================================================================#
+# சாத்தியவியல், இடவியல், காலவியல் பகுதி வேறுபாட்டுச்
+# சமன்பாடுகளுக்கான கணிதப் பகுப்பாய்வுத் தொகுதி
+
 # ஆசிரியர் : கோமகன் பூபதி (komahan.boopathy@gmail.com)
 #————————————————————————————————————————————————————————————————————-#
+# MATHEMATICAL ANALYSIS MODULE FOR PROBABILISTIC-SPATIO-TEMPORAL
+# PARTIAL DIFFERENTIAL EQUATIONS
+#
 # Author    : Komahan Boopathy (komahan.boopathy@gmail.com)
 #=====================================================================#
 
@@ -30,7 +23,7 @@ from enum        import Enum
 from itertools   import product
 
 # Local modules
-from .stochastic_utils       import (
+from .stochastic_utils import (
     minnum_quadrature_points,
     generate_basis_tensor_degree,
     generate_basis_total_degree,
@@ -91,6 +84,10 @@ class Coordinate(object):
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
 
+    def weight(self):
+        """Return symbolic weight function ρ(y) attached to this coordinate."""
+        return self.rho
+
     #-----------------------------------------------------------------#
     # VARIABLE TRANSFORMATIONS
     #-----------------------------------------------------------------#
@@ -107,63 +104,41 @@ class Coordinate(object):
         """Map standard z -> physical y"""
         raise NotImplementedError
 
+    def quadrature_to_standard(self, xscalar):
+        """Map quadrature x -> standard z"""
+        return self.physical_to_standard(self.quadrature_to_physical(xscalar))
+
     #-----------------------------------------------------------------#
     # BASIS EVALUATIONS
     #-----------------------------------------------------------------#
 
-    def evaluateBasisAtZ(self, zscalar, degree):
+    def psi_z(self, zscalar, degree):
         raise NotImplementedError
 
-    def evaluateBasisAtY(self, yscalar, degree):
+    def psi_y(self, yscalar, degree):
         z = self.physical_to_standard(yscalar)
-        return self.evaluateBasisAtZ(z, degree)
+        return self.psi_z(z, degree)
 
-    def evaluateBasisAtX(self, xscalar, degree):
+    def psi_x(self, xscalar, degree):
         z = self.quadrature_to_standard(xscalar)
-        return self.evaluateBasisAtZ(z, degree)
+        return self.psi_z(z, degree)
 
     #-----------------------------------------------------------------#
     # subclass provides a 1D Gauss rule for the needed degree
     #-----------------------------------------------------------------#
 
-    def weight(self):
-        """Return symbolic weight function ρ(y) attached to this coordinate."""
-        return self.rho
-
-    def _quad_rule_xw(self, degree):
+    def gaussian_quadrature(self, degree):
         """
         Return native Gauss rule (x_nodes, w_nodes) sized for `degree`.
         Subclass chooses the correct family and normalization.
         """
         raise NotImplementedError
 
-    #-----------------------------------------------------------------#
-    # lift native x-rule to (z,y,w) consistently
-    #-----------------------------------------------------------------#
-
     def getQuadraturePointsWeights(self, degree):
-        """
-        Return {'yq','zq','wq'} where :
-          - zq is the standard variable nodes (basis is orthonormal here)
-          - yq is the physical nodes (user functions evaluated here)
-          - wq integrates in z-domain (Jacobian absorbed)
-        """
-        x, w = self._quad_rule_xw(degree)
-
-        # Map x -> z (family dependent); many families have z == x
-        z = self._x_to_z(x)
-
-        # Map z -> y using distribution parameters
-        y = np.array([self.standard_to_physical(zz) for zz in z])
-
+        x, w = self.gaussian_quadrature(degree)
+        z    = self.quadrature_to_standard(x)
+        y    = np.array([self.standard_to_physical(zz) for zz in z])
         return {'yq': y, 'zq': z, 'wq': w}
-
-    #-----------------------------------------------------------------#
-    # Default identity for families where x==z
-    #-----------------------------------------------------------------#
-
-    def _x_to_z(self, x):
-        return np.asarray(x)
 
 #=====================================================================#
 # Coordinate Implementations
@@ -172,10 +147,10 @@ class Coordinate(object):
 class NormalCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        mu    = sp.sympify(pdata['dist_coords']['mu'])
-        sigma = sp.sympify(pdata['dist_coords']['sigma'])
+        mu               = sp.sympify(pdata['dist_coords']['mu'])
+        sigma            = sp.sympify(pdata['dist_coords']['sigma'])
         self.dist_coords = {'mu': mu, 'sigma': sigma}
-        self.rho = sp.exp(-(self.symbol - mu)**2 / (2*sigma**2)) / (sp.sqrt(2*sp.pi) * sigma)
+        self.rho         = sp.exp(-(self.symbol - mu)**2 / (2*sigma**2)) / (sp.sqrt(2*sp.pi) * sigma)
 
     def domain(self):
         return -sp.oo, sp.oo
@@ -195,48 +170,42 @@ class NormalCoordinate(Coordinate):
         mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
         return mu + sigma * zscalar
 
-    def evaluateBasisAtZ(self, z, degree):
+    def psi_z(self, z, degree):
         return unit_hermite(z, degree)
 
-    def _quad_rule_xw(self, degree):
+    def gaussian_quadrature(self, degree):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.hermite.hermgauss(npts)
         w    = w / np.sqrt(np.pi)
         return x, w
 
-    def _x_to_z(self, x):
-        return np.sqrt(2.0) * np.asarray(x)
-
 class UniformCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        a = sp.sympify(pdata['dist_coords']['a'])
-        b = sp.sympify(pdata['dist_coords']['b'])
+        a                = sp.sympify(pdata['dist_coords']['a'])
+        b                = sp.sympify(pdata['dist_coords']['b'])
         self.dist_coords = {'a': a, 'b': b}
-        self.rho = sp.Rational(1, b - a)
+        self.rho         = sp.Rational(1, b - a)
 
     def domain(self):
         return self.dist_coords['a'], self.dist_coords['b']
 
     def physical_to_standard(self, yscalar):
-        """Map physical y -> standard z"""
         a, b = self.dist_coords['a'], self.dist_coords['b']
         return (yscalar - a) / (b - a)
 
     def quadrature_to_physical(self, xscalar):
-        """Map quadrature x -> physical y"""
         a, b = self.dist_coords['a'], self.dist_coords['b']
         return (b - a) * xscalar + a
 
     def standard_to_physical(self, zscalar):
-        """Map standard z -> physical y"""
         a, b = self.dist_coords['a'], self.dist_coords['b']
         return (b - a) * zscalar + a
 
-    def evaluateBasisAtZ(self, z, degree):
+    def psi_z(self, z, degree):
         return unit_legendre(z, degree)
 
-    def _quad_rule_xw(self, degree):
+    def gaussian_quadrature(self, degree):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.legendre.leggauss(npts)
         w = w / 2.0
@@ -245,33 +214,30 @@ class UniformCoordinate(Coordinate):
 class ExponentialCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
-        mu   = sp.sympify(pdata['dist_coords']['mu'])
-        beta = sp.sympify(pdata['dist_coords']['beta'])
+        mu               = sp.sympify(pdata['dist_coords']['mu'])
+        beta             = sp.sympify(pdata['dist_coords']['beta'])
         self.dist_coords = {'mu': mu, 'beta': beta}
-        self.rho = sp.exp(-(self.symbol - mu)/beta) / beta
+        self.rho         = sp.exp(-(self.symbol - mu)/beta) / beta
 
     def domain(self):
         return self.dist_coords['mu'], sp.oo
 
     def physical_to_standard(self, yscalar):
-        """Map physical y -> standard z"""
         mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
         return (yscalar - mu) / beta
 
     def quadrature_to_physical(self, xscalar):
-        """Map quadrature x -> physical y"""
         mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
         return mu + beta * xscalar
 
     def standard_to_physical(self, zscalar):
-        """Map standard z -> physical y"""
         mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
         return mu + beta * zscalar
 
-    def evaluateBasisAtZ(self, z, degree):
+    def psi_z(self, z, degree):
         return unit_laguerre(z, degree)
 
-    def _quad_rule_xw(self, degree):
+    def gaussian_quadrature(self, degree):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.laguerre.laggauss(npts)
         return x, w
@@ -286,7 +252,7 @@ class CoordinateFactory:
         return
 
     def newCoordinateID(self):
-        pid               = self.next_coord_id
+        pid                = self.next_coord_id
         self.next_coord_id = self.next_coord_id + 1
         return pid
 
@@ -343,10 +309,10 @@ class CoordinateSystem:
     # Basis and initialization
     #-----------------------------------------------------------------#
 
-    def basis_at_y(self, yscalar, degree: int):
+    def evaluate_basis(self, yscalar, degree: int):
         """ψ(y) = ψ(z(y)), evaluated symbolically in Y-frame."""
         z = self.physical_to_standard(yscalar)
-        return self.evaluateBasisFunction(z, degree)
+        return self.psi_z(z, degree)
 
     def getNumBasisFunctions(self):
         return len(self.basis) if self.basis is not None else 0
@@ -406,6 +372,7 @@ class CoordinateSystem:
             ctr      += 1
 
         self.print_quadrature(qmap)
+
         return qmap
 
     #-----------------------------------------------------------------#
@@ -415,7 +382,7 @@ class CoordinateSystem:
     def evaluateBasisDegreesY(self, y_by_cid, degrees_counter):
         val = 1.0
         for cid, deg in degrees_counter.items():
-            val *= self.coordinates[cid].evaluateBasisAtY(y_by_cid[cid], deg)
+            val *= self.coordinates[cid].psi_y(y_by_cid[cid], deg)
         return val
 
     def evaluateBasisIndexY(self, y_by_cid, basis_id):
@@ -502,7 +469,7 @@ class CoordinateSystem:
             psi_expr = 1
             for cid, deg in psi_k.items():
                 z        = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr *= coords[cid].evaluateBasisAtZ(z, deg)
+                psi_expr *= coords[cid].psi_z(z, deg)
 
             integrand = f_expr * psi_expr * sp.Mul(*[c.weight()
                                                      for c in coords.values()])
@@ -547,7 +514,7 @@ class CoordinateSystem:
             psi_expr = 1
             for cid, deg in psi_k.items():
                 y        = coords[cid].symbol
-                psi_expr *= coords[cid].basis_at_y(y, deg)
+                psi_expr *= coords[cid].evaluate_basis(y, deg)
 
             # Integrand in physical space
             integrand = f_expr * psi_expr
