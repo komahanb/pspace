@@ -111,12 +111,12 @@ class Coordinate(object):
     #-----------------------------------------------------------------#
     def evaluateBasisAtY(self, yscalar, degree):
         z = self.to_standard(yscalar)
-        return self._evaluateBasisAtZ(z, degree)
+        return self.evaluateBasisAtZ(z, degree)
 
     #-----------------------------------------------------------------#
     # subclass provides the family polynomial in z
     #-----------------------------------------------------------------#
-    def _evaluateBasisAtZ(self, zscalar, degree):
+    def evaluateBasisAtZ(self, zscalar, degree):
         raise NotImplementedError
 
     #-----------------------------------------------------------------#
@@ -178,7 +178,7 @@ class NormalCoordinate(Coordinate):
         mu, s = self.dist_coords['mu'], self.dist_coords['sigma']
         return mu + s * z
 
-    def _evaluateBasisAtZ(self, z, degree):
+    def evaluateBasisAtZ(self, z, degree):
         return unit_hermite(z, degree)
 
     def _quad_rule_xw(self, degree):
@@ -209,7 +209,7 @@ class UniformCoordinate(Coordinate):
         a, b = self.dist_coords['a'], self.dist_coords['b']
         return (b - a) * (z + 1.0) / 2.0 + a
 
-    def _evaluateBasisAtZ(self, z, degree):
+    def evaluateBasisAtZ(self, z, degree):
         return unit_legendre(z, degree)
 
     def _quad_rule_xw(self, degree):
@@ -237,7 +237,7 @@ class ExponentialCoordinate(Coordinate):
         mu, b = self.dist_coords['mu'], self.dist_coords['beta']
         return mu + b * z
 
-    def _evaluateBasisAtZ(self, z, degree):
+    def evaluateBasisAtZ(self, z, degree):
         return unit_laguerre(z, degree)
 
     def _quad_rule_xw(self, degree):
@@ -471,7 +471,7 @@ class CoordinateSystem:
             psi_expr = 1
             for cid, deg in psi_k.items():
                 z        = coords[cid].to_standard(coords[cid].symbol)
-                psi_expr *= coords[cid]._evaluateBasisAtZ(z, deg)
+                psi_expr *= coords[cid].evaluateBasisAtZ(z, deg)
 
             integrand = f_expr * psi_expr * sp.Mul(*[c.weight()
                                                      for c in coords.values()])
