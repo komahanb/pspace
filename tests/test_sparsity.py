@@ -45,8 +45,8 @@ if __name__ == "__main__":
     cf = CoordinateFactory()
     cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
-    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.0, sigma=1.0), 3)
-    y1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y1', dict(a=-1, b=1), 2)
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.83, sigma=1.513), 4)
+    y1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y1', dict(a=-2.197, b=0.538), 1)
 
     cs.addCoordinateAxis(y0)
     cs.addCoordinateAxis(y1)
@@ -54,8 +54,8 @@ if __name__ == "__main__":
     cs.initialize()
 
     # Function: f(y) = 1 + y0^2 + y1
-    dfunc = lambda Y: 1.0 + Y[0]**2 + Y[1]
-    fdegs = Counter({0:2, 1:1})
+    dfunc = lambda y:  y[0]**2*y[1]**2 + y[0]*y[1]**2 + 2*y[1] + 1.0
+    fdegs = Counter({0:2, 1:2})
 
     ok, diffs = cs.check_decomposition_consistency(dfunc, fdegs, tol=1e-8, verbose=True)
 
