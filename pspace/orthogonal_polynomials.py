@@ -33,7 +33,7 @@ def tensor_indices(nterms):
 
     return flat_list
 
-def laguerre(z,d):
+def _laguerre(z,d):
     """
     Polynomials such that <f(z), g(z)>_{exp(-z)}^{0,inf} = 0
     """
@@ -45,13 +45,28 @@ def laguerre(z,d):
         den = d
         return ((2*d-1-z)*laguerre(z,d-1) - (d-1)*laguerre(z,d-2))/den
 
-def unit_laguerre(z,d):
+def _unit_laguerre(z,d):
     """
     Returns unit laguerre polynomial of degree d evaluated at z
     """
-    return laguerre(z,d)
+    return _laguerre(z,d)
 
-def hermite(z, d):
+def laguerre(z, d):
+    """
+    Standard (non-associated) Laguerre polynomial L_d(z).
+    Orthogonal under weight exp(-z) on [0, ∞).
+    """
+    coeffs = [0]*d + [1]                # degree-d monomial
+    L = np.polynomial.laguerre.Laguerre(coeffs)
+    return L(z)
+
+def unit_laguerre(z, d):
+    """
+    Orthonormal Laguerre polynomial ψ_d(z).
+    """
+    return laguerre(z, d) / np.sqrt(1.0)   # weight already normalized
+
+def _hermite(z, d):
     """
     Use recursion to generate probabilist hermite polynomials
 
@@ -66,11 +81,26 @@ def hermite(z, d):
     else:
         return z*hermite(z,d-1) - (d-1)*hermite(z,d-2)
 
-def unit_hermite(z,d):
+def _unit_hermite(z,d):
     """
     Returns units hermite polynomial of degree n evaluated at z
     """
-    return hermite(z,d)/np.sqrt(math.factorial(d))
+    return _hermite(z,d)/np.sqrt(math.factorial(d))
+
+def hermite(z, d):
+    """
+    Probabilists' Hermite polynomial He_d(z).
+    Orthogonal under weight exp(-z^2/2) on (-∞, ∞).
+    """
+    coeffs = [0]*d + [1]
+    H = np.polynomial.hermite_e.HermiteE(coeffs)
+    return H(z)
+
+def unit_hermite(z, d):
+    """
+    Orthonormal Hermite polynomial ψ_d(z).
+    """
+    return hermite(z, d) / np.sqrt(np.math.factorial(d))
 
 def rlegendre(z, d):
     if d == 0:
@@ -80,7 +110,7 @@ def rlegendre(z, d):
     return ((2*d - 1) * (2*z - 1) * rlegendre(z, d-1)
             - (d - 1) * rlegendre(z, d-2)) / d
 
-def legendre(z, d):
+def _legendre(z, d):
     """
     Use recursion to generate Legendre polynomials
 
@@ -93,8 +123,46 @@ def legendre(z, d):
         p = p + dp
     return ((-1)**d)*p
 
-def unit_legendre(z,d):
-    return legendre(z,d)*np.sqrt(2*d+1)
+def _unit_legendre(z,d):
+    return _legendre(z,d)*np.sqrt(2*d+1)
+
+import numpy as np
+
+#=====================================================================#
+# Shifted Legendre Basis on [0,1]
+#=====================================================================#
+
+def legendre(z, d):
+    """
+    Shifted Legendre polynomial of degree d on [0,1].
+    Defined as P_d^*(z) = P_d(2z - 1), where P_d is the standard Legendre.
+    """
+    coeffs = [0] * d + [1]          # coefficient vector for degree d
+    P = np.polynomial.legendre.Legendre(coeffs)   # P_d(x) on [-1,1]
+    return P(2*z - 1)               # shift domain to [0,1]
+
+
+def unit_legendre(z, d):
+    """
+    L^2-orthonormal shifted Legendre polynomial on [0,1]:
+      ψ_d(z) = sqrt(2d+1) * P_d^*(z).
+    """
+    return np.sqrt(2*d + 1) * legendre(z, d)
+
+
+#=====================================================================#
+# Shifted Gauss-Legendre Quadrature on [0,1]
+#=====================================================================#
+
+def shifted_legendre_quadrature(npts):
+    """
+    Gauss-Legendre quadrature nodes/weights shifted from [-1,1] to [0,1].
+    Integrates ∫_0^1 f(z) dz exactly for deg ≤ 2npts-1.
+    """
+    x, w = np.polynomial.legendre.leggauss(npts)  # nodes/weights on [-1,1]
+    z = 0.5 * (x + 1)                             # map to [0,1]
+    w = 0.5 * w                                   # rescale weights
+    return z, w
 
 if __name__ == "__main__":
 
