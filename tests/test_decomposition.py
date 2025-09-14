@@ -101,6 +101,8 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
 
 @pytest.mark.parametrize("trial", range(5))
 def test_randomized_tensor_basis(trial):
+    random.seed(trial)
+
     print(f"\n=== Trial {trial} : Tensor Basis ===")
     cf = CoordinateFactory()
     cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
@@ -125,6 +127,8 @@ def test_randomized_tensor_basis(trial):
 
 @pytest.mark.parametrize("trial", range(5))
 def test_randomized_total_basis(trial):
+    random.seed(trial)
+
     print(f"\n=== Trial {trial} : Total Degree Basis ===")
     cf = CoordinateFactory()
     cs = CoordinateSystem(BasisFunctionType.TOTAL_DEGREE)

@@ -206,6 +206,13 @@ class UniformCoordinate(Coordinate):
         return unit_legendre(z, degree)
 
     def gaussian_quadrature(self, degree):
+        npts       = minnum_quadrature_points(degree)
+        xi, w      = np.polynomial.legendre.leggauss(npts)  # on [-1,1]
+        x_shifted  = 0.5 * (xi + 1.0)                       # map to [0,1]
+        w_shifted  = 0.5 * w
+        return x_shifted, w_shifted
+
+    def gaussian_quadrature_(self, degree):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.legendre.leggauss(npts)
         w = w / 2.0
