@@ -4,12 +4,12 @@
 # சாத்தியவியல், இடவியல், காலவியல் பகுதி வேறுபாட்டுச்
 # சமன்பாடுகளுக்கான கணிதப் பகுப்பாய்வுத் தொகுதி
 
-# ஆசிரியர் : கோமகன் பூபதி (komahan.boopathy@gmail.com)
+# ஆசிரியர் : கோமகன் பூபதி (komahan@gatech.edu)
 #————————————————————————————————————————————————————————————————————-#
 # MATHEMATICAL ANALYSIS MODULE FOR PROBABILISTIC-SPATIO-TEMPORAL
 # PARTIAL DIFFERENTIAL EQUATIONS
 #
-# Author    : Komahan Boopathy (komahan.boopathy@gmail.com)
+# Author    : Komahan Boopathy (komahan@gatech.edu)
 #=====================================================================#
 
 # External modules
