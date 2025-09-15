@@ -19,14 +19,14 @@ from pspace.core import (
 # Helper : randomized coordinate factory with logging
 #=====================================================================#
 
-def random_coordinate(cf, cid):
+def random_coordinate(cf, cid, max_deg = 4):
     coord_type = random.choice(["normal", "uniform", "exponential"])
     name       = f"y{cid}"
 
     if coord_type == "normal":
         mu    = random.uniform(-2.0,  2.0)
         sigma = random.uniform( 0.5,  2.0)
-        deg   = random.randint(1, 4)
+        deg   = random.randint(1, max_deg)
         coord = cf.createNormalCoordinate(cf.newCoordinateID(), name,
                                           dict(mu=mu, sigma=sigma), deg)
         print(f"[Coord {cid}] NORMAL(mu={mu:.3f}, sigma={sigma:.3f}), "
@@ -36,7 +36,7 @@ def random_coordinate(cf, cid):
     elif coord_type == "uniform":
         a     = random.uniform(-3.0,  0.0)
         b     = a + random.uniform(1.0, 5.0)
-        deg   = random.randint(1, 4)
+        deg   = random.randint(1, max_deg)
         coord = cf.createUniformCoordinate(cf.newCoordinateID(), name,
                                            dict(a=a, b=b), deg)
         print(f"[Coord {cid}] UNIFORM(a={a:.3f}, b={b:.3f}), "
@@ -46,7 +46,7 @@ def random_coordinate(cf, cid):
     elif coord_type == "exponential":
         mu    = random.uniform(0.0, 2.0)
         beta  = random.uniform(0.5, 2.0)
-        deg   = random.randint(1, 4)
+        deg   = random.randint(1, max_deg)
         coord = cf.createExponentialCoordinate(cf.newCoordinateID(), name,
                                                dict(mu=mu, beta=beta), deg)
         print(f"[Coord {cid}] EXPONENTIAL(mu={mu:.3f}, beta={beta:.3f}), "
@@ -99,14 +99,14 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
 # Problem setup
 #=====================================================================#
 
-def get_coordinate_system_type(basis_type):
+def get_coordinate_system_type(basis_type, max_deg = 4, max_coords = 3):
     cf = CoordinateFactory()
     cs = CoordinateSystem(basis_type)
 
-    ncoords = random.randint(1, 3)
+    ncoords = random.randint(1, max_coords)
     print(f"[Setup] Using {ncoords} coordinates")
     for cid in range(ncoords):
-        coord = random_coordinate(cf, cid)
+        coord = random_coordinate(cf, cid, max_deg)
         cs.addCoordinateAxis(coord)
 
     cs.initialize()
@@ -123,7 +123,8 @@ def test_randomized_tensor_basis_sparse_full(trial):
 
     print(f"\n=== Trial {trial} : Tensor Degree Basis (sparse vs full assembly)  ===")
 
-    cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE)
+    cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE,
+                                    max_deg = 4, max_coords = 4)
 
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
@@ -142,7 +143,8 @@ def test_randomized_total_basis_sparse_full(trial):
 
     print(f"\n=== Trial {trial} : Total Degree Basis (sparse vs full assembly)  ===")
 
-    cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE)
+    cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE,
+                                    max_deg = 6, max_coords = 6)
 
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
