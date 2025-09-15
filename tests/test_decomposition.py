@@ -96,16 +96,12 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
     return fexpr, dfunc, fdeg
 
 #=====================================================================#
-# Tests : Tensor Basis
+# Problem setup
 #=====================================================================#
 
-@pytest.mark.parametrize("trial", range(5))
-def test_randomized_tensor_basis(trial):
-    random.seed(trial)
-
-    print(f"\n=== Trial {trial} : Tensor Basis ===")
+def get_coordinate_system_type(basis_type):
     cf = CoordinateFactory()
-    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+    cs = CoordinateSystem(basis_type)
 
     ncoords = random.randint(1, 3)
     print(f"[Setup] Using {ncoords} coordinates")
@@ -114,35 +110,81 @@ def test_randomized_tensor_basis(trial):
         cs.addCoordinateAxis(coord)
 
     cs.initialize()
+
+    return cs
+
+#=====================================================================#
+# Tests 1 B: Tensor Degree Basis (sparse vs full assembly)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_tensor_basis_sparse_full(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Tensor Degree Basis (sparse vs full assembly)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE)
+
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
-    ok, diffs = cs.check_decomposition_consistency(dfunc, fdeg,
-                                                   tol=1e-6,
-                                                   verbose=True)
+    ok, diffs = cs.check_decomposition_numerical_sparse_full(dfunc, fdeg,
+                                                             tol=1e-6,
+                                                             verbose=True)
     assert ok
 
 #=====================================================================#
-# Tests : Total Degree Basis
+# Tests 2 B: Total Degree Basis (sparse vs full assembly)
 #=====================================================================#
 
 @pytest.mark.parametrize("trial", range(5))
-def test_randomized_total_basis(trial):
+def test_randomized_total_basis_sparse_full(trial):
     random.seed(trial)
 
-    print(f"\n=== Trial {trial} : Total Degree Basis ===")
-    cf = CoordinateFactory()
-    cs = CoordinateSystem(BasisFunctionType.TOTAL_DEGREE)
+    print(f"\n=== Trial {trial} : Total Degree Basis (sparse vs full assembly)  ===")
 
-    ncoords = random.randint(1, 3)
-    print(f"[Setup] Using {ncoords} coordinates")
-    for cid in range(ncoords):
-        coord = random_coordinate(cf, cid)
-        cs.addCoordinateAxis(coord)
+    cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE)
 
-    cs.initialize()
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
-    ok, diffs = cs.check_decomposition_consistency(dfunc, fdeg,
-                                                   tol=1e-6,
-                                                   verbose=True)
+    ok, diffs = cs.check_decomposition_numerical_sparse_full(dfunc, fdeg,
+                                                             tol=1e-6,
+                                                             verbose=True)
+    assert ok
+
+#=====================================================================#
+# Tests 1 A : Tensor Basis (numerical vs symbolic)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_tensor_numerical_symbolic(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Tensor Degree Basis (numerical vs symbolic)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE)
+
+    fexpr, dfunc, fdeg = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_numerical_symbolic(dfunc, fdeg,
+                                                          tol=1e-6,
+                                                          verbose=True)
+    assert ok
+
+#=====================================================================#
+# Tests 2 A : Total Degree Basis (numerical vs symbolic)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_total_numerical_symbolic(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Total Degree Basis (numerical vs symbolic)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE)
+
+    fexpr, dfunc, fdeg = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_numerical_symbolic(dfunc, fdeg,
+                                                          tol=1e-6,
+                                                          verbose=True)
     assert ok
