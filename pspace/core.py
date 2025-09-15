@@ -690,7 +690,7 @@ class CoordinateSystem:
 
         if verbose:
             print(f"[Assembly Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
-            print(f"[Elapsed Time] Sparse {elapsed_sparse} Full = {elapsed_full}")
+            print(f"[Elapsed Time] Sparse {elapsed_sparse} Full = {elapsed_full} Ratio = {elapsed_full/elapsed_sparse}")
             header = f"{'Basis':<7} {'Sparse':>12} {'Full':>12} {'Error':>12}"
             print(header)
             print("-" * len(header))
