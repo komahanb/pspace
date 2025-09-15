@@ -397,6 +397,44 @@ class CoordinateSystem:
         return self.evaluateBasisDegreesY(y_by_cid, degrees)
 
     #-----------------------------------------------------------------#
+    # Sparsity Detection Utilities
+    #-----------------------------------------------------------------#
+
+    def sparse_vector(self, dmapi, dmapf):
+        """
+        Detect sparsity for <f, ψ_i>.
+
+        dmapi     : Counter({axis: degree}) for basis ψ_i
+        dmapf     : Counter({axis: degree}) for function f
+        basis_type: "tensor" or "total"
+        """
+        if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
+            # Axis-by-axis cutoff
+            return all(dmapi[k] <= dmapf[k] for k in dmapf.keys())
+        elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
+            # Global cutoff (total degree)
+            return sum(dmapi.values()) <= sum(dmapf.values())
+        else:
+            raise ValueError("Unknown basis_type")
+
+    def sparse_matrix(self, dmapi, dmapj, dmapf):
+        """
+        Detect sparsity for <ψ_i, f, ψ_j>.
+
+        dmapi, dmapj : Counter({axis: degree}) for bases ψ_i, ψ_j
+        dmapf        : Counter({axis: degree}) for function f
+        basis_type   : "tensor" or "total"
+        """
+        if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
+            # Axis-by-axis cutoff
+            return all((dmapi[k] + dmapj[k]) <= dmapf[k] for k in dmapf.keys())
+        elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
+            # Global cutoff (total degree)
+            return (sum(dmapi.values()) + sum(dmapj.values())) <= sum(dmapf.values())
+        else:
+            raise ValueError("Unknown basis_type")
+
+    #-----------------------------------------------------------------#
     # Inner products
     #-----------------------------------------------------------------#
 
@@ -451,6 +489,32 @@ class CoordinateSystem:
         """
         coeffs = {}
         for k, psi_k in self.basis.items():
+            need = sum_degrees(f_deg, psi_k)
+            qmap = self.build_quadrature(need)
+
+            s = 0.0
+            for q in qmap.values():
+                y = q['Y']
+                s += f_eval(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
+            coeffs[k] = s
+
+        return coeffs
+
+    def decompose_vector_sparse(self, f_eval, f_deg: Counter):
+        """
+        Coefficients c_k = <f, ψ_k> in Y-frame.
+        """
+        coeffs = {}
+        for k, psi_k in self.basis.items():
+
+            #---------------------------------------------------------#
+            # Sparsity filter
+            #---------------------------------------------------------#
+
+            if not self.sparse_vector(psi_k, f_deg):
+                coeffs[k] = 0.0
+                continue
+
             need = sum_degrees(f_deg, psi_k)
             qmap = self.build_quadrature(need)
 
@@ -550,8 +614,8 @@ class CoordinateSystem:
     # Consistency check
     #-----------------------------------------------------------------#
 
-    def check_decomposition_consistency(self, f_eval, f_deg: Counter,
-                                        tol=1e-10, verbose=True):
+    def check_decomposition_numerical_symbolic(self, f_eval, f_deg: Counter,
+                                               tol=1e-10, verbose=True):
         """
         Cross-check numerical vs analytic decomposition.
         """
@@ -589,6 +653,49 @@ class CoordinateSystem:
             print("-" * len(header))
             for k, (n, a, e) in diffs.items():
                 print(f"{k:<7d} {n:12.6f} {a:12.6f} {e:12.2e}")
+            print("-" * len(header))
+
+        return ok, diffs
+
+    #-----------------------------------------------------------------#
+    # Sparse vs full Assembly (selectively employ dot products)
+    #-----------------------------------------------------------------#
+
+    def check_decomposition_numerical_sparse_full(self, f_eval, f_deg: Counter,
+                                                  tol=1e-12, verbose=True):
+        """
+        Cross-check sparse vs full assembly of rank 1 decomposition
+        coefficients
+        """
+        from timeit import default_timer as timer
+
+        start_sparse   = timer()
+        coeffs_sparse  = self.decompose_vector_sparse(f_eval, f_deg)
+        elapsed_sparse = timer() - start_sparse
+
+        start_full   = timer()
+        coeffs_full  = self.decompose(f_eval, f_deg)
+        elapsed_full = timer() - start_full
+
+        diffs, ok = {}, True
+        for k in coeffs_sparse.keys():
+            coeff_sparse = coeffs_sparse[k]
+            coeff_full   = coeffs_full[k]
+
+            err = abs(coeff_sparse - coeff_full)
+            if err > tol:
+                ok = False
+
+            diffs[k] = (coeff_sparse, coeff_full, err)
+
+        if verbose:
+            print(f"[Assembly Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
+            print(f"[Elapsed Time] Sparse {elapsed_sparse} Full = {elapsed_full}")
+            header = f"{'Basis':<7} {'Sparse':>12} {'Full':>12} {'Error':>12}"
+            print(header)
+            print("-" * len(header))
+            for k, (n, a, e) in diffs.items():
+                print(f"{k:<7d} {float(n):12.6f} {float(a):12.6f} {float(e):12.2e}")
             print("-" * len(header))
 
         return ok, diffs
