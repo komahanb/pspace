@@ -35,14 +35,11 @@ def sparse(dmapi, dmapj, dmapf):
     return smap
 
 def minnum_quadrature_points(degree):
-    return math.ceil((degree+1)/2)
-
-def nqpts(pdeg):
     """
     Return the number of quadrature points necessary to integrate the
     monomial of degree deg.
     """
-    return max(pdeg/2+1,1)  #1 + pdeg/2 #max(deg/2+1,1)
+    return math.ceil((degree+1)/2)
 
 def generate_basis_tensor_degree(max_degree_params):
     """
@@ -66,33 +63,15 @@ def generate_basis_tensor_degree(max_degree_params):
 
     total_tensor_basis_terms = int(np.prod(pdegs))
 
-    term_polynomial_degree = {}
+    basis = {}
     k = 0
     for degrees in product(*[range(d+1) for d in pdegs]):
-        term_polynomial_degree[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
+        basis[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
         k += 1
 
-    return term_polynomial_degree
-
-
-def generate_basis_total_degree(max_degrees):
-    """
-    Build total-degree basis: all multi-indices with sum(deg_i) <= max.
-    max_degrees : dict {cid: max_degree}
-    Returns     : dict {basis_id: Counter({cid:deg,...})}
-    """
-    cids     = list(max_degrees.keys())
-    degrees  = list(max_degrees.values())
-    basis    = {}
-    k        = 0
-
-    for deg_tuple in product(*[range(d+1) for d in degrees]):
-        if sum(deg_tuple) <= max(degrees):   # total degree filter
-            basis[k] = Counter({cid: d for cid, d in zip(cids, deg_tuple)})
-            k += 1
     return basis
 
-def generate_basis_total_degree_old(max_degree_params):
+def generate_basis_total_degree(max_degree_params):
     """
     Construct a total-degree index map for basis functions.
 
@@ -104,7 +83,7 @@ def generate_basis_total_degree_old(max_degree_params):
 
     Returns
     -------
-    term_polynomial_degree : dict
+    basis : dict
         Map {basis_index : Counter({pid: degree, ...})}.
         Each entry gives the parameterwise polynomial degrees
         for that basis term, with sum(degrees) <= max(total_degrees).
@@ -114,18 +93,18 @@ def generate_basis_total_degree_old(max_degree_params):
 
     max_total_degree = max(pdegs)
 
-    term_polynomial_degree = {}
+    basis = {}
     k = 0
     for degrees in product(*[range(d+1) for d in pdegs]):
         if sum(degrees) <= max_total_degree:
-            term_polynomial_degree[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
+            basis[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
             k += 1
 
-    return term_polynomial_degree
+    return basis
 
 if __name__ == '__main__':
 
-    max_degree_params = {0:3, 1:3, 2:3}
+    max_degree_params = {0:2, 1:2}
 
     out = generate_basis_tensor_degree(max_degree_params)
     print(len(out), out)
