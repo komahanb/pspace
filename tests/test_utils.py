@@ -19,6 +19,12 @@ from pspace.core import (CoordinateFactory,
 # local module imports
 
 #=====================================================================#
+# Global test flags
+#=====================================================================#
+
+ENABLE_ANALYTIC_TESTS = False
+
+#=====================================================================#
 # Helper : randomized coordinate factory with logging
 #=====================================================================#
 
