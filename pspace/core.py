@@ -539,6 +539,10 @@ class CoordinateSystem:
         """
         Axis-wise admissibility rule for a single monomial.
 
+        admissible_pair          = atomic check (axis-wise rule)
+        monomial_sparsity_mask   = per-monomial mask
+        polynomial_sparsity_mask = per-polynomial union of masks
+
         Parameters
         ----------
         deg_i, deg_j : Counter
