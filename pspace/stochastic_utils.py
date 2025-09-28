@@ -102,6 +102,17 @@ def generate_basis_total_degree(max_degree_params):
 
     return basis
 
+
+def sum_degrees_union(f_degrees, psi_i, psi_j):
+    """Union over all monomials in f: max degree per axis."""
+    degs = Counter()
+    for f_deg in f_degrees:
+        for a in set(f_deg) | set(psi_i) | set(psi_j):
+            degs[a] = max(degs.get(a,0),
+                          f_deg.get(a,0) + psi_i.get(a,0) + psi_j.get(a,0))
+    return degs
+
+
 if __name__ == '__main__':
 
     max_degree_params = {0:2, 1:2}
@@ -111,3 +122,16 @@ if __name__ == '__main__':
 
     out = generate_basis_total_degree(max_degree_params)
     print(len(out), out)
+
+    basis = {
+        0: Counter({'x': 0, 'y': 0}),
+        1: Counter({'x': 1, 'y': 0}),
+        2: Counter({'x': 0, 'y': 1}),
+        3: Counter({'x': 1, 'y': 1})
+    }
+
+    deg_f = Counter({'x': 1, 'y': 0})
+
+    mask = sparsity_mask(basis, deg_f)
+
+    print(mask)
