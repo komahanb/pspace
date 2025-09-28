@@ -1,36 +1,66 @@
-import numpy as np
-from collections import Counter
+#=====================================================================#
+# Randomized matrix decomposition tests in randomly chosen
+# N-dimensional coordinate system
+#---------------------------------------------------------------------#
+# Combinations:
+#---------------------------------------------------------------------#
+#     - numerical vs symbolic (to be implemented)
+#     - sparse vs full decomposition
+#---------------------------------------------------------------------#
+# Author : Komahan Boopathy (komahan@gatech.edu)
+#=====================================================================#
 
-def test_decompose_matrix_basic(space):
-    """
-    space : your stochastic space object, with:
-        - .basis   {i: Counter}
-        - .getNumBasisFunctions()
-        - .evaluateBasisDegreesY()
-        - .build_quadrature()
-        - .decompose_matrix()
-    """
+# python module imports
+import pytest
+import random
 
-    # Polynomial: f(y) = 3 + 3*y0 + 3*y0^2*y1
-    from yourmodule import PolyFunction  # wherever you put the class
+# core module imports
+from pspace.core import (CoordinateFactory,
+                         CoordinateSystem,
+                         BasisFunctionType,
+                         PolyFunction)
 
-    f_eval = PolyFunction([
-        (3, Counter({})),             # constant
-        (3, Counter({0:1})),          # linear
-        (3, Counter({0:2, 1:1}))      # mixed quadratic
-    ])
+# local module imports
+from .test_utils import (random_coordinate,
+                         random_polynomial,
+                         get_coordinate_system_type)
 
-    # Dense (full) assembly
-    A_full = space.decompose_matrix(f_eval, sparse=False, symmetric=True)
+#=====================================================================#
+# Sparsity-aware and sparsity-unware matrix decomposition tests
+#=====================================================================#
 
-    # Sparse (polynomial_sparsity_mask) assembly
-    A_sparse = space.decompose_matrix(f_eval, sparse=True, symmetric=True)
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_tensor_basis_sparse_full(trial):
+    random.seed(trial)
 
-    # Compare
-    diff = np.max(np.abs(A_full - A_sparse))
-    print("max diff =", diff)
-    print("full matrix:\n", A_full)
-    print("sparse matrix:\n", A_sparse)
+    print(f"\n=== Trial {trial} : Matrix TENSOR Basis (sparse vs full assembly)  ===")
 
-    # Assert equality within tolerance
-    assert np.allclose(A_full, A_sparse, atol=1e-10)
+    cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE,
+                                    max_deg = 3, max_coords = 3)
+
+    polynomial_function = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_matrix_sparse_full(polynomial_function,
+                                                          tol=1e-6,
+                                                          verbose=True)
+    assert ok
+
+#=====================================================================#
+# Tests 2 B: Total Degree Basis (sparse vs full assembly)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_total_basis_sparse_full(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Matrix TOTAL Basis (sparse vs full assembly)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE,
+                                    max_deg = 3, max_coords = 3)
+
+    polynomial_function = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_matrix_sparse_full(polynomial_function,
+                                                          tol=1e-6,
+                                                          verbose=True)
+    assert ok
