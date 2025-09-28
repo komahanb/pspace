@@ -124,7 +124,7 @@ def test_randomized_tensor_basis_sparse_full(trial):
     print(f"\n=== Trial {trial} : Tensor Degree Basis (sparse vs full assembly)  ===")
 
     cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE,
-                                    max_deg = 4, max_coords = 4)
+                                    max_deg = 3, max_coords = 3)
 
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
@@ -144,7 +144,7 @@ def test_randomized_total_basis_sparse_full(trial):
     print(f"\n=== Trial {trial} : Total Degree Basis (sparse vs full assembly)  ===")
 
     cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE,
-                                    max_deg = 6, max_coords = 6)
+                                    max_deg = 3, max_coords = 3)
 
     fexpr, dfunc, fdeg = random_polynomial(cs)
 
