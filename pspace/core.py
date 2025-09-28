@@ -28,7 +28,7 @@ from .stochastic_utils import (minnum_quadrature_points,
                                generate_basis_total_degree,
                                sum_degrees,
                                safe_zero_degrees,
-                               sum_degrees_union,
+                               sum_degrees_union_matrix,
                                sum_degrees_union_vector)
 
 from .orthogonal_polynomials import unit_hermite
@@ -71,43 +71,52 @@ class PolyFunction:
     def __init__(self, terms):
         """
         terms : list of (coeff, Counter) pairs
-            Example:
+        Example:
             [
-              (3, Counter({})),            # constant
+              (3, Counter()),              # constant
               (3, Counter({0:1})),         # 3*y0
               (3, Counter({0:2, 1:1}))     # 3*y0^2 * y1
             ]
-
-        terms: list of (coeff: float, degs: Counter)
         """
-        # self.terms = terms
+        self._terms = []
+        self._degrees = []          # list of Counters
+        self._max_degrees = Counter()
 
-        # enforce format check before acceptance
-        self.terms = []
         for t in terms:
             if isinstance(t, tuple) and isinstance(t[1], Counter):
                 coeff, degs = t
-                self.terms.append((coeff, degs))
+                self._terms.append((coeff, degs))
+                self._degrees.append(degs)
+                for k, v in degs.items():
+                    self._max_degrees[k] = max(self._max_degrees.get(k, 0), v)
             else:
                 raise TypeError(f"Invalid term format: {t!r}")
 
     @property
+    def terms(self):
+        return self._terms
+
+    @property
     def degrees(self):
-        """Return list of Counters, one per monomial."""
-        return [degs for _, degs in self.terms]
+        """List[Counter]: degree structure per monomial"""
+        return self._degrees
+
+    @property
+    def max_degrees(self):
+        """Counter: max degree per axis (union of monomials)"""
+        return self._max_degrees
 
     def __call__(self, Y):
-        """Evaluate polynomial at dict y={cid: value}"""
         total = 0.0
-        for coeff, degs in self.terms:
+        for coeff, degs in self._terms:
             mon = coeff
             for cid, d in degs.items():
-                mon *= Y[cid]**d
+                mon *= Y[cid] ** d
             total += mon
         return total
 
     def __repr__(self):
-        return f"PolyFunction({self.terms})"
+        return f"PolyFunction({self._terms})"
 
 #=====================================================================#
 # Coordinate Base Class
@@ -579,7 +588,7 @@ class CoordinateSystem:
                 #-------------------------------------------------------#
                 # Numerical quadrature
                 #-------------------------------------------------------#
-                need = sum_degrees_union_vector(function.degrees, psi_k)
+                need = sum_degrees_union_vector(function.max_degrees, psi_k)
                 qmap = self.build_quadrature(need)
 
                 s = 0.0
@@ -628,14 +637,14 @@ class CoordinateSystem:
         If f_deg is empty (constant monomial), then all (i,j) pairs are admissible.
         """
 
-        # Constant monomial ⇒ don't filter anything
+        # Constant monomial -> don't filter anything
         if not f_deg:
-            return True
+            return deg_i == deg_j
 
         axes = set(deg_i) | set(deg_j) | set(f_deg)
         for d in axes:
             di, dj, df = deg_i.get(d, 0), deg_j.get(d, 0), f_deg.get(d, 0)
-            if not (abs(di - dj) <= df <= di + dj):
+            if not (abs(di - dj) <= df):
                 return False
         return True
 
@@ -715,7 +724,7 @@ class CoordinateSystem:
         qcache = {}
         for i, j in mask:
             psi_i, psi_j = self.basis[i], self.basis[j]
-            need = sum_degrees_union(function.degrees, psi_i, psi_j)
+            need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
 
             key = tuple(sorted(need.items()))
             qmap = qcache.get(key)

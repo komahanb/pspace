@@ -111,15 +111,94 @@ def sum_degrees_union_vector(f_degrees, psi_i):
                           f_deg.get(a, 0) + psi_i.get(a, 0))
     return degs
 
-def sum_degrees_union(f_degrees, psi_i, psi_j):
-    """Union over all monomials in f: max degree per axis."""
+def sum_degrees_union_vector(f_degrees, psi_k: Counter) -> Counter:
+    """
+    Compute required quadrature degree for product f(y)*ψ_k(y).
+
+    Parameters
+    ----------
+    f_degrees : Counter or list[Counter]
+        Degree structures of f. Each Counter is {axis: degree}.
+        Can be a single Counter (max degrees) or list of monomial degrees.
+    psi_k : Counter
+        Degree structure of basis function ψ_k.
+
+    Returns
+    -------
+    Counter
+        Max degree needed per axis to exactly integrate f * ψ_k.
+
+    Notes
+    -----
+    - For each axis d, the required degree is:
+          deg(d) = max over monomials [ f_deg(d) + psi_k(d) ]
+    - Ensures enough quadrature order for vector decomposition.
+
+    Example
+    -------
+    >>> f_degrees = [Counter({0:2, 1:1})]   # y0^2 * y1
+    >>> psi_k = Counter({1:2})              # y1^2
+    >>> sum_degrees_union_vector(f_degrees, psi_k)
+    Counter({0: 2, 1: 3})   # product ~ y0^2 * y1^3
+    """
     degs = Counter()
+
+    # Normalize input
+    if isinstance(f_degrees, Counter):
+        f_degrees = [f_degrees]
+
     for f_deg in f_degrees:
-        for a in set(f_deg) | set(psi_i) | set(psi_j):
-            degs[a] = max(degs.get(a,0),
-                          f_deg.get(a,0) + psi_i.get(a,0) + psi_j.get(a,0))
+        axes = set(f_deg) | set(psi_k)
+        for a in axes:
+            total = f_deg.get(a, 0) + psi_k.get(a, 0)
+            degs[a] = max(degs.get(a, 0), total)
+
     return degs
 
+def sum_degrees_union_matrix(f_degrees, psi_i: Counter, psi_j: Counter) -> Counter:
+    """
+    Compute required quadrature degree for product f(y)*ψ_i(y)*ψ_j(y).
+
+    Parameters
+    ----------
+    f_degrees : Counter or list[Counter]
+        Degree structures of f. Each Counter is {axis: degree}.
+        Can be a single Counter (max degrees) or list of monomial degrees.
+    psi_i, psi_j : Counter
+        Degree structures of basis functions ψ_i and ψ_j.
+
+    Returns
+    -------
+    Counter
+        Max degree needed per axis to exactly integrate f * ψ_i * ψ_j.
+
+    Notes
+    -----
+    - For each axis d, the required degree is:
+          deg(d) = max over monomials [ f_deg(d) + psi_i(d) + psi_j(d) ]
+    - Ensures enough quadrature order for multivariate products.
+
+    Example
+    -------
+    >>> f_degrees = [Counter({0:2, 1:1})]   # y0^2 * y1
+    >>> psi_i = Counter({0:1})              # y0
+    >>> psi_j = Counter({1:2})              # y1^2
+    >>> sum_degrees_union(f_degrees, psi_i, psi_j)
+    Counter({0: 3, 1: 3})   # product ~ y0^3 * y1^3
+    """
+    degs = Counter()
+
+    # Normalize input
+    if isinstance(f_degrees, Counter):
+        f_degrees = [f_degrees]
+
+    for f_deg in f_degrees:
+        axes = set(f_deg) | set(psi_i) | set(psi_j)
+        for a in axes:
+            total = f_deg.get(a, 0) + psi_i.get(a, 0) + psi_j.get(a, 0)
+            degs[a] = max(degs.get(a, 0), total)
+
+    return degs
 
 if __name__ == '__main__':
 
