@@ -584,17 +584,30 @@ class CoordinateSystem:
 
         return coeffs
 
-    def decompose_analytic(self, function: PolyFunction):
+    def decompose_analytic(self, function: PolyFunction, sparse: bool = False):
         """
         Analytic decomposition using SymPy:
         c_k = ∫ f(y) ψ_k(y) ρ(y) dy
+
+        Parameters
+        ----------
+        function : PolyFunction
+        sparse   : bool
+            If True, restrict to admissible basis functions.
         """
         coords  = self.coordinates
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
         f_expr  = function(symbols)
 
+        # Build mask
+        if sparse:
+            mask = self.polynomial_vector_sparsity_mask(function.degrees)
+        else:
+            mask = self.basis.keys()
+
         coeffs = {}
-        for k, psi_k in self.basis.items():
+        for k in mask:
+            psi_k = self.basis[k]
             psi_expr = 1
             for cid, deg in psi_k.items():
                 z        = coords[cid].physical_to_standard(coords[cid].symbol)
@@ -610,6 +623,12 @@ class CoordinateSystem:
                 val = sp.integrate(val, (y, a, b))
 
             coeffs[k] = sp.simplify(val)
+
+        # Optional: fill in zeroes for basis not in mask
+        if sparse:
+            for k in self.basis:
+                if k not in coeffs:
+                    coeffs[k] = 0
 
         return coeffs
 
@@ -770,6 +789,7 @@ class CoordinateSystem:
 
     def check_decomposition_numerical_symbolic(self,
                                                function: PolyFunction,
+                                               sparse: bool = True,
                                                tol=1e-10,
                                                verbose=True):
         """
@@ -786,7 +806,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_num   = timer()
-        coeffs_num  = self.decompose(function, sparse=True)
+        coeffs_num  = self.decompose(function, sparse=sparse)
         elapsed_num = timer() - start_num
 
         #-------------------------------------------------------------#
@@ -794,7 +814,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_sym   = timer()
-        coeffs_sym  = self.decompose_analytic(function)
+        coeffs_sym  = self.decompose_analytic(function, sparse=sparse)
         elapsed_sym = timer() - start_sym
 
         #-------------------------------------------------------------#

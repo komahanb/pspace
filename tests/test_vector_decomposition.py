@@ -40,6 +40,7 @@ def test_randomized_tensor_numerical_symbolic(trial):
     polynomial_function = random_polynomial(cs)
 
     ok, diffs = cs.check_decomposition_numerical_symbolic(polynomial_function,
+                                                          sparse = True,
                                                           tol=1e-6,
                                                           verbose=True)
     assert ok
@@ -55,6 +56,7 @@ def test_randomized_total_numerical_symbolic(trial):
     polynomial_function = random_polynomial(cs)
 
     ok, diffs = cs.check_decomposition_numerical_symbolic(polynomial_function,
+                                                          sparse = True,
                                                           tol=1e-6,
                                                           verbose=True)
     assert ok
