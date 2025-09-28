@@ -745,6 +745,80 @@ class CoordinateSystem:
 
         return A
 
+    def decompose_matrix_analytic(self, function, sparse=False, symmetric=True):
+        """
+        Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense),
+        using analytic (Sympy) integration.
+
+        Parameters
+        ----------
+        function  : PolyFunction
+            Polynomial function to decompose (with .degrees and .max_degrees).
+        sparse    : bool
+            If True, restrict to admissible pairs.
+        symmetric : bool
+            If True, compute only i ≤ j and mirror.
+
+        Returns
+        -------
+        A : np.ndarray
+            Dense (nbasis x nbasis) coefficient matrix.
+        """
+        import sympy as sp
+
+        nbasis = self.getNumBasisFunctions()
+        A      = np.zeros((nbasis, nbasis))
+
+        coords  = self.coordinates
+        symbols = {cid: coord.symbol for cid, coord in coords.items()}
+
+        # Build admissible mask
+        if sparse:
+            mask = self.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
+        else:
+            if symmetric:
+                mask = {(i, j) for i in self.basis for j in self.basis if i <= j}
+            else:
+                mask = {(i, j) for i in self.basis for j in self.basis}
+
+        for i, j in mask:
+            psi_i, psi_j = self.basis[i], self.basis[j]
+
+            # Build integrand symbolically
+            psi_expr_i, psi_expr_j = 1, 1
+            for cid, deg in psi_i.items():
+                z = coords[cid].physical_to_standard(coords[cid].symbol)
+                psi_expr_i *= coords[cid].psi_z(z, deg)
+            for cid, deg in psi_j.items():
+                z = coords[cid].physical_to_standard(coords[cid].symbol)
+                psi_expr_j *= coords[cid].psi_z(z, deg)
+
+            # Function f(y) expanded
+            f_expr = 0
+            for coeff, degs in function.terms:
+                mon = coeff
+                for cid, d in degs.items():
+                    mon *= symbols[cid] ** d
+                f_expr += mon
+
+            w_expr = sp.Mul(*[c.weight() for c in coords.values()])
+
+            # Full integrand: f * ψ_i * ψ_j * weight
+            integrand = f_expr * psi_expr_i * psi_expr_j * w_expr
+
+            val = integrand
+            for cid, coord in coords.items():
+                y = coord.symbol
+                a, b = coord.domain()
+                val = sp.integrate(val, (y, a, b))
+
+            # Simplify and cast to float
+            A[i, j] = float(sp.simplify(val))
+            if symmetric and i != j:
+                A[j, i] = A[i, j]
+
+        return A
+
     #-----------------------------------------------------------------#
     # Consistency checks
     # TestCoordinateSystem and supply the instance of cs
@@ -917,6 +991,76 @@ class CoordinateSystem:
                 if abs(e) > tol:  # only print significant diffs
                     print(f"{i:<3d} {j:<3d} {float(vs):12.6f} "
                           f"{float(vf):12.6f} {float(e):12.2e}")
+            print("-" * len(header))
+
+        return ok, diffs
+
+    def check_decomposition_matrix_numerical_symbolic(self, function, tol=1e-12, verbose=True):
+        """
+        Cross-check numerical vs analytic assembly of rank-2 (matrix)
+        decomposition coefficients.
+
+        Parameters
+        ----------
+        function : PolyFunction
+            Polynomial function to decompose.
+        tol : float
+            Absolute tolerance for consistency check.
+        verbose : bool
+            Print detailed report if True.
+
+        Returns
+        -------
+        ok : bool
+            True if all entries match within tolerance.
+        diffs : dict
+            Mapping (i,j) -> (numerical, analytic, error).
+        """
+        from timeit import default_timer as timer
+
+        #-------------------------------------------------------------#
+        # Assemble numerical + analytic
+        #-------------------------------------------------------------#
+
+        start_num = timer()
+        A_num     = self.decompose_matrix(function, sparse=True, symmetric=True)
+        elapsed_num = timer() - start_num
+
+        start_an  = timer()
+        A_an      = self.decompose_matrix_analytic(function, sparse=True, symmetric=True)
+        elapsed_an = timer() - start_an
+
+        #-------------------------------------------------------------#
+        # Compute differences
+        #-------------------------------------------------------------#
+
+        diffs, ok = {}, True
+        nbasis = self.getNumBasisFunctions()
+        for i in range(nbasis):
+            for j in range(nbasis):
+                vnum = A_num[i, j]
+                van  = A_an[i, j]
+                err  = abs(vnum - van)
+                if err > tol:
+                    ok = False
+                diffs[(i, j)] = (vnum, van, err)
+
+        #-------------------------------------------------------------#
+        # Report
+        #-------------------------------------------------------------#
+
+        if verbose:
+            print(f"[Matrix Numerical vs Analytic Check] {'PASSED' if ok else 'FAILED'} "
+                  f"with tol = {tol}")
+            print(f"[Elapsed Time] numerical {elapsed_num:.4e}  "
+                  f"analytic {elapsed_an:.4e}  "
+                  f"Ratio {elapsed_an/elapsed_num:.2f}")
+            header = f"{'i':<3} {'j':<3} {'Numerical':>12} {'Analytic':>12} {'Error':>12}"
+            print(header)
+            print("-" * len(header))
+            for (i, j), (vn, va, e) in diffs.items():
+                if abs(e) > tol:  # only print significant diffs
+                    print(f"{i:<3d} {j:<3d} {vn:12.6f} {va:12.6f} {e:12.2e}")
             print("-" * len(header))
 
         return ok, diffs
