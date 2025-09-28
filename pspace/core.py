@@ -522,63 +522,32 @@ class CoordinateSystem:
     # Decomposition
     #-----------------------------------------------------------------#
 
-    def decompose(self, function: PolyFunction, sparse: bool = False):
+    def decompose(self,
+                  function : PolyFunction,
+                  sparse   : bool = True,
+                  analytic : bool = False):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
 
         Parameters
         ----------
         function : PolyFunction
-            Callable polynomial with .degrees list of Counters.
-        sparse : bool
-            If True, restrict to admissible basis functions.
+            Polynomial function to decompose.
+        sparse   : bool
+            If True, restrict to admissible basis indices.
+        analytic : bool
+            If True, compute coefficients with Sympy integrals instead of quadrature.
 
         Returns
         -------
-        coeffs : dict
-            Map basis_id -> coefficient value.
+        coeffs : dict {basis_id: coefficient}
         """
-        coeffs = {}
-
-        # Build admissible mask
-        if sparse:
-            mask = self.polynomial_vector_sparsity_mask(function.degrees)
-        else:
-            mask = set(self.basis.keys())
-
-        for k, psi_k in self.basis.items():
-            if k not in mask:
-                coeffs[k] = 0.0
-                continue
-
-            # union across monomials for quadrature requirement
-            need = sum_degrees_union_vector(function.degrees, psi_k)
-            qmap = self.build_quadrature(need)
-
-            s = 0.0
-            for q in qmap.values():
-                y = q['Y']
-                s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
-            coeffs[k] = s
-
-        return coeffs
-
-    def decompose_analytic(self, function: PolyFunction, sparse: bool = False):
-        """
-        Analytic decomposition using SymPy:
-        c_k = ∫ f(y) ψ_k(y) ρ(y) dy
-
-        Parameters
-        ----------
-        function : PolyFunction
-        sparse   : bool
-            If True, restrict to admissible basis functions.
-        """
-        coords  = self.coordinates
+        coords = self.coordinates
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
-        f_expr  = function(symbols)
 
-        # Build mask
+        #---------------------------------------------------------------#
+        # Build admissible mask
+        #---------------------------------------------------------------#
         if sparse:
             mask = self.polynomial_vector_sparsity_mask(function.degrees)
         else:
@@ -587,23 +556,39 @@ class CoordinateSystem:
         coeffs = {}
         for k in mask:
             psi_k = self.basis[k]
-            psi_expr = 1
-            for cid, deg in psi_k.items():
-                z        = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr *= coords[cid].psi_z(z, deg)
 
-            integrand = f_expr * psi_expr * sp.Mul(*[c.weight()
-                                                     for c in coords.values()])
+            if analytic:
+                #-------------------------------------------------------#
+                # Analytic Sympy integration
+                #-------------------------------------------------------#
+                psi_expr = 1
+                for cid, deg in psi_k.items():
+                    z = coords[cid].physical_to_standard(coords[cid].symbol)
+                    psi_expr *= coords[cid].psi_z(z, deg)
 
-            val = integrand
-            for cid, coord in coords.items():
-                y = coord.symbol
-                a, b = coord.domain()
-                val = sp.integrate(val, (y, a, b))
+                integrand = function(symbols) * psi_expr * sp.Mul(*[c.weight() for c in coords.values()])
+                val = integrand
+                for cid, coord in coords.items():
+                    y = coord.symbol
+                    a, b = coord.domain()
+                    val = sp.integrate(val, (y, a, b))
 
-            coeffs[k] = sp.simplify(val)
+                coeffs[k] = sp.simplify(val)
 
-        # Optional: fill in zeroes for basis not in mask
+            else:
+                #-------------------------------------------------------#
+                # Numerical quadrature
+                #-------------------------------------------------------#
+                need = sum_degrees_union_vector(function.degrees, psi_k)
+                qmap = self.build_quadrature(need)
+
+                s = 0.0
+                for q in qmap.values():
+                    y = q['Y']
+                    s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
+                coeffs[k] = s
+
+        # Optionally fill zeroes
         if sparse:
             for k in self.basis:
                 if k not in coeffs:
@@ -785,7 +770,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_num   = timer()
-        coeffs_num  = self.decompose(function, sparse=sparse)
+        coeffs_num  = self.decompose(function, sparse=sparse, analytic=False)
         elapsed_num = timer() - start_num
 
         #-------------------------------------------------------------#
@@ -793,7 +778,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_sym   = timer()
-        coeffs_sym  = self.decompose_analytic(function, sparse=sparse)
+        coeffs_sym  = self.decompose(function, sparse=sparse, analytic=True)
         elapsed_sym = timer() - start_sym
 
         #-------------------------------------------------------------#
@@ -820,49 +805,6 @@ class CoordinateSystem:
             status = "PASSED" if ok else "FAILED"
             print(f"[Consistency Check] {status} with tol = {tol}, ortho tol = {ortho_tol:.2e}")
             print(f"[Elapsed Time] numerical {elapsed_num:.3e}  analytic = {elapsed_sym:.3e}")
-            header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
-            print(header)
-            print("-" * len(header))
-            for k, (n, a, e) in diffs.items():
-                print(f"{k:<7d} {n:12.6f} {a:12.6f} {e:12.2e}")
-            print("-" * len(header))
-
-        return ok, diffs
-
-    def check_decomposition_numerical_symbolic_old(self, function : PolyFunction,
-                                               tol=1e-10, verbose=True):
-        """
-        Cross-check numerical vs analytic decomposition.
-        """
-
-        # ensure basis is orthonormal first
-        ortho_tol = self.check_orthonormality()
-
-        from timeit import default_timer as timer
-
-        start_num = timer()
-        coeffs_num = self.decompose(function, sparse = True)
-        elapsed_num = timer() - start_num
-
-        start_sym = timer()
-        coeffs_sym = self.decompose_analytic(function)
-        elapsed_sym = timer() - start_sym
-
-        diffs, ok = {}, True
-        for k in coeffs_num.keys():
-            num_val = float(coeffs_num[k])
-            try:
-                ana_val = float(coeffs_sym[k].evalf())
-            except TypeError:
-                ana_val = float(sp.N(coeffs_sym[k], 15))
-            err = abs(num_val - ana_val)
-            if err > tol:
-                ok = False
-            diffs[k] = (num_val, ana_val, err)
-
-        if verbose:
-            print(f"[Consistency Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}, ortho tol = {ortho_tol}")
-            print(f"[Elapsed Time] numerical {elapsed_num}  analytic = {elapsed_sym}")
             header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
             print(header)
             print("-" * len(header))
