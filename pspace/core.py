@@ -23,10 +23,13 @@ from enum        import Enum
 from itertools   import product
 
 # Local modules
-from .stochastic_utils import (
-    minnum_quadrature_points,
-    generate_basis_tensor_degree, generate_basis_total_degree,
-    sum_degrees, safe_zero_degrees, sum_degrees_union)
+from .stochastic_utils import (minnum_quadrature_points,
+                               generate_basis_tensor_degree,
+                               generate_basis_total_degree,
+                               sum_degrees,
+                               safe_zero_degrees,
+                               sum_degrees_union,
+                               sum_degrees_union_vector)
 
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
@@ -63,6 +66,48 @@ class BasisFunctionType(Enum):
     TENSOR_DEGREE   = 0
     TOTAL_DEGREE    = 1
     ADAPTIVE_DEGREE = 2
+
+class PolyFunction:
+    def __init__(self, terms):
+        """
+        terms : list of (coeff, Counter) pairs
+            Example:
+            [
+              (3, Counter({})),            # constant
+              (3, Counter({0:1})),         # 3*y0
+              (3, Counter({0:2, 1:1}))     # 3*y0^2 * y1
+            ]
+
+        terms: list of (coeff: float, degs: Counter)
+        """
+        # self.terms = terms
+
+        # enforce format check before acceptance
+        self.terms = []
+        for t in terms:
+            if isinstance(t, tuple) and isinstance(t[1], Counter):
+                coeff, degs = t
+                self.terms.append((coeff, degs))
+            else:
+                raise TypeError(f"Invalid term format: {t!r}")
+
+    @property
+    def degrees(self):
+        """Return list of Counters, one per monomial."""
+        return [degs for _, degs in self.terms]
+
+    def __call__(self, Y):
+        """Evaluate polynomial at dict y={cid: value}"""
+        total = 0.0
+        for coeff, degs in self.terms:
+            mon = coeff
+            for cid, d in degs.items():
+                mon *= Y[cid]**d
+            total += mon
+        return total
+
+    def __repr__(self):
+        return f"PolyFunction({self.terms})"
 
 #=====================================================================#
 # Coordinate Base Class
@@ -414,6 +459,19 @@ class CoordinateSystem:
         else:
             raise ValueError("Unknown basis_type")
 
+    def monomial_vector_sparsity_mask(self, f_deg: Counter):
+        mask = set()
+        for i, psi_i in self.basis.items():
+            if self.sparse_vector(psi_i, f_deg):
+                mask.add(i)
+        return mask
+
+    def polynomial_vector_sparsity_mask(self, f_degrees: list[Counter]):
+        mask = set()
+        for f_deg in f_degrees:
+            mask |= self.monomial_vector_sparsity_mask(f_deg)
+        return mask
+
     #-----------------------------------------------------------------#
     # Inner products
     #-----------------------------------------------------------------#
@@ -436,7 +494,8 @@ class CoordinateSystem:
             s += f_eval(y) * g_eval(y) * q['W']
         return s
 
-    def inner_product_basis(self, i_id: int, j_id: int,
+    def inner_product_basis(self,
+                            i_id: int, j_id: int,
                             f_eval=None, f_deg: Counter|None=None):
         """
         <ψ_i, f, ψ_j> in Y-frame.
@@ -463,57 +522,76 @@ class CoordinateSystem:
     # Decomposition
     #-----------------------------------------------------------------#
 
-    def decompose(self, f_eval, f_deg: Counter):
+    def decompose(self, function: PolyFunction):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
         """
         coeffs = {}
         for k, psi_k in self.basis.items():
-            need = sum_degrees(f_deg, psi_k)
+            need = sum_degrees(function.degrees, psi_k)
             qmap = self.build_quadrature(need)
 
             s = 0.0
             for q in qmap.values():
                 y = q['Y']
-                s += f_eval(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
+                s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
             coeffs[k] = s
 
         return coeffs
 
-    def decompose_vector_sparse(self, f_eval, f_deg: Counter):
+    #-----------------------------------------------------------------#
+    # Decomposition
+    #-----------------------------------------------------------------#
+
+    def decompose(self, function: PolyFunction, sparse: bool = False):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
+
+        Parameters
+        ----------
+        function : PolyFunction
+            Callable polynomial with .degrees list of Counters.
+        sparse : bool
+            If True, restrict to admissible basis functions.
+
+        Returns
+        -------
+        coeffs : dict
+            Map basis_id -> coefficient value.
         """
         coeffs = {}
+
+        # Build admissible mask
+        if sparse:
+            mask = self.polynomial_vector_sparsity_mask(function.degrees)
+        else:
+            mask = set(self.basis.keys())
+
         for k, psi_k in self.basis.items():
-
-            #---------------------------------------------------------#
-            # Sparsity filter
-            #---------------------------------------------------------#
-
-            if not self.sparse_vector(psi_k, f_deg):
+            if k not in mask:
                 coeffs[k] = 0.0
                 continue
 
-            need = sum_degrees(f_deg, psi_k)
+            # union across monomials for quadrature requirement
+            need = sum_degrees_union_vector(function.degrees, psi_k)
             qmap = self.build_quadrature(need)
 
             s = 0.0
             for q in qmap.values():
                 y = q['Y']
-                s += f_eval(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
+                s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
             coeffs[k] = s
 
         return coeffs
 
-    def decompose_analytic(self, f_eval, f_deg: Counter):
+    def decompose_analytic(self, function: PolyFunction):
         """
         Analytic decomposition using SymPy:
         c_k = ∫ f(y) ψ_k(y) ρ(y) dy
         """
         coords  = self.coordinates
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
-        f_expr  = f_eval(symbols)
+        f_expr  = function(symbols)
 
         coeffs = {}
         for k, psi_k in self.basis.items():
@@ -621,15 +699,15 @@ class CoordinateSystem:
             mask |= self.monomial_sparsity_mask(f_deg, symmetric=symmetric)
         return mask
 
-    def decompose_matrix(self, f_eval, sparse=False, symmetric=True):
+    def decompose_matrix(self, function, sparse=False, symmetric=True):
         """
         Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense).
 
         Parameters
         ----------
-        f_eval : PolyFunction
+        function  : PolyFunction
             Callable with .degrees property for sparsity.
-        sparse : bool
+        sparse    : bool
             If True, restrict to admissible pairs.
         symmetric : bool
             If True, compute only i ≤ j and mirror.
@@ -644,7 +722,7 @@ class CoordinateSystem:
 
         # Build admissible mask
         if sparse:
-            mask = self.polynomial_sparsity_mask(f_eval.degrees, symmetric=symmetric)
+            mask = self.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
         else:
             if symmetric:
                 mask = {(i,j) for i in self.basis for j in self.basis if i <= j}
@@ -654,7 +732,7 @@ class CoordinateSystem:
         qcache = {}
         for i, j in mask:
             psi_i, psi_j = self.basis[i], self.basis[j]
-            need = sum_degrees_union(f_eval.degrees, psi_i, psi_j)
+            need = sum_degrees_union(function.degrees, psi_i, psi_j)
 
             key = tuple(sorted(need.items()))
             qmap = qcache.get(key)
@@ -665,7 +743,7 @@ class CoordinateSystem:
             s = 0.0
             for q in qmap.values():
                 y = q['Y']
-                s += (f_eval(y)
+                s += (function(y)
                       * self.evaluateBasisDegreesY(y, psi_i)
                       * self.evaluateBasisDegreesY(y, psi_j)) * q['W']
 
@@ -677,6 +755,7 @@ class CoordinateSystem:
 
     #-----------------------------------------------------------------#
     # Consistency checks
+    # TestCoordinateSystem and supply the instance of cs
     #-----------------------------------------------------------------#
 
     def check_orthonormality(self):
@@ -689,8 +768,69 @@ class CoordinateSystem:
                 A[ii,jj] = self.inner_product_basis(ii, jj)
         return np.linalg.norm(A - np.eye(nbasis), ord=np.inf)
 
+    def check_decomposition_numerical_symbolic(self,
+                                               function: PolyFunction,
+                                               tol=1e-10,
+                                               verbose=True):
+        """
+        Cross-check numerical vs analytic decomposition.
+        """
 
-    def check_decomposition_numerical_symbolic(self, f_eval, f_deg: Counter,
+        # ensure basis is orthonormal first
+        ortho_tol = self.check_orthonormality()
+
+        from timeit import default_timer as timer
+
+        #-------------------------------------------------------------#
+        # Numerical decomposition (quadrature)
+        #-------------------------------------------------------------#
+
+        start_num   = timer()
+        coeffs_num  = self.decompose(function, sparse=True)
+        elapsed_num = timer() - start_num
+
+        #-------------------------------------------------------------#
+        # Analytic decomposition (Sympy)
+        #-------------------------------------------------------------#
+
+        start_sym   = timer()
+        coeffs_sym  = self.decompose_analytic(function)
+        elapsed_sym = timer() - start_sym
+
+        #-------------------------------------------------------------#
+        # Compare coefficients
+        #-------------------------------------------------------------#
+
+        diffs, ok = {}, True
+        for k in coeffs_num.keys():
+            num_val = float(coeffs_num[k])
+            try:
+                ana_val = float(coeffs_sym[k].evalf())
+            except Exception:
+                ana_val = float(sp.N(coeffs_sym[k], 15))
+            err = abs(num_val - ana_val)
+            if err > tol:
+                ok = False
+            diffs[k] = (num_val, ana_val, err)
+
+        #-------------------------------------------------------------#
+        # Reporting
+        #-------------------------------------------------------------#
+
+        if verbose:
+            status = "PASSED" if ok else "FAILED"
+            print(f"[Consistency Check] {status} with tol = {tol}, ortho tol = {ortho_tol:.2e}")
+            print(f"[Elapsed Time] numerical {elapsed_num:.3e}  analytic = {elapsed_sym:.3e}")
+            header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
+            print(header)
+            print("-" * len(header))
+            for k, (n, a, e) in diffs.items():
+                print(f"{k:<7d} {n:12.6f} {a:12.6f} {e:12.2e}")
+            print("-" * len(header))
+
+        return ok, diffs
+
+    def check_decomposition_numerical_symbolic_old(self, function : PolyFunction,
                                                tol=1e-10, verbose=True):
         """
         Cross-check numerical vs analytic decomposition.
@@ -702,11 +842,11 @@ class CoordinateSystem:
         from timeit import default_timer as timer
 
         start_num = timer()
-        coeffs_num = self.decompose(f_eval, f_deg)
+        coeffs_num = self.decompose(function, sparse = True)
         elapsed_num = timer() - start_num
 
         start_sym = timer()
-        coeffs_sym = self.decompose_analytic(f_eval, f_deg)
+        coeffs_sym = self.decompose_analytic(function)
         elapsed_sym = timer() - start_sym
 
         diffs, ok = {}, True
@@ -737,7 +877,7 @@ class CoordinateSystem:
     # Sparse vs full Assembly (selectively employ dot products)
     #-----------------------------------------------------------------#
 
-    def check_decomposition_numerical_sparse_full(self, f_eval, f_deg: Counter,
+    def check_decomposition_numerical_sparse_full(self, function: PolyFunction,
                                                   tol=1e-12, verbose=True):
         """
         Cross-check sparse vs full assembly of rank 1 decomposition
@@ -746,11 +886,11 @@ class CoordinateSystem:
         from timeit import default_timer as timer
 
         start_sparse   = timer()
-        coeffs_sparse  = self.decompose_vector_sparse(f_eval, f_deg)
+        coeffs_sparse  = self.decompose(function, sparse = True)
         elapsed_sparse = timer() - start_sparse
 
         start_full   = timer()
-        coeffs_full  = self.decompose(f_eval, f_deg)
+        coeffs_full  = self.decompose(function, sparse = False)
         elapsed_full = timer() - start_full
 
         diffs, ok = {}, True
@@ -776,28 +916,28 @@ class CoordinateSystem:
 
         return ok, diffs
 
-    def check_decomposition_matrix_sparse_full(self, f_eval, tol=1e-12, verbose=True):
+    def check_decomposition_matrix_sparse_full(self, function, tol=1e-12, verbose=True):
         """
         Cross-check sparse vs full assembly of rank-2 (matrix) decomposition
         coefficients.
         """
         from timeit import default_timer as timer
 
-        #---------------------------------------------------------------#
+        #-------------------------------------------------------------#
         # Assemble sparse + full
-        #---------------------------------------------------------------#
+        #-------------------------------------------------------------#
 
-        start_sparse = timer()
-        A_sparse     = self.decompose_matrix(f_eval, sparse=True, symmetric=True)
+        start_sparse   = timer()
+        A_sparse       = self.decompose_matrix(function, sparse=True, symmetric=True)
         elapsed_sparse = timer() - start_sparse
 
-        start_full = timer()
-        A_full     = self.decompose_matrix(f_eval, sparse=False, symmetric=True)
+        start_full   = timer()
+        A_full       = self.decompose_matrix(function, sparse=False, symmetric=True)
         elapsed_full = timer() - start_full
 
-        #---------------------------------------------------------------#
+        #-------------------------------------------------------------#
         # Compute differences
-        #---------------------------------------------------------------#
+        #-------------------------------------------------------------#
 
         diffs, ok = {}, True
         nbasis = self.getNumBasisFunctions()
@@ -830,32 +970,3 @@ class CoordinateSystem:
             print("-" * len(header))
 
         return ok, diffs
-
-
-class PolyFunction:
-    def __init__(self, terms):
-        """
-        terms : list of (coeff, Counter) pairs
-            Example:
-            [
-              (3, Counter({})),            # constant
-              (3, Counter({0:1})),         # 3*y0
-              (3, Counter({0:2, 1:1}))     # 3*y0^2 * y1
-            ]
-        """
-        self.terms = terms
-
-    def __call__(self, y):
-        """Evaluate polynomial at dict y={cid: value}"""
-        total = 0.0
-        for coeff, degs in self.terms:
-            mon = coeff
-            for cid, d in degs.items():
-                mon *= y[cid]**d
-            total += mon
-        return total
-
-    @property
-    def degrees(self):
-        """Return list of Counters (ignores coeffs) for sparsity mask"""
-        return [degs for _, degs in self.terms]

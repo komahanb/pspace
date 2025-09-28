@@ -11,11 +11,10 @@ import pytest
 from collections import Counter
 
 # core module imports
-from pspace.core import (
-    CoordinateFactory,
-    CoordinateSystem,
-    BasisFunctionType
-)
+from pspace.core import (CoordinateFactory,
+                         CoordinateSystem,
+                         BasisFunctionType,
+                         PolyFunction)
 
 # local module imports
 
@@ -70,34 +69,40 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
     #---------------------------------------------------------------#
     # Individual terms
     #---------------------------------------------------------------#
+
     for cid in coords:
-        deg        = random.randint(0, max_deg)
-        coeff      = random.randint(1, 3)
-        terms.append(coeff * symbols[cid]**deg)
-        fdeg[cid]  = max(fdeg.get(cid, 0), deg)
+        deg   = random.randint(0, max_deg)
+        coeff = random.randint(1, 3)
+        terms.append((coeff, Counter({cid: deg})))
+        fdeg[cid] = max(fdeg.get(cid, 0), deg)
 
     #---------------------------------------------------------------#
     # Cross terms
     #---------------------------------------------------------------#
+
     if len(coords) >= 2:
         for _ in range(random.randint(0, max_terms)):
-            cids       = random.sample(coords, k=random.randint(2, len(coords)))
-            coeff      = random.randint(1, 3)
-            term       = coeff
+            cids  = random.sample(coords, k=random.randint(2, len(coords)))
+            coeff = random.randint(1, 3)
+            degs  = Counter()
             for cid in cids:
-                d        = random.randint(1, max_deg)
-                term    *= symbols[cid]**d
+                d = random.randint(1, max_deg)
+                degs[cid] = d
                 fdeg[cid] = max(fdeg.get(cid, 0), d)
-            terms.append(term)
+            terms.append((coeff, degs))
 
-    fexpr  = sum(terms)
+    #---------------------------------------------------------------#
+    # interface for polynomial functions
+    #---------------------------------------------------------------#
 
-    # numeric callable : Y is dict(cid -> float)
-    fnum   = sp.lambdify([list(symbols.values())], fexpr, "numpy")
-    dfunc  = lambda Y: fnum([Y[cid] for cid in coords])
+    polyf = PolyFunction(terms)
+
+    # build sympy expression (for debug/logging)
+    fexpr = polyf(symbols)
 
     print(f"[Polynomial] f(y) = {fexpr}, degrees={dict(fdeg)}")
-    return fexpr, dfunc, fdeg
+
+    return polyf
 
 #=====================================================================#
 # Common coordinate system setup for given basis type, degrees of

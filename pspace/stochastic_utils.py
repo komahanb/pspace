@@ -102,6 +102,14 @@ def generate_basis_total_degree(max_degree_params):
 
     return basis
 
+def sum_degrees_union_vector(f_degrees, psi_i):
+    """Union over all monomials in f with ψ_i: max degree per axis."""
+    degs = Counter()
+    for f_deg in f_degrees:
+        for a in set(f_deg) | set(psi_i):
+            degs[a] = max(degs.get(a, 0),
+                          f_deg.get(a, 0) + psi_i.get(a, 0))
+    return degs
 
 def sum_degrees_union(f_degrees, psi_i, psi_j):
     """Union over all monomials in f: max degree per axis."""
