@@ -522,27 +522,6 @@ class CoordinateSystem:
     # Decomposition
     #-----------------------------------------------------------------#
 
-    def decompose(self, function: PolyFunction):
-        """
-        Coefficients c_k = <f, ψ_k> in Y-frame.
-        """
-        coeffs = {}
-        for k, psi_k in self.basis.items():
-            need = sum_degrees(function.degrees, psi_k)
-            qmap = self.build_quadrature(need)
-
-            s = 0.0
-            for q in qmap.values():
-                y = q['Y']
-                s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
-            coeffs[k] = s
-
-        return coeffs
-
-    #-----------------------------------------------------------------#
-    # Decomposition
-    #-----------------------------------------------------------------#
-
     def decompose(self, function: PolyFunction, sparse: bool = False):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
