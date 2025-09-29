@@ -66,7 +66,7 @@ def random_coordinate(cf, cid, max_deg = 4):
 # Helper : build random polynomial (with cross terms)
 #=====================================================================#
 
-def random_polynomial(cs, max_deg=2, max_terms=3):
+def random_polynomial(cs, max_deg=2, max_cross_terms=3):
     coords  = list(cs.coordinates.keys())
     symbols = {cid : cs.coordinates[cid].symbol for cid in coords}
     fdeg    = Counter()
@@ -87,7 +87,7 @@ def random_polynomial(cs, max_deg=2, max_terms=3):
     #---------------------------------------------------------------#
 
     if len(coords) >= 2:
-        for _ in range(random.randint(0, max_terms)):
+        for _ in range(random.randint(0, max_cross_terms)):
             cids  = random.sample(coords, k=random.randint(2, len(coords)))
             coeff = random.randint(1, 3)
             degs  = Counter()
