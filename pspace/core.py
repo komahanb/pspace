@@ -118,6 +118,75 @@ class PolyFunction:
     def __repr__(self):
         return f"PolyFunction({self._terms})"
 
+    @property
+    def axes(self) -> set[int]:
+        """All coordinate ids appearing in any term."""
+        s = set()
+        for _, degs in self.terms:
+            s |= set(degs.keys())
+        return s
+
+    def iter_terms(self):
+        """Yield (coeff: float, degs: Counter) for each monomial."""
+        yield from self.terms
+
+    # ---------- factorized interface for coordinate-split ----------
+    def local_factor(self, Y_local: dict[int, float],
+                     degs: Counter,
+                     local_axes: set[int]) -> float:
+        """
+        ∏_{a in local_axes} Y_local[a] ** degs[a]
+        (no coefficient included; multiplicative piece only)
+        """
+        prod = 1.0
+        for a in local_axes:
+            d = degs.get(a, 0)
+            if d:
+                prod *= (Y_local[a] ** d)
+        return prod
+
+    def local_factor_with_basis(self, Y_local: dict[int, float],
+                                degs: Counter,
+                                psi_i_axis: dict[int, int],
+                                psi_j_axis: dict[int, int] | None,
+                                coord_eval_psi_y) -> float:
+        """
+        Per-axis multiplicative block for an integrand built from
+        monomial(degs) * ψ_i * (ψ_j optional).
+        - psi_i_axis: {cid: degree}
+        - psi_j_axis: {cid: degree} or None (vector vs matrix)
+        - coord_eval_psi_y: callable (cid, y, degree) -> ψ_degree(y)
+        """
+        prod = 1.0
+        # monomial part
+        for cid, y in Y_local.items():
+            d = degs.get(cid, 0)
+            if d:
+                prod *= (y ** d)
+        # basis i
+        for cid, di in psi_i_axis.items():
+            prod *= coord_eval_psi_y(cid, Y_local[cid], di)
+        # basis j (if matrix case)
+        if psi_j_axis is not None:
+            for cid, dj in psi_j_axis.items():
+                prod *= coord_eval_psi_y(cid, Y_local[cid], dj)
+        return prod
+
+    # ---------- sympy helper for analytic path ----------
+    def as_sympy(self, symbols_by_cid: dict[int, "sp.Symbol"]):
+        """
+        Build a SymPy polynomial from stored terms (no lambdify).
+        """
+        import sympy as sp
+        expr = 0
+        for c, degs in self.terms:
+            mon = sp.Integer(1)
+            for cid, d in degs.items():
+                if d:
+                    mon *= symbols_by_cid[cid]**int(d)
+            expr += c * mon
+        return expr
+
 #=====================================================================#
 # Coordinate Base Class
 #=====================================================================#
@@ -884,7 +953,7 @@ class CoordinateSystem:
         # Reporting
         #-------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             status = "PASSED" if ok else "FAILED"
             print(f"[Consistency Check] {status} with tol = {tol}, ortho tol = {ortho_tol:.2e}")
             print(f"[Elapsed Time] numerical {elapsed_num:.3e}  analytic = {elapsed_sym:.3e}")
@@ -928,7 +997,7 @@ class CoordinateSystem:
 
             diffs[k] = (coeff_sparse, coeff_full, err)
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Assembly Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
             print(f"[Elapsed Time] Sparse {elapsed_sparse} Full = {elapsed_full} Ratio = {elapsed_full/elapsed_sparse}")
             header = f"{'Basis':<7} {'Sparse':>12} {'Full':>12} {'Error':>12}"
@@ -978,7 +1047,7 @@ class CoordinateSystem:
         # Report
         #---------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Matrix Assembly Check] {'PASSED' if ok else 'FAILED'} "
                   f"with tol = {tol}")
             print(f"[Elapsed Time] Sparse {elapsed_sparse:.4e}  "
@@ -1049,7 +1118,7 @@ class CoordinateSystem:
         # Report
         #-------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Matrix Numerical vs Analytic Check] {'PASSED' if ok else 'FAILED'} "
                   f"with tol = {tol}")
             print(f"[Elapsed Time] numerical {elapsed_num:.4e}  "
