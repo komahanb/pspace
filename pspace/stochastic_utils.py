@@ -25,15 +25,6 @@ def generate_basis_adaptive(f_indices, m):
     return {tuple(sum(idx[i] for idx in combo) for i in range(len(combo[0])))
             for combo in combos}
 
-def sparse(dmapi, dmapj, dmapf):
-    smap = {}
-    for key in dmapi.keys():
-        if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
-            smap[key] = True
-        else:
-            smap[key] = False
-    return smap
-
 def minnum_quadrature_points(degree):
     """
     Return the number of quadrature points necessary to integrate the
@@ -101,15 +92,6 @@ def generate_basis_total_degree(max_degree_params):
             k += 1
 
     return basis
-
-def sum_degrees_union_vector(f_degrees, psi_i):
-    """Union over all monomials in f with ψ_i: max degree per axis."""
-    degs = Counter()
-    for f_deg in f_degrees:
-        for a in set(f_deg) | set(psi_i):
-            degs[a] = max(degs.get(a, 0),
-                          f_deg.get(a, 0) + psi_i.get(a, 0))
-    return degs
 
 def sum_degrees_union_vector(f_degrees, psi_k: Counter) -> Counter:
     """
@@ -199,26 +181,3 @@ def sum_degrees_union_matrix(f_degrees, psi_i: Counter, psi_j: Counter) -> Count
             degs[a] = max(degs.get(a, 0), total)
 
     return degs
-
-if __name__ == '__main__':
-
-    max_degree_params = {0:2, 1:2}
-
-    out = generate_basis_tensor_degree(max_degree_params)
-    print(len(out), out)
-
-    out = generate_basis_total_degree(max_degree_params)
-    print(len(out), out)
-
-    basis = {
-        0: Counter({'x': 0, 'y': 0}),
-        1: Counter({'x': 1, 'y': 0}),
-        2: Counter({'x': 0, 'y': 1}),
-        3: Counter({'x': 1, 'y': 1})
-    }
-
-    deg_f = Counter({'x': 1, 'y': 0})
-
-    mask = sparsity_mask(basis, deg_f)
-
-    print(mask)

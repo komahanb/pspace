@@ -263,12 +263,6 @@ class UniformCoordinate(Coordinate):
         w_shifted  = 0.5 * w
         return x_shifted, w_shifted
 
-    def gaussian_quadrature_(self, degree):
-        npts = minnum_quadrature_points(degree)
-        x, w = np.polynomial.legendre.leggauss(npts)
-        w = w / 2.0
-        return x, w
-
 class ExponentialCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
