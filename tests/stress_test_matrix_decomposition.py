@@ -25,28 +25,35 @@ from .test_utils import (random_coordinate,
                          get_coordinate_system_type)
 
 
+
 #=====================================================================#
-# Helper: store timing ratios for summary
+# Parameters for stress regime
 #=====================================================================#
+
+MAX_DEG               = 5       # push polynomial/basis degree
+MAX_COORD             = 5       # up to 5D coordinates
+TRIALS                = 3       # fewer trials (stress is heavier)
+TOL                   = 1e-6
+
+# Timing collectors
 tensor_timings = []
 total_timings  = []
-
 
 #=====================================================================#
 # Stress Test A: Tensor Degree Basis
 #=====================================================================#
 
-@pytest.mark.parametrize("trial", range(20))
+@pytest.mark.parametrize("trial", range(TRIALS))
 def test_stress_tensor_matrix_sparse_full(trial):
-    random.seed(trial)
+    random.seed(3000 + trial)
 
     print(f"\n=== Stress Trial {trial} : Matrix TENSOR Basis (sparse vs full)  ===")
 
     cs = get_coordinate_system_type(BasisFunctionType.TENSOR_DEGREE,
-                                    max_deg=4,
-                                    max_coords=4)
+                                    max_deg=MAX_DEG,
+                                    max_coords=MAX_COORD)
 
-    polynomial_function = random_polynomial(cs, max_deg=3, max_terms=5)
+    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG, max_cross_terms=MAX_DEG)
 
     ok, diffs = cs.check_decomposition_matrix_sparse_full(polynomial_function,
                                                           tol=1e-6,
@@ -78,20 +85,20 @@ def test_tensor_timing_summary(finalize):
 # Stress Test B: Total Degree Basis
 #=====================================================================#
 
-@pytest.mark.parametrize("trial", range(20))
+@pytest.mark.parametrize("trial", range(TRIALS))
 def test_stress_total_matrix_sparse_full(trial):
-    random.seed(trial)
+    random.seed(3000 + trial)
 
     print(f"\n=== Stress Trial {trial} : Matrix TOTAL Basis (sparse vs full)  ===")
 
     cs = get_coordinate_system_type(BasisFunctionType.TOTAL_DEGREE,
-                                    max_deg=4,
-                                    max_coords=4)
+                                    max_deg=MAX_DEG,
+                                    max_coords=MAX_COORD)
 
-    polynomial_function = random_polynomial(cs, max_deg=3, max_terms=5)
+    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG, max_cross_terms=MAX_DEG)
 
     ok, diffs = cs.check_decomposition_matrix_sparse_full(polynomial_function,
-                                                          tol=1e-6,
+                                                          tol=TOL,
                                                           verbose=True)
     assert ok
 

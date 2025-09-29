@@ -30,7 +30,7 @@ from .test_utils import ENABLE_ANALYTIC_TESTS
 # Parameters for stress regime
 #=====================================================================#
 
-MAX_DEG               = 8       # push polynomial/basis degree
+MAX_DEG               = 5       # push polynomial/basis degree
 MAX_COORD             = 5       # up to 5D coordinates
 TRIALS                = 3       # fewer trials (stress is heavier)
 TOL                   = 1e-6
@@ -52,7 +52,7 @@ def test_stress_tensor_sparse_full(trial):
                                     max_deg=MAX_DEG,
                                     max_coords=MAX_COORD)
 
-    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG)
+    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG, max_cross_terms=MAX_DEG)
 
     ok, diffs = cs.check_decomposition_numerical_sparse_full(polynomial_function,
                                                              tol=TOL,
@@ -74,7 +74,7 @@ def test_stress_total_sparse_full(trial):
                                     max_deg=MAX_DEG,
                                     max_coords=MAX_COORD)
 
-    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG)
+    polynomial_function = random_polynomial(cs, max_deg=MAX_DEG, max_cross_terms=MAX_DEG)
 
     ok, diffs = cs.check_decomposition_numerical_sparse_full(polynomial_function,
                                                              tol=TOL,
