@@ -884,7 +884,7 @@ class CoordinateSystem:
         # Reporting
         #-------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             status = "PASSED" if ok else "FAILED"
             print(f"[Consistency Check] {status} with tol = {tol}, ortho tol = {ortho_tol:.2e}")
             print(f"[Elapsed Time] numerical {elapsed_num:.3e}  analytic = {elapsed_sym:.3e}")
@@ -928,7 +928,7 @@ class CoordinateSystem:
 
             diffs[k] = (coeff_sparse, coeff_full, err)
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Assembly Check] {'PASSED' if ok else 'FAILED'} with tol = {tol}")
             print(f"[Elapsed Time] Sparse {elapsed_sparse} Full = {elapsed_full} Ratio = {elapsed_full/elapsed_sparse}")
             header = f"{'Basis':<7} {'Sparse':>12} {'Full':>12} {'Error':>12}"
@@ -978,7 +978,7 @@ class CoordinateSystem:
         # Report
         #---------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Matrix Assembly Check] {'PASSED' if ok else 'FAILED'} "
                   f"with tol = {tol}")
             print(f"[Elapsed Time] Sparse {elapsed_sparse:.4e}  "
@@ -1049,7 +1049,7 @@ class CoordinateSystem:
         # Report
         #-------------------------------------------------------------#
 
-        if verbose:
+        if verbose or not ok:
             print(f"[Matrix Numerical vs Analytic Check] {'PASSED' if ok else 'FAILED'} "
                   f"with tol = {tol}")
             print(f"[Elapsed Time] numerical {elapsed_num:.4e}  "
