@@ -26,6 +26,7 @@ from itertools   import product
 from .stochastic_utils import (minnum_quadrature_points,
                                generate_basis_tensor_degree,
                                generate_basis_total_degree,
+                               generate_basis_adaptive,
                                sum_degrees,
                                safe_zero_degrees,
                                sum_degrees_union_matrix,
@@ -66,6 +67,7 @@ class BasisFunctionType(Enum):
     TENSOR_DEGREE   = 0
     TOTAL_DEGREE    = 1
     ADAPTIVE_DEGREE = 2
+    HYBRID_DEGREE   = 3
 
 class PolyFunction:
     def __init__(self, terms):
@@ -384,8 +386,13 @@ class CoordinateSystem:
             self.basis = generate_basis_tensor_degree(max_deg_map)
         elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
             self.basis = generate_basis_total_degree(max_deg_map)
+        elif self.basis_construction in (BasisFunctionType.ADAPTIVE_DEGREE,
+                                         BasisFunctionType.HYBRID_DEGREE):
+            # Adaptive = f-dependent basis only (no precomputation).
+            # Hybrid   = f-independent shell + f-dependent pruning.
+            self.basis = generate_basis_tensor_degree(max_deg_map)
         else:
-            raise NotImplementedError("ADAPTIVE_DEGREE path not implemented")
+            raise NotImplementedError(self.basis_construction)
 
     #-----------------------------------------------------------------#
     # Quadrature
@@ -459,6 +466,13 @@ class CoordinateSystem:
         elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
             # Global cutoff (total degree)
             return sum(dmapi.values()) <= sum(dmapf.values())
+
+        elif self.basis_construction == BasisFunctionType.ADAPTIVE_DEGREE:
+            return True
+
+        elif self.basis_construction == BasisFunctionType.HYBRID_DEGREE:
+            return all(dmapi[k] <= dmapf[k] for k in dmapf.keys())
+
         else:
             raise ValueError("Unknown basis_type")
 
@@ -521,6 +535,31 @@ class CoordinateSystem:
             s   += val * q['W']
         return s
 
+    def _filter_basis_for_function(self, function: PolyFunction):
+        """
+        Return the admissible basis subset depending on construction type
+        and the given polynomial function.
+        """
+        if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
+            return self.basis  # full tensor
+
+        elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
+            return self.basis  # full total-degree set
+
+        elif self.basis_construction == BasisFunctionType.ADAPTIVE_DEGREE:
+            admissible = generate_basis_adaptive(function.degrees, m=1)
+            return {k: degs for k, degs in self.basis.items()
+                    if tuple(degs.values()) in admissible}
+
+        elif self.basis_construction == BasisFunctionType.HYBRID_DEGREE:
+            # start from tensor, intersect with adaptive closure
+            admissible = generate_basis_adaptive(function.degrees, m=1)
+            return {k: degs for k, degs in self.basis.items()
+                    if tuple(degs.values()) in admissible}
+
+        else:
+            raise NotImplementedError(f"{self.basis_construction} not supported")
+
     #-----------------------------------------------------------------#
     # Decomposition
     #-----------------------------------------------------------------#
@@ -547,6 +586,9 @@ class CoordinateSystem:
         """
         coords = self.coordinates
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
+
+        # --- get admissible basis set for this function ---
+        self.basis = self._filter_basis_for_function(function)
 
         #---------------------------------------------------------------#
         # Build admissible mask

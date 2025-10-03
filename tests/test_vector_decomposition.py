@@ -100,3 +100,43 @@ def test_randomized_total_basis_sparse_full(trial):
                                                              tol=1e-6,
                                                              verbose=True)
     assert ok
+
+#=====================================================================#
+# Tests 2 C: Adaptive Degree Basis (sparse vs full assembly)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_total_basis_sparse_full(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Adaptive Degree Basis (sparse vs full assembly)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.ADAPTIVE_DEGREE,
+                                    max_deg = 3, max_coords = 3)
+
+    polynomial_function = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_numerical_sparse_full(polynomial_function,
+                                                             tol=1e-6,
+                                                             verbose=True)
+    assert ok
+
+#=====================================================================#
+# Tests 2 D: Hybrid Degree Basis (sparse vs full assembly)
+#=====================================================================#
+
+@pytest.mark.parametrize("trial", range(5))
+def test_randomized_total_basis_sparse_full(trial):
+    random.seed(trial)
+
+    print(f"\n=== Trial {trial} : Adaptive Degree Basis (sparse vs full assembly)  ===")
+
+    cs = get_coordinate_system_type(BasisFunctionType.HYBRID_DEGREE,
+                                    max_deg = 3, max_coords = 3)
+
+    polynomial_function = random_polynomial(cs)
+
+    ok, diffs = cs.check_decomposition_numerical_sparse_full(polynomial_function,
+                                                             tol=1e-6,
+                                                             verbose=True)
+    assert ok
