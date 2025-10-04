@@ -118,6 +118,89 @@ class PolyFunction:
     def __repr__(self):
         return f"PolyFunction({self._terms})"
 
+class OrthoPolyFunction:
+    """
+    Polynomial function expressed in orthonormal basis (Legendre, Hermite, etc.)
+    Works with CoordinateSystem and its Coordinate axes.
+    """
+
+    def __init__(self, terms, coordinates):
+        """
+        Parameters
+        ----------
+        terms : list[(coeff: float, degs: Counter)]
+            List of terms (basis coefficient, degree counter per coordinate).
+        coordinates : dict[int, Coordinate]
+            Dictionary of coordinate objects {cid: Coordinate}.
+        """
+        self._terms = terms
+        self._coords = coordinates
+
+    def __call__(self, Y):
+        """
+        Evaluate function at point Y in computational coordinates.
+        Y : dict {cid: float}
+        """
+        total = 0.0
+        for coeff, degs in self._terms:
+            term_val = coeff
+            for cid, d in degs.items():
+                # Evaluate orthogonal basis polynomial at Y[cid]
+                term_val *= self._coords[cid].psi_y(Y[cid], d)
+            total += term_val
+        return total
+
+    def toPolyFunction(self):
+        """
+        Expand OrthoPolyFunction into monomial PolyFunction
+        using change-of-basis matrices (currently supports Legendre).
+        """
+        from numpy.polynomial import legendre as npleg
+        from numpy.polynomial import polynomial as nppoly
+        from .core import PolyFunction  # adjust import if needed
+
+        monomial_terms = Counter()
+
+        for coeff, degs in self._terms:
+            # Build tensor product expansion for each coordinate
+            expansions = []
+            for cid, d in degs.items():
+                coord = self._coords[cid]
+                if coord.dist_type.name == "UNIFORM":  # Legendre basis
+                    Pn = npleg.Legendre.basis(d)
+                    poly = Pn.convert(kind=nppoly.Polynomial)
+                    coeffs_power = np.array(poly.coef, dtype=float)
+                    s = np.sqrt((2*d+1)/2.0)  # orthonormal scale
+                    coeffs_power *= s
+                    expansions.append((cid, coeffs_power))
+                else:
+                    raise NotImplementedError("toPolyFunction only supports Legendre for now")
+
+            # Recursive tensor product accumulation
+            def recurse(idx, running_coeff, running_degs):
+                if idx == len(expansions):
+                    monomial_terms[running_degs] += coeff * running_coeff
+                    return
+                cid, coeffs_power = expansions[idx]
+                for p, val in enumerate(coeffs_power):
+                    if abs(val) < 1e-15:
+                        continue
+                    recurse(idx+1, running_coeff*val,
+                            running_degs + Counter({cid: p}))
+
+            recurse(0, 1.0, Counter())
+
+        # Build PolyFunction terms
+        terms = [(float(val), degs) for degs, val in monomial_terms.items() if abs(val) > 1e-15]
+        return PolyFunction(terms)
+
+    def coeffs(self):
+        """Return coefficients directly."""
+        return {tuple(sorted(d.items())): c for c, d in self._terms}
+
+    def __repr__(self):
+        return f"OrthoPolyFunction({len(self._terms)} terms, basis=orthonormal)"
+
 #=====================================================================#
 # Coordinate Base Class
 #=====================================================================#
@@ -1058,3 +1141,26 @@ class CoordinateSystem:
             print("-" * len(header))
 
         return ok, diffs
+
+    def reconstruct(self, coeffs: dict) -> "OrthoPolyFunction":
+        """
+        Reconstruct an OrthoPolyFunction from basis coefficients.
+
+        Parameters
+        ----------
+        coeffs : dict {basis_id: float}
+            Coefficients for basis functions.
+
+        Returns
+        -------
+        OrthoPolyFunction : reconstructed function in orthonormal basis
+        """
+        terms = []
+        for k, c in coeffs.items():
+            if k not in self.basis:
+                raise ValueError(f"Basis index {k} not found in current basis set.")
+            degs = self.basis[k]  # Counter({cid: degree})
+            if abs(c) > 1e-15:
+                terms.append((c, degs))
+
+        return OrthoPolyFunction(terms, self.coordinates)
