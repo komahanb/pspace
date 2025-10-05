@@ -1142,25 +1142,108 @@ class CoordinateSystem:
 
         return ok, diffs
 
-    def reconstruct(self, coeffs: dict) -> "OrthoPolyFunction":
-        """
-        Reconstruct an OrthoPolyFunction from basis coefficients.
+#=====================================================================#
+# State Equation Interface
+#=====================================================================#
 
+class StateEquation:
+    """
+    Generic state equation in coefficient form:
+        Operator * a_state = RHS
+    where Operator is assembled in the CoordinateSystem basis.
+    """
+
+    def __init__(self, name, operator_fn, rhs_fn, coord_system):
+        """
         Parameters
         ----------
-        coeffs : dict {basis_id: float}
-            Coefficients for basis functions.
-
-        Returns
-        -------
-        OrthoPolyFunction : reconstructed function in orthonormal basis
+        name : str
+            Identifier (e.g., "reconstruction", "diffusion", "helmholtz")
+        operator_fn : callable | PolyFunction
+            Defines the operator kernel f(y) for assembling A_ij = <ψ_i, f, ψ_j>
+        rhs_fn : callable | PolyFunction | np.ndarray
+            Defines RHS b_i = <ψ_i, f> or direct coefficients
+        coord_system : CoordinateSystem
+            The coordinate system in which this state equation lives.
         """
-        terms = []
-        for k, c in coeffs.items():
-            if k not in self.basis:
-                raise ValueError(f"Basis index {k} not found in current basis set.")
-            degs = self.basis[k]  # Counter({cid: degree})
-            if abs(c) > 1e-15:
-                terms.append((c, degs))
+        self.name = name
+        self.operator_fn = operator_fn
+        self.rhs_fn = rhs_fn
+        self.cs = coord_system
+        self.operator_matrix = None
+        self.rhs_vector = None
+        self.solution = None
 
-        return OrthoPolyFunction(terms, self.coordinates)
+    #-------------------------------------------------------------#
+    # Assembly
+    #-------------------------------------------------------------#
+    def assemble(self, analytic=False, sparse=True, symmetric=True):
+        """Assemble operator and RHS in the coordinate basis."""
+        cs = self.cs
+        if isinstance(self.operator_fn, PolyFunction):
+            if analytic:
+                A = cs.decompose_matrix_analytic(self.operator_fn,
+                                                 sparse=sparse, symmetric=symmetric)
+            else:
+                A = cs.decompose_matrix(self.operator_fn,
+                                        sparse=sparse, symmetric=symmetric)
+        elif callable(self.operator_fn):
+            raise NotImplementedError("Callable operator assembly not yet implemented")
+        else:
+            A = np.asarray(self.operator_fn)
+
+        # RHS
+        if isinstance(self.rhs_fn, PolyFunction):
+            b = cs.decompose(self.rhs_fn, sparse=sparse)
+            b = np.array([b[k] for k in sorted(b.keys())])
+        elif callable(self.rhs_fn):
+            raise NotImplementedError("Callable RHS not yet implemented")
+        else:
+            b = np.asarray(self.rhs_fn)
+
+        self.operator_matrix = A
+        self.rhs_vector = b
+
+    #-------------------------------------------------------------#
+    # Preconditioning / Whitening
+    #-------------------------------------------------------------#
+    def precondition(self, method="cholesky"):
+        """Compute and apply preconditioner P such that P⁻¹ A P⁻ᵀ ≈ I."""
+        A = self.operator_matrix
+        if method == "cholesky":
+            L = np.linalg.cholesky(A)
+            P = L
+        elif method == "spectral":
+            eigval, eigvec = np.linalg.eigh(A)
+            P = eigvec @ np.diag(np.sqrt(eigval))
+        else:
+            raise ValueError(f"Unknown preconditioner {method}")
+
+        self.P = P
+        self.P_inv = np.linalg.inv(P)
+        self.operator_whitened = self.P_inv @ A @ self.P_inv.T
+        self.rhs_whitened = self.P_inv @ self.rhs_vector
+
+    #-------------------------------------------------------------#
+    # Solve
+    #-------------------------------------------------------------#
+    def solve(self):
+        """Solve the whitened or raw system."""
+        A = getattr(self, "operator_whitened", self.operator_matrix)
+        b = getattr(self, "rhs_whitened", self.rhs_vector)
+        x = np.linalg.solve(A, b)
+        # Back transform if whitened
+        if hasattr(self, "P"):
+            x = self.P_inv.T @ x
+        self.solution = x
+        return x
+
+    #-------------------------------------------------------------#
+    # Diagnostic
+    #-------------------------------------------------------------#
+    def condition_number(self):
+        A = self.operator_matrix
+        return np.linalg.cond(A)
+
+    def __repr__(self):
+        return f"StateEquation({self.name}, nbasis={self.cs.getNumBasisFunctions()})"
