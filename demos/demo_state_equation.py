@@ -28,14 +28,14 @@ print(f"Num basis functions = {cs.getNumBasisFunctions()}")
 #---------------------------------------------------------------------#
 
 # Operator: identity weight (Gram matrix)
-gram_op = PolyFunction([(1.0, Counter())])
+gram_op = PolyFunction([(1.0, Counter())], coordinates=cs.coordinates)
 
 # RHS: g(x,y) = 1 + 2x + 3y
 rhs_fn = PolyFunction([
     (1.0, Counter()),
     (2.0, Counter({coord_x.id: 1})),
     (3.0, Counter({coord_y.id: 1}))
-])
+], coordinates=cs.coordinates)
 
 #---------------------------------------------------------------------#
 # 3. Build and assemble StateEquation

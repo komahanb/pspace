@@ -68,7 +68,7 @@ class BasisFunctionType(Enum):
     ADAPTIVE_DEGREE = 2
 
 class PolyFunction:
-    def __init__(self, terms):
+    def __init__(self, terms, coordinates=None):
         """
         terms : list of (coeff, Counter) pairs
         Example:
@@ -81,6 +81,7 @@ class PolyFunction:
         self._terms = []
         self._degrees = []          # list of Counters
         self._max_degrees = Counter()
+        self._coords = coordinates
 
         for t in terms:
             if isinstance(t, tuple) and isinstance(t[1], Counter):
@@ -106,12 +107,25 @@ class PolyFunction:
         """Counter: max degree per axis (union of monomials)"""
         return self._max_degrees
 
+    @property
+    def coordinates(self):
+        return self._coords
+
+    def bind_coordinates(self, coordinates):
+        """Attach coordinate dictionary used for phi_y evaluation."""
+        self._coords = coordinates
+
     def __call__(self, Y):
         total = 0.0
+        coords = self._coords
         for coeff, degs in self._terms:
             mon = coeff
             for cid, d in degs.items():
-                mon *= Y[cid] ** d
+                yval = Y[cid]
+                if coords is not None and cid in coords:
+                    mon *= coords[cid].phi_y(yval, d)
+                else:
+                    mon *= yval ** d
             total += mon
         return total
 
@@ -192,7 +206,7 @@ class OrthoPolyFunction:
 
         # Build PolyFunction terms
         terms = [(float(val), degs) for degs, val in monomial_terms.items() if abs(val) > 1e-15]
-        return PolyFunction(terms)
+        return PolyFunction(terms, coordinates=self._coords)
 
     def coeffs(self):
         """Return coefficients directly."""
@@ -256,6 +270,10 @@ class Coordinate(object):
     def psi_x(self, xscalar, degree):
         z = self.quadrature_to_standard(xscalar)
         return self.psi_z(z, degree)
+
+    def phi_y(self, yscalar, degree):
+        """Evaluate monomial basis φ_d(y) = y^d in physical coordinates."""
+        return yscalar ** degree
 
     #-----------------------------------------------------------------#
     # subclass provides a 1D Gauss rule for the needed degree
@@ -628,6 +646,7 @@ class CoordinateSystem:
         -------
         coeffs : dict {basis_id: coefficient}
         """
+        function.bind_coordinates(self.coordinates)
         coords = self.coordinates
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
 
@@ -672,7 +691,7 @@ class CoordinateSystem:
                 for q in qmap.values():
                     y = q['Y']
                     s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
-                coeffs[k] = s
+                coeffs[k] = float(s)
 
         # Optionally fill zeroes
         if sparse:
@@ -786,6 +805,9 @@ class CoordinateSystem:
         A : np.ndarray
             Dense (nbasis x nbasis) coefficient matrix.
         """
+        if hasattr(function, "bind_coordinates"):
+            function.bind_coordinates(self.coordinates)
+
         nbasis = self.getNumBasisFunctions()
         A      = np.zeros((nbasis, nbasis))
 
@@ -815,6 +837,7 @@ class CoordinateSystem:
                 s += (function(y)
                       * self.evaluateBasisDegreesY(y, psi_i)
                       * self.evaluateBasisDegreesY(y, psi_j)) * q['W']
+            s = float(s)
 
             A[i,j] = s
             if symmetric and i != j:
@@ -841,6 +864,9 @@ class CoordinateSystem:
         A : np.ndarray
             Dense (nbasis x nbasis) coefficient matrix.
         """
+        if hasattr(function, "bind_coordinates"):
+            function.bind_coordinates(self.coordinates)
+
         import sympy as sp
 
         nbasis = self.getNumBasisFunctions()
@@ -919,6 +945,7 @@ class CoordinateSystem:
         """
         Cross-check numerical vs analytic decomposition.
         """
+        function.bind_coordinates(self.coordinates)
 
         # ensure basis is orthonormal first
         ortho_tol = self.check_orthonormality()
@@ -986,6 +1013,8 @@ class CoordinateSystem:
         """
         from timeit import default_timer as timer
 
+        function.bind_coordinates(self.coordinates)
+
         start_sparse   = timer()
         coeffs_sparse  = self.decompose(function, sparse = True)
         elapsed_sparse = timer() - start_sparse
@@ -1023,6 +1052,9 @@ class CoordinateSystem:
         coefficients.
         """
         from timeit import default_timer as timer
+
+        if hasattr(function, "bind_coordinates"):
+            function.bind_coordinates(self.coordinates)
 
         #-------------------------------------------------------------#
         # Assemble sparse + full
@@ -1142,6 +1174,51 @@ class CoordinateSystem:
 
         return ok, diffs
 
+
+    #-----------------------------------------------------------------#
+    # Reconstruction
+    #-----------------------------------------------------------------#
+
+    def reconstruct(self, function: PolyFunction,
+                    sparse: bool = True,
+                    analytic: bool = False,
+                    precondition: bool = True,
+                    method: str = "cholesky",
+                    tol: float = 0.0) -> PolyFunction:
+        """
+        Operator-aware reconstruction in φ-space:
+            G_φ a_φ = <f, φ>
+        Returns PolyFunction with coefficients a_φ.
+        """
+        from .core import StateEquation
+        from collections import Counter
+        import numpy as np
+
+        function.bind_coordinates(self.coordinates)
+
+        # Operator: Gram in φ-space (weight = native measure)
+        gram_op = PolyFunction([(1.0, Counter())], coordinates=self.coordinates)
+
+        # Build state equation and assemble
+        eq = StateEquation("reconstruction", gram_op, function, self)
+        eq.assemble(analytic=analytic, sparse=sparse)
+
+        # Optional diagonalization / whitening
+        if precondition:
+            eq.precondition(method=method)
+
+        # Solve for φ-coefficients
+        a_phi = eq.solve()  # ndarray in basis order
+
+        # Return f_φ as PolyFunction
+        terms = []
+        nb = self.getNumBasisFunctions()
+        for k in range(nb):
+            ak = float(a_phi[k])
+            if abs(ak) > tol:
+                terms.append((ak, self.basis[k]))
+        return PolyFunction(terms, coordinates=self.coordinates)
+
 #=====================================================================#
 # State Equation Interface
 #=====================================================================#
@@ -1170,6 +1247,10 @@ class StateEquation:
         self.operator_fn = operator_fn
         self.rhs_fn = rhs_fn
         self.cs = coord_system
+        if isinstance(self.operator_fn, PolyFunction):
+            self.operator_fn.bind_coordinates(self.cs.coordinates)
+        if isinstance(self.rhs_fn, PolyFunction):
+            self.rhs_fn.bind_coordinates(self.cs.coordinates)
         self.operator_matrix = None
         self.rhs_vector = None
         self.solution = None
@@ -1177,32 +1258,77 @@ class StateEquation:
     #-------------------------------------------------------------#
     # Assembly
     #-------------------------------------------------------------#
+
     def assemble(self, analytic=False, sparse=True, symmetric=True):
-        """Assemble operator and RHS in the coordinate basis."""
+        """
+        Assemble operator and RHS in the coordinate basis.
+        Operator:  A_ij = <ψ_i, operator_fn * ψ_j>
+        RHS:       b_i  = <ψ_i, rhs_fn>
+        """
         cs = self.cs
+        import numpy as np
+
+        # --- Assemble operator matrix ----------------------------------------
         if isinstance(self.operator_fn, PolyFunction):
             if analytic:
-                A = cs.decompose_matrix_analytic(self.operator_fn,
-                                                 sparse=sparse, symmetric=symmetric)
+                A = cs.decompose_matrix_analytic(
+                    self.operator_fn, sparse=sparse, symmetric=symmetric
+                )
             else:
-                A = cs.decompose_matrix(self.operator_fn,
-                                        sparse=sparse, symmetric=symmetric)
+                A = cs.decompose_matrix(
+                    self.operator_fn, sparse=sparse, symmetric=symmetric
+                )
         elif callable(self.operator_fn):
             raise NotImplementedError("Callable operator assembly not yet implemented")
         else:
-            A = np.asarray(self.operator_fn)
+            A = np.asarray(self.operator_fn, dtype=float)
 
-        # RHS
+        # --- Assemble RHS vector ---------------------------------------------
         if isinstance(self.rhs_fn, PolyFunction):
-            b = cs.decompose(self.rhs_fn, sparse=sparse)
-            b = np.array([b[k] for k in sorted(b.keys())])
+            # Decompose returns dict {basis_id: coefficient}
+            b_dict = cs.decompose(self.rhs_fn, sparse=sparse, analytic=analytic)
+
+            # Preserve the coordinate system's basis enumeration order
+            nb = cs.getNumBasisFunctions()
+            b = np.zeros(nb, dtype=float)
+            for k in range(nb):
+                b[k] = float(b_dict.get(k, 0.0))
+
         elif callable(self.rhs_fn):
             raise NotImplementedError("Callable RHS not yet implemented")
         else:
-            b = np.asarray(self.rhs_fn)
+            b = np.asarray(self.rhs_fn, dtype=float)
 
-        self.operator_matrix = A
-        self.rhs_vector = b
+        # --- Finalize ---------------------------------------------------------
+        self.operator_matrix = np.asarray(A, dtype=float)
+        self.rhs_vector = np.asarray(b, dtype=float)
+
+        def assemble_old(self, analytic=False, sparse=True, symmetric=True):
+            """Assemble operator and RHS in the coordinate basis."""
+            cs = self.cs
+            if isinstance(self.operator_fn, PolyFunction):
+                if analytic:
+                    A = cs.decompose_matrix_analytic(self.operator_fn,
+                                                     sparse=sparse, symmetric=symmetric)
+                else:
+                    A = cs.decompose_matrix(self.operator_fn,
+                                            sparse=sparse, symmetric=symmetric)
+            elif callable(self.operator_fn):
+                raise NotImplementedError("Callable operator assembly not yet implemented")
+            else:
+                A = np.asarray(self.operator_fn)
+
+            # RHS
+            if isinstance(self.rhs_fn, PolyFunction):
+                b = cs.decompose(self.rhs_fn, sparse=sparse)
+                b = np.array([b[k] for k in sorted(b.keys())])
+            elif callable(self.rhs_fn):
+                raise NotImplementedError("Callable RHS not yet implemented")
+            else:
+                b = np.asarray(self.rhs_fn)
+
+            self.operator_matrix = np.asarray(A, dtype=float)
+            self.rhs_vector = np.array(b, dtype=float)
 
     #-------------------------------------------------------------#
     # Preconditioning / Whitening

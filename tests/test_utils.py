@@ -101,7 +101,7 @@ def random_polynomial(cs, max_deg=2, max_cross_terms=3):
     # interface for polynomial functions
     #---------------------------------------------------------------#
 
-    polyf = PolyFunction(terms)
+    polyf = PolyFunction(terms, coordinates=cs.coordinates)
 
     # build sympy expression (for debug/logging)
     fexpr = polyf(symbols)

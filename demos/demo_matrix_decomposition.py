@@ -46,7 +46,7 @@ def main():
         (3.0, Counter({})),              # constant
         (3.0, Counter({0: 1})),          # linear term y0
         (3.0, Counter({0: 2, 1: 1}))     # mixed quadratic
-    ])
+    ], coordinates=cs.coordinates)
 
     #-------------------------------------------------------------#
     # 3. Run sparse vs full assembly check
