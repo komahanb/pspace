@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 from pspace.core import (
     CoordinateFactory, CoordinateSystem,
-    BasisFunctionType, PolyFunction, StateEquation
+    BasisFunctionType, PolyFunction, StateEquation, InnerProductMode
 )
 
 #---------------------------------------------------------------------#
@@ -42,7 +42,7 @@ rhs_fn = PolyFunction([
 #---------------------------------------------------------------------#
 
 eq = StateEquation("reconstruction", gram_op, rhs_fn, cs)
-eq.assemble(analytic=False, sparse=True)
+eq.assemble(mode=InnerProductMode.NUMERICAL, sparse=True)
 
 print("\n[Operator matrix G_phi]")
 print(np.round(eq.operator_matrix, 3))

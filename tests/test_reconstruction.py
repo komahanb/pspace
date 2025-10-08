@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 from pspace.core import (
     CoordinateFactory, CoordinateSystem,
-    BasisFunctionType, PolyFunction, OrthoPolyFunction
+    BasisFunctionType, PolyFunction, OrthoPolyFunction,
 )
 
 # Coordinate system: 1D Normal (ψ = Hermite), φ = monomials
@@ -22,11 +22,11 @@ f = PolyFunction([
 ], coordinates=cs.coordinates)
 
 # Reconstruct in φ via StateEquation (should equal f)
-f_phi = cs.reconstruct(f, sparse=True, analytic=False,
+f_phi = cs.reconstruct(f, sparse=True,
                        precondition=True, method="cholesky", tol=0.0)
 
 # Also form f_psi from ψ-projection for cross-check
-a_psi_dict = cs.decompose(f, sparse=True, analytic=False)
+a_psi_dict = cs.decompose(f, sparse=True)
 nb = cs.getNumBasisFunctions()
 a_psi = [a_psi_dict[k] for k in range(nb)]
 f_psi = OrthoPolyFunction([(a_psi[k], cs.basis[k]) for k in range(nb)],

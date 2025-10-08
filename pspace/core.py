@@ -67,6 +67,15 @@ class BasisFunctionType(Enum):
     TOTAL_DEGREE    = 1
     ADAPTIVE_DEGREE = 2
 
+
+class InnerProductMode(Enum):
+    """
+    Available evaluation backends for inner products.
+    """
+    NUMERICAL = "numerical"
+    SYMBOLIC  = "symbolic"
+    ANALYTIC  = "analytic"
+
 class PolyFunction:
     def __init__(self, terms, coordinates=None):
         """
@@ -214,6 +223,234 @@ class OrthoPolyFunction:
 
     def __repr__(self):
         return f"OrthoPolyFunction({len(self._terms)} terms, basis=orthonormal)"
+
+
+class VectorInnerProductOperator:
+    """
+    Rank-1 inner product evaluator supporting multiple backends.
+    """
+
+    def __init__(self, coordinate_system):
+        self.cs = coordinate_system
+
+    @staticmethod
+    def _normalize_mode(mode):
+        if mode is None:
+            return InnerProductMode.NUMERICAL
+        if isinstance(mode, bool):
+            return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
+        if isinstance(mode, InnerProductMode):
+            return mode
+        if isinstance(mode, str):
+            return InnerProductMode(mode.lower())
+        raise ValueError(f"Unsupported inner product mode: {mode}")
+
+    def compute(self, function, sparse=True, mode=None):
+        mode = self._normalize_mode(mode)
+        if mode is InnerProductMode.NUMERICAL:
+            return self._compute_numerical(function, sparse=sparse)
+        if mode is InnerProductMode.SYMBOLIC:
+            return self._compute_symbolic(function, sparse=sparse)
+        if mode is InnerProductMode.ANALYTIC:
+            return self._compute_closed_form(function, sparse=sparse)
+        raise ValueError(f"Unhandled inner product mode {mode}")
+
+    def _compute_numerical(self, function, sparse=True):
+        cs = self.cs
+        function.bind_coordinates(cs.coordinates)
+
+        if sparse:
+            mask = cs.polynomial_vector_sparsity_mask(function.degrees)
+        else:
+            mask = cs.basis.keys()
+
+        coeffs = {}
+        for k in mask:
+            psi_k = cs.basis[k]
+            need = sum_degrees_union_vector(function.max_degrees, psi_k)
+            qmap = cs.build_quadrature(need)
+
+            s = 0.0
+            for q in qmap.values():
+                y = q['Y']
+                s += function(y) * cs.evaluateBasisDegreesY(y, psi_k) * q['W']
+            coeffs[k] = float(s)
+
+        if sparse:
+            for k in cs.basis:
+                if k not in coeffs:
+                    coeffs[k] = 0.0
+
+        return coeffs
+
+    def _compute_symbolic(self, function, sparse=True):
+        cs = self.cs
+        function.bind_coordinates(cs.coordinates)
+        coords = cs.coordinates
+        symbols = {cid: coord.symbol for cid, coord in coords.items()}
+
+        if sparse:
+            mask = cs.polynomial_vector_sparsity_mask(function.degrees)
+        else:
+            mask = cs.basis.keys()
+
+        coeffs = {}
+        for k in mask:
+            psi_k = cs.basis[k]
+            psi_expr = 1
+            for cid, deg in psi_k.items():
+                z = coords[cid].physical_to_standard(coords[cid].symbol)
+                psi_expr *= coords[cid].psi_z(z, deg)
+
+            integrand = function(symbols) * psi_expr * sp.Mul(*[c.weight() for c in coords.values()])
+            val = integrand
+            for cid, coord in coords.items():
+                y = coord.symbol
+                a, b = coord.domain()
+                val = sp.integrate(val, (y, a, b))
+
+            coeffs[k] = float(sp.simplify(val))
+
+        if sparse:
+            for k in cs.basis:
+                if k not in coeffs:
+                    coeffs[k] = 0.0
+
+        return coeffs
+
+    def _compute_closed_form(self, function, sparse=True):
+        raise NotImplementedError(
+            "Closed-form analytic inner product evaluation is not implemented yet."
+        )
+
+
+class MatrixInnerProductOperator:
+    """
+    Rank-2 inner product evaluator supporting multiple backends.
+    """
+
+    def __init__(self, coordinate_system):
+        self.cs = coordinate_system
+
+    @staticmethod
+    def _normalize_mode(mode):
+        if mode is None:
+            return InnerProductMode.NUMERICAL
+        if isinstance(mode, bool):
+            return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
+        if isinstance(mode, InnerProductMode):
+            return mode
+        if isinstance(mode, str):
+            return InnerProductMode(mode.lower())
+        raise ValueError(f"Unsupported inner product mode: {mode}")
+
+    def compute(self, function, sparse=False, symmetric=True, mode=None):
+        mode = self._normalize_mode(mode)
+        if mode is InnerProductMode.NUMERICAL:
+            return self._compute_numerical(function, sparse=sparse, symmetric=symmetric)
+        if mode is InnerProductMode.SYMBOLIC:
+            return self._compute_symbolic(function, sparse=sparse, symmetric=symmetric)
+        if mode is InnerProductMode.ANALYTIC:
+            return self._compute_closed_form(function, sparse=sparse, symmetric=symmetric)
+        raise ValueError(f"Unhandled inner product mode {mode}")
+
+    def _compute_numerical(self, function, sparse=False, symmetric=True):
+        cs = self.cs
+        function.bind_coordinates(cs.coordinates)
+
+        nbasis = cs.getNumBasisFunctions()
+        A = np.zeros((nbasis, nbasis))
+
+        if sparse:
+            mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
+        else:
+            if symmetric:
+                mask = {(i, j) for i in cs.basis for j in cs.basis if i <= j}
+            else:
+                mask = {(i, j) for i in cs.basis for j in cs.basis}
+
+        qcache = {}
+        for i, j in mask:
+            psi_i, psi_j = cs.basis[i], cs.basis[j]
+            need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
+
+            key = tuple(sorted(need.items()))
+            qmap = qcache.get(key)
+            if qmap is None:
+                qmap = cs.build_quadrature(need)
+                qcache[key] = qmap
+
+            s = 0.0
+            for q in qmap.values():
+                y = q['Y']
+                s += (function(y)
+                      * cs.evaluateBasisDegreesY(y, psi_i)
+                      * cs.evaluateBasisDegreesY(y, psi_j)) * q['W']
+            s = float(s)
+
+            A[i, j] = s
+            if symmetric and i != j:
+                A[j, i] = s
+
+        return A
+
+    def _compute_symbolic(self, function, sparse=False, symmetric=True):
+        cs = self.cs
+        function.bind_coordinates(cs.coordinates)
+
+        nbasis = cs.getNumBasisFunctions()
+        A = np.zeros((nbasis, nbasis))
+
+        coords = cs.coordinates
+        symbols = {cid: coord.symbol for cid, coord in coords.items()}
+
+        if sparse:
+            mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
+        else:
+            if symmetric:
+                mask = {(i, j) for i in cs.basis for j in cs.basis if i <= j}
+            else:
+                mask = {(i, j) for i in cs.basis for j in cs.basis}
+
+        for i, j in mask:
+            psi_i = cs.basis[i]
+            psi_j = cs.basis[j]
+
+            psi_expr_i = 1
+            psi_expr_j = 1
+            for cid, deg in psi_i.items():
+                z = coords[cid].physical_to_standard(coords[cid].symbol)
+                psi_expr_i *= coords[cid].psi_z(z, deg)
+            for cid, deg in psi_j.items():
+                z = coords[cid].physical_to_standard(coords[cid].symbol)
+                psi_expr_j *= coords[cid].psi_z(z, deg)
+
+            f_expr = 0
+            for coeff, degs in function.terms:
+                mon = coeff
+                for cid, d in degs.items():
+                    mon *= symbols[cid] ** d
+                f_expr += mon
+
+            w_expr = sp.Mul(*[c.weight() for c in coords.values()])
+            integrand = f_expr * psi_expr_i * psi_expr_j * w_expr
+
+            val = integrand
+            for cid, coord in coords.items():
+                y = coord.symbol
+                a, b = coord.domain()
+                val = sp.integrate(val, (y, a, b))
+
+            A[i, j] = float(sp.simplify(val))
+            if symmetric and i != j:
+                A[j, i] = A[i, j]
+
+        return A
+
+    def _compute_closed_form(self, function, sparse=False, symmetric=True):
+        raise NotImplementedError(
+            "Closed-form analytic matrix inner product evaluation is not implemented yet."
+        )
 
 #=====================================================================#
 # Coordinate Base Class
@@ -454,6 +691,8 @@ class CoordinateSystem:
         self.basis_construction = basis_type
         self.basis              = None  # {basis_id: Counter({cid:deg,...})}
         self.verbose            = bool(verbose)
+        self._vector_inner_product = VectorInnerProductOperator(self)
+        self._matrix_inner_product = MatrixInnerProductOperator(self)
 
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
@@ -629,6 +868,7 @@ class CoordinateSystem:
     def decompose(self,
                   function : PolyFunction,
                   sparse   : bool = True,
+                  mode: InnerProductMode | str | None = None,
                   analytic : bool = False):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
@@ -646,60 +886,9 @@ class CoordinateSystem:
         -------
         coeffs : dict {basis_id: coefficient}
         """
-        function.bind_coordinates(self.coordinates)
-        coords = self.coordinates
-        symbols = {cid: coord.symbol for cid, coord in coords.items()}
-
-        #---------------------------------------------------------------#
-        # Build admissible mask
-        #---------------------------------------------------------------#
-        if sparse:
-            mask = self.polynomial_vector_sparsity_mask(function.degrees)
-        else:
-            mask = self.basis.keys()
-
-        coeffs = {}
-        for k in mask:
-            psi_k = self.basis[k]
-
-            if analytic:
-                #-------------------------------------------------------#
-                # Analytic Sympy integration
-                #-------------------------------------------------------#
-                psi_expr = 1
-                for cid, deg in psi_k.items():
-                    z = coords[cid].physical_to_standard(coords[cid].symbol)
-                    psi_expr *= coords[cid].psi_z(z, deg)
-
-                integrand = function(symbols) * psi_expr * sp.Mul(*[c.weight() for c in coords.values()])
-                val = integrand
-                for cid, coord in coords.items():
-                    y = coord.symbol
-                    a, b = coord.domain()
-                    val = sp.integrate(val, (y, a, b))
-
-                coeffs[k] = sp.simplify(val)
-
-            else:
-                #-------------------------------------------------------#
-                # Numerical quadrature
-                #-------------------------------------------------------#
-                need = sum_degrees_union_vector(function.max_degrees, psi_k)
-                qmap = self.build_quadrature(need)
-
-                s = 0.0
-                for q in qmap.values():
-                    y = q['Y']
-                    s += function(y) * self.evaluateBasisDegreesY(y, psi_k) * q['W']
-                coeffs[k] = float(s)
-
-        # Optionally fill zeroes
-        if sparse:
-            for k in self.basis:
-                if k not in coeffs:
-                    coeffs[k] = 0
-
-        return coeffs
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+        return self._vector_inner_product.compute(function, sparse=sparse, mode=mode)
 
     def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
         """
@@ -787,7 +976,12 @@ class CoordinateSystem:
             mask |= self.monomial_sparsity_mask(f_deg, symmetric=symmetric)
         return mask
 
-    def decompose_matrix(self, function, sparse=False, symmetric=True):
+    def decompose_matrix(self,
+                         function,
+                         sparse=False,
+                         symmetric=True,
+                         mode: InnerProductMode | str | None = None,
+                         analytic: bool = False):
         """
         Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense).
 
@@ -799,51 +993,21 @@ class CoordinateSystem:
             If True, restrict to admissible pairs.
         symmetric : bool
             If True, compute only i ≤ j and mirror.
+        mode : InnerProductMode | str | None
+            Backend for the integral evaluation.
+        analytic : bool
+            Backwards-compatible flag mapping to symbolic integration when True.
 
         Returns
         -------
         A : np.ndarray
             Dense (nbasis x nbasis) coefficient matrix.
         """
-        if hasattr(function, "bind_coordinates"):
-            function.bind_coordinates(self.coordinates)
-
-        nbasis = self.getNumBasisFunctions()
-        A      = np.zeros((nbasis, nbasis))
-
-        # Build admissible mask
-        if sparse:
-            mask = self.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-        else:
-            if symmetric:
-                mask = {(i,j) for i in self.basis for j in self.basis if i <= j}
-            else:
-                mask = {(i,j) for i in self.basis for j in self.basis}
-
-        qcache = {}
-        for i, j in mask:
-            psi_i, psi_j = self.basis[i], self.basis[j]
-            need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
-
-            key = tuple(sorted(need.items()))
-            qmap = qcache.get(key)
-            if qmap is None:
-                qmap = self.build_quadrature(need)
-                qcache[key] = qmap
-
-            s = 0.0
-            for q in qmap.values():
-                y = q['Y']
-                s += (function(y)
-                      * self.evaluateBasisDegreesY(y, psi_i)
-                      * self.evaluateBasisDegreesY(y, psi_j)) * q['W']
-            s = float(s)
-
-            A[i,j] = s
-            if symmetric and i != j:
-                A[j,i] = s
-
-        return A
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+        return self._matrix_inner_product.compute(
+            function, sparse=sparse, symmetric=symmetric, mode=mode
+        )
 
     def decompose_matrix_analytic(self, function, sparse=False, symmetric=True):
         """
@@ -864,63 +1028,12 @@ class CoordinateSystem:
         A : np.ndarray
             Dense (nbasis x nbasis) coefficient matrix.
         """
-        if hasattr(function, "bind_coordinates"):
-            function.bind_coordinates(self.coordinates)
-
-        import sympy as sp
-
-        nbasis = self.getNumBasisFunctions()
-        A      = np.zeros((nbasis, nbasis))
-
-        coords  = self.coordinates
-        symbols = {cid: coord.symbol for cid, coord in coords.items()}
-
-        # Build admissible mask
-        if sparse:
-            mask = self.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-        else:
-            if symmetric:
-                mask = {(i, j) for i in self.basis for j in self.basis if i <= j}
-            else:
-                mask = {(i, j) for i in self.basis for j in self.basis}
-
-        for i, j in mask:
-            psi_i, psi_j = self.basis[i], self.basis[j]
-
-            # Build integrand symbolically
-            psi_expr_i, psi_expr_j = 1, 1
-            for cid, deg in psi_i.items():
-                z = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr_i *= coords[cid].psi_z(z, deg)
-            for cid, deg in psi_j.items():
-                z = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr_j *= coords[cid].psi_z(z, deg)
-
-            # Function f(y) expanded
-            f_expr = 0
-            for coeff, degs in function.terms:
-                mon = coeff
-                for cid, d in degs.items():
-                    mon *= symbols[cid] ** d
-                f_expr += mon
-
-            w_expr = sp.Mul(*[c.weight() for c in coords.values()])
-
-            # Full integrand: f * ψ_i * ψ_j * weight
-            integrand = f_expr * psi_expr_i * psi_expr_j * w_expr
-
-            val = integrand
-            for cid, coord in coords.items():
-                y = coord.symbol
-                a, b = coord.domain()
-                val = sp.integrate(val, (y, a, b))
-
-            # Simplify and cast to float
-            A[i, j] = float(sp.simplify(val))
-            if symmetric and i != j:
-                A[j, i] = A[i, j]
-
-        return A
+        return self.decompose_matrix(
+            function,
+            sparse=sparse,
+            symmetric=symmetric,
+            mode=InnerProductMode.SYMBOLIC,
+        )
 
     #-----------------------------------------------------------------#
     # Consistency checks
@@ -945,8 +1058,6 @@ class CoordinateSystem:
         """
         Cross-check numerical vs analytic decomposition.
         """
-        function.bind_coordinates(self.coordinates)
-
         # ensure basis is orthonormal first
         ortho_tol = self.check_orthonormality()
 
@@ -957,7 +1068,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_num   = timer()
-        coeffs_num  = self.decompose(function, sparse=sparse, analytic=False)
+        coeffs_num  = self.decompose(function, sparse=sparse, mode=InnerProductMode.NUMERICAL)
         elapsed_num = timer() - start_num
 
         #-------------------------------------------------------------#
@@ -965,7 +1076,7 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_sym   = timer()
-        coeffs_sym  = self.decompose(function, sparse=sparse, analytic=True)
+        coeffs_sym  = self.decompose(function, sparse=sparse, mode=InnerProductMode.SYMBOLIC)
         elapsed_sym = timer() - start_sym
 
         #-------------------------------------------------------------#
@@ -975,10 +1086,7 @@ class CoordinateSystem:
         diffs, ok = {}, True
         for k in coeffs_num.keys():
             num_val = float(coeffs_num[k])
-            try:
-                ana_val = float(coeffs_sym[k].evalf())
-            except Exception:
-                ana_val = float(sp.N(coeffs_sym[k], 15))
+            ana_val = float(coeffs_sym[k])
             err = abs(num_val - ana_val)
             if err > tol:
                 ok = False
@@ -1132,11 +1240,17 @@ class CoordinateSystem:
         #-------------------------------------------------------------#
 
         start_num = timer()
-        A_num     = self.decompose_matrix(function, sparse=True, symmetric=True)
+        A_num     = self.decompose_matrix(function,
+                                          sparse=True,
+                                          symmetric=True,
+                                          mode=InnerProductMode.NUMERICAL)
         elapsed_num = timer() - start_num
 
         start_an  = timer()
-        A_an      = self.decompose_matrix_analytic(function, sparse=True, symmetric=True)
+        A_an      = self.decompose_matrix(function,
+                                          sparse=True,
+                                          symmetric=True,
+                                          mode=InnerProductMode.SYMBOLIC)
         elapsed_an = timer() - start_an
 
         #-------------------------------------------------------------#
@@ -1181,6 +1295,7 @@ class CoordinateSystem:
 
     def reconstruct(self, function: PolyFunction,
                     sparse: bool = True,
+                    mode: InnerProductMode | str | None = None,
                     analytic: bool = False,
                     precondition: bool = True,
                     method: str = "cholesky",
@@ -1194,6 +1309,9 @@ class CoordinateSystem:
         from collections import Counter
         import numpy as np
 
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+
         function.bind_coordinates(self.coordinates)
 
         # Operator: Gram in φ-space (weight = native measure)
@@ -1201,7 +1319,7 @@ class CoordinateSystem:
 
         # Build state equation and assemble
         eq = StateEquation("reconstruction", gram_op, function, self)
-        eq.assemble(analytic=analytic, sparse=sparse)
+        eq.assemble(mode=mode, sparse=sparse)
 
         # Optional diagonalization / whitening
         if precondition:
@@ -1259,7 +1377,11 @@ class StateEquation:
     # Assembly
     #-------------------------------------------------------------#
 
-    def assemble(self, analytic=False, sparse=True, symmetric=True):
+    def assemble(self,
+                 mode: InnerProductMode | str | None = None,
+                 analytic: bool = False,
+                 sparse=True,
+                 symmetric=True):
         """
         Assemble operator and RHS in the coordinate basis.
         Operator:  A_ij = <ψ_i, operator_fn * ψ_j>
@@ -1268,16 +1390,17 @@ class StateEquation:
         cs = self.cs
         import numpy as np
 
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+
         # --- Assemble operator matrix ----------------------------------------
         if isinstance(self.operator_fn, PolyFunction):
-            if analytic:
-                A = cs.decompose_matrix_analytic(
-                    self.operator_fn, sparse=sparse, symmetric=symmetric
-                )
-            else:
-                A = cs.decompose_matrix(
-                    self.operator_fn, sparse=sparse, symmetric=symmetric
-                )
+            A = cs.decompose_matrix(
+                self.operator_fn,
+                sparse=sparse,
+                symmetric=symmetric,
+                mode=mode,
+            )
         elif callable(self.operator_fn):
             raise NotImplementedError("Callable operator assembly not yet implemented")
         else:
@@ -1286,7 +1409,7 @@ class StateEquation:
         # --- Assemble RHS vector ---------------------------------------------
         if isinstance(self.rhs_fn, PolyFunction):
             # Decompose returns dict {basis_id: coefficient}
-            b_dict = cs.decompose(self.rhs_fn, sparse=sparse, analytic=analytic)
+            b_dict = cs.decompose(self.rhs_fn, sparse=sparse, mode=mode)
 
             # Preserve the coordinate system's basis enumeration order
             nb = cs.getNumBasisFunctions()
@@ -1302,33 +1425,6 @@ class StateEquation:
         # --- Finalize ---------------------------------------------------------
         self.operator_matrix = np.asarray(A, dtype=float)
         self.rhs_vector = np.asarray(b, dtype=float)
-
-        def assemble_old(self, analytic=False, sparse=True, symmetric=True):
-            """Assemble operator and RHS in the coordinate basis."""
-            cs = self.cs
-            if isinstance(self.operator_fn, PolyFunction):
-                if analytic:
-                    A = cs.decompose_matrix_analytic(self.operator_fn,
-                                                     sparse=sparse, symmetric=symmetric)
-                else:
-                    A = cs.decompose_matrix(self.operator_fn,
-                                            sparse=sparse, symmetric=symmetric)
-            elif callable(self.operator_fn):
-                raise NotImplementedError("Callable operator assembly not yet implemented")
-            else:
-                A = np.asarray(self.operator_fn)
-
-            # RHS
-            if isinstance(self.rhs_fn, PolyFunction):
-                b = cs.decompose(self.rhs_fn, sparse=sparse)
-                b = np.array([b[k] for k in sorted(b.keys())])
-            elif callable(self.rhs_fn):
-                raise NotImplementedError("Callable RHS not yet implemented")
-            else:
-                b = np.asarray(self.rhs_fn)
-
-            self.operator_matrix = np.asarray(A, dtype=float)
-            self.rhs_vector = np.array(b, dtype=float)
 
     #-------------------------------------------------------------#
     # Preconditioning / Whitening

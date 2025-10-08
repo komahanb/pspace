@@ -15,15 +15,15 @@ import pytest
 import random
 
 # core module imports
-from pspace.core import (CoordinateFactory,
-                         CoordinateSystem,
-                         BasisFunctionType,
-                         PolyFunction)
+from pspace.core import BasisFunctionType, InnerProductMode
 
 # local module imports
-from .test_utils import (random_coordinate,
-                         random_polynomial,
-                         get_coordinate_system_type)
+from .test_utils import (
+    random_polynomial,
+    get_coordinate_system_type,
+)
+
+import numpy as np
 
 #=====================================================================#
 # Symbolic and numerical vector decomposition tests
@@ -100,3 +100,35 @@ def test_randomized_total_basis_sparse_full(trial):
                                                              tol=1e-6,
                                                              verbose=True)
     assert ok
+
+#=====================================================================#
+# Dense (sparsity-unaware) numerical vs symbolic checks
+#=====================================================================#
+
+@pytest.mark.parametrize("basis_type", [
+    BasisFunctionType.TENSOR_DEGREE,
+    BasisFunctionType.TOTAL_DEGREE,
+])
+def test_dense_numerical_symbolic_vector(basis_type):
+    random.seed(12345)
+
+    cs = get_coordinate_system_type(basis_type, max_deg=2, max_coords=2)
+    polynomial_function = random_polynomial(cs, max_deg=2, max_cross_terms=1)
+
+    coeffs_num = cs.decompose(
+        polynomial_function,
+        sparse=False,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    coeffs_sym = cs.decompose(
+        polynomial_function,
+        sparse=False,
+        mode=InnerProductMode.SYMBOLIC,
+    )
+
+    for k in coeffs_num:
+        assert np.isclose(
+            coeffs_num[k],
+            float(coeffs_sym[k]),
+            atol=1e-8,
+        ), f"dense numeric vs analytic mismatch at basis {k}"

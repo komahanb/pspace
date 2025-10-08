@@ -43,7 +43,7 @@ f = PolyFunction([
 # ----------------------------------------------------------------------
 # 3. Decompose to get orthogonal coefficients  (f_psi)
 # ----------------------------------------------------------------------
-a_psi_dict = cs.decompose(f, sparse=True, analytic=False)
+a_psi_dict = cs.decompose(f, sparse=True)
 nb = cs.getNumBasisFunctions()
 a_psi = [float(a_psi_dict[k]) for k in range(nb)]
 f_ortho = OrthoPolyFunction(
@@ -54,7 +54,7 @@ f_ortho = OrthoPolyFunction(
 # ----------------------------------------------------------------------
 # 4. Reconstruct via operator-aware StateEquation (φ-space)
 # ----------------------------------------------------------------------
-f_phi = cs.reconstruct(f, sparse=True, analytic=False,
+f_phi = cs.reconstruct(f, sparse=True,
                        precondition=True, method="cholesky", tol=0.0)
 
 # ----------------------------------------------------------------------

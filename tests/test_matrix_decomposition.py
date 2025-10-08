@@ -15,15 +15,15 @@ import pytest
 import random
 
 # core module imports
-from pspace.core import (CoordinateFactory,
-                         CoordinateSystem,
-                         BasisFunctionType,
-                         PolyFunction)
+import numpy as np
+
+from pspace.core import BasisFunctionType, InnerProductMode
 
 # local module imports
-from .test_utils import (random_coordinate,
-                         random_polynomial,
-                         get_coordinate_system_type)
+from .test_utils import (
+    random_polynomial,
+    get_coordinate_system_type,
+)
 
 #=====================================================================#
 # Sparsity-aware and sparsity-unware matrix decomposition tests
@@ -99,3 +99,32 @@ def test_randomized_total_matrix_numerical_symbolic(trial):
                     tol=1e-6,
                     verbose=True)
     assert ok
+
+#=====================================================================#
+# Dense (sparsity-unaware) numerical vs symbolic checks
+#=====================================================================#
+
+@pytest.mark.parametrize("basis_type", [
+    BasisFunctionType.TENSOR_DEGREE,
+    BasisFunctionType.TOTAL_DEGREE,
+])
+def test_dense_numerical_symbolic_matrix(basis_type):
+    random.seed(6789)
+
+    cs = get_coordinate_system_type(basis_type, max_deg=2, max_coords=2)
+    polynomial_function = random_polynomial(cs, max_deg=2, max_cross_terms=1)
+
+    A_num = cs.decompose_matrix(
+        polynomial_function,
+        sparse=False,
+        symmetric=True,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    A_sym = cs.decompose_matrix(
+        polynomial_function,
+        sparse=False,
+        symmetric=True,
+        mode=InnerProductMode.SYMBOLIC,
+    )
+
+    assert np.allclose(A_num, A_sym, atol=1e-8), "dense matrix numeric vs analytic mismatch"
