@@ -128,3 +128,36 @@ def test_dense_numerical_symbolic_matrix(basis_type):
     )
 
     assert np.allclose(A_num, A_sym, atol=1e-8), "dense matrix numeric vs analytic mismatch"
+
+
+@pytest.mark.parametrize("basis_type", [
+    BasisFunctionType.TENSOR_DEGREE,
+    BasisFunctionType.TOTAL_DEGREE,
+])
+def test_dense_analytic_matrix(basis_type):
+    random.seed(9876)
+
+    cs = get_coordinate_system_type(basis_type, max_deg=2, max_coords=2)
+    polynomial_function = random_polynomial(cs, max_deg=2, max_cross_terms=1)
+
+    A_num = cs.decompose_matrix(
+        polynomial_function,
+        sparse=False,
+        symmetric=True,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    A_sym = cs.decompose_matrix(
+        polynomial_function,
+        sparse=False,
+        symmetric=True,
+        mode=InnerProductMode.SYMBOLIC,
+    )
+    A_ana = cs.decompose_matrix(
+        polynomial_function,
+        sparse=False,
+        symmetric=True,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    assert np.allclose(A_num, A_ana, atol=1e-10)
+    assert np.allclose(A_sym, A_ana, atol=1e-10)

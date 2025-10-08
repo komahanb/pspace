@@ -132,3 +132,34 @@ def test_dense_numerical_symbolic_vector(basis_type):
             float(coeffs_sym[k]),
             atol=1e-8,
         ), f"dense numeric vs analytic mismatch at basis {k}"
+
+
+@pytest.mark.parametrize("basis_type", [
+    BasisFunctionType.TENSOR_DEGREE,
+    BasisFunctionType.TOTAL_DEGREE,
+])
+def test_dense_analytic_vector(basis_type):
+    random.seed(4242)
+
+    cs = get_coordinate_system_type(basis_type, max_deg=2, max_coords=2)
+    polynomial_function = random_polynomial(cs, max_deg=2, max_cross_terms=1)
+
+    coeffs_num = cs.decompose(
+        polynomial_function,
+        sparse=False,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    coeffs_sym = cs.decompose(
+        polynomial_function,
+        sparse=False,
+        mode=InnerProductMode.SYMBOLIC,
+    )
+    coeffs_ana = cs.decompose(
+        polynomial_function,
+        sparse=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    for k in coeffs_num:
+        assert np.isclose(coeffs_num[k], coeffs_ana[k], atol=1e-10)
+        assert np.isclose(coeffs_sym[k], coeffs_ana[k], atol=1e-10)
