@@ -20,11 +20,11 @@ from pspace.core import (CoordinateFactory,
                          BasisFunctionType,
                          PolyFunction)
 
-from .test_utils import (random_coordinate,
-                         random_polynomial,
-                         get_coordinate_system_type)
+from .verify_utils import (random_coordinate,
+                           random_polynomial,
+                           get_coordinate_system_type)
 
-from .test_utils import ENABLE_ANALYTIC_TESTS
+from .verify_utils import ENABLE_ANALYTIC_TESTS
 
 #=====================================================================#
 # Parameters for stress regime

@@ -20,9 +20,9 @@ from pspace.core import (CoordinateFactory,
                          PolyFunction)
 
 # local imports
-from .test_utils import (random_coordinate,
-                         random_polynomial,
-                         get_coordinate_system_type)
+from .verify_utils import (random_coordinate,
+                           random_polynomial,
+                           get_coordinate_system_type)
 
 
 
