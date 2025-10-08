@@ -26,6 +26,14 @@ class CoordinateSystem(CoordinateSystemInterface):
         self.numeric = NumericCoordinateSystem(basis_type, verbose=verbose)
         self._last_metadata: dict[str, Any] = {}
 
+    @property
+    def coordinates(self):
+        return self.numeric.coordinates
+
+    @property
+    def basis(self):
+        return self.numeric.basis
+
     # ------------------------------------------------------------------ #
     # Metadata helpers                                                   #
     # ------------------------------------------------------------------ #
@@ -35,15 +43,6 @@ class CoordinateSystem(CoordinateSystemInterface):
 
     def last_metadata(self, key: str) -> Any:
         return self._last_metadata.get(key)
-
-    # expose shared state
-    @property
-    def coordinates(self):
-        return self.numeric.coordinates
-
-    @property
-    def basis(self):
-        return self.numeric.basis
 
     # ------------------------------------------------------------------ #
     # Coordinate management                                              #

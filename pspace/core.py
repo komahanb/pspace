@@ -402,7 +402,10 @@ class VectorInnerProductOperator:
         if mode is InnerProductMode.NUMERICAL:
             return self._compute_numerical(function, sparse=sparse)
         if mode is InnerProductMode.SYMBOLIC:
-            return self._compute_symbolic(function, sparse=sparse)
+            raise ValueError(
+                "Symbolic inner products have moved to pspace.symbolic.CoordinateSystem. "
+                "Instantiate the symbolic mirror to evaluate this mode."
+            )
         if mode is InnerProductMode.ANALYTIC:
             return self._compute_closed_form(function, sparse=sparse)
         raise ValueError(f"Unhandled inner product mode {mode}")
@@ -427,41 +430,6 @@ class VectorInnerProductOperator:
                 y = q['Y']
                 s += function(y) * cs.evaluateBasisDegreesY(y, psi_k) * q['W']
             coeffs[k] = float(s)
-
-        if sparse:
-            for k in cs.basis:
-                if k not in coeffs:
-                    coeffs[k] = 0.0
-
-        return coeffs
-
-    def _compute_symbolic(self, function, sparse=True):
-        cs = self.cs
-        function.bind_coordinates(cs.coordinates)
-        coords = cs.coordinates
-        symbols = {cid: coord.symbol for cid, coord in coords.items()}
-
-        if sparse:
-            mask = cs.polynomial_vector_sparsity_mask(function.degrees)
-        else:
-            mask = cs.basis.keys()
-
-        coeffs = {}
-        for k in mask:
-            psi_k = cs.basis[k]
-            psi_expr = 1
-            for cid, deg in psi_k.items():
-                z = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr *= coords[cid].psi_z(z, deg)
-
-            integrand = function(symbols) * psi_expr * sp.Mul(*[c.weight() for c in coords.values()])
-            val = integrand
-            for cid, coord in coords.items():
-                y = coord.symbol
-                a, b = coord.domain()
-                val = sp.integrate(val, (y, a, b))
-
-            coeffs[k] = float(sp.simplify(val))
 
         if sparse:
             for k in cs.basis:
@@ -533,7 +501,10 @@ class MatrixInnerProductOperator:
         if mode is InnerProductMode.NUMERICAL:
             return self._compute_numerical(function, sparse=sparse, symmetric=symmetric)
         if mode is InnerProductMode.SYMBOLIC:
-            return self._compute_symbolic(function, sparse=sparse, symmetric=symmetric)
+            raise ValueError(
+                "Symbolic inner products have moved to pspace.symbolic.CoordinateSystem. "
+                "Instantiate the symbolic mirror to evaluate this mode."
+            )
         if mode is InnerProductMode.ANALYTIC:
             return self._compute_closed_form(function, sparse=sparse, symmetric=symmetric)
         raise ValueError(f"Unhandled inner product mode {mode}")
@@ -575,59 +546,6 @@ class MatrixInnerProductOperator:
             A[i, j] = s
             if symmetric and i != j:
                 A[j, i] = s
-
-        return A
-
-    def _compute_symbolic(self, function, sparse=False, symmetric=True):
-        cs = self.cs
-        function.bind_coordinates(cs.coordinates)
-
-        nbasis = cs.getNumBasisFunctions()
-        A = np.zeros((nbasis, nbasis))
-
-        coords = cs.coordinates
-        symbols = {cid: coord.symbol for cid, coord in coords.items()}
-
-        if sparse:
-            mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-        else:
-            if symmetric:
-                mask = {(i, j) for i in cs.basis for j in cs.basis if i <= j}
-            else:
-                mask = {(i, j) for i in cs.basis for j in cs.basis}
-
-        for i, j in mask:
-            psi_i = cs.basis[i]
-            psi_j = cs.basis[j]
-
-            psi_expr_i = 1
-            psi_expr_j = 1
-            for cid, deg in psi_i.items():
-                z = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr_i *= coords[cid].psi_z(z, deg)
-            for cid, deg in psi_j.items():
-                z = coords[cid].physical_to_standard(coords[cid].symbol)
-                psi_expr_j *= coords[cid].psi_z(z, deg)
-
-            f_expr = 0
-            for coeff, degs in function.terms:
-                mon = coeff
-                for cid, d in degs.items():
-                    mon *= symbols[cid] ** d
-                f_expr += mon
-
-            w_expr = sp.Mul(*[c.weight() for c in coords.values()])
-            integrand = f_expr * psi_expr_i * psi_expr_j * w_expr
-
-            val = integrand
-            for cid, coord in coords.items():
-                y = coord.symbol
-                a, b = coord.domain()
-                val = sp.integrate(val, (y, a, b))
-
-            A[i, j] = float(sp.simplify(val))
-            if symmetric and i != j:
-                A[j, i] = A[i, j]
 
         return A
 
@@ -908,13 +826,36 @@ class CoordinateSystem(CoordinateSystemInterface):
     """
     def __init__(self, basis_type, verbose=False):
         super().__init__(basis_type, verbose=verbose)
-        self.coordinates        = {}    # {cid : Coordinate}
-        self.basis              = None  # {basis_id: Counter({cid:deg,...})}
+        self._coordinates       = {}    # {cid : Coordinate}
+        self._basis             = None  # {basis_id: Counter({cid:deg,...})}
         self._vector_inner_product = VectorInnerProductOperator(self)
         self._matrix_inner_product = MatrixInnerProductOperator(self)
+        self._symbolic_mirror = None
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def basis(self):
+        return self._basis
 
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
+
+    def _symbolic_coordinate_system(self):
+        """
+        Lazily instantiate the symbolic mirror bound to this coordinate system.
+        """
+        if self._symbolic_mirror is None:
+            from .symbolic import CoordinateSystem as SymbolicCoordinateSystem
+
+            self._symbolic_mirror = SymbolicCoordinateSystem(
+                self.basis_construction,
+                verbose=self.verbose,
+                numeric=self,
+            )
+        return self._symbolic_mirror
 
     #-----------------------------------------------------------------#
     # Basis and initialization
@@ -935,14 +876,14 @@ class CoordinateSystem(CoordinateSystemInterface):
         return {cid: coord.degree for cid, coord in self.coordinates.items()}
 
     def addCoordinateAxis(self, coordinate):
-        self.coordinates[coordinate.id] = coordinate
+        self._coordinates[coordinate.id] = coordinate
 
     def initialize(self):
         max_deg_map = self.getMonomialDegreeCoordinates()
         if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
-            self.basis = generate_basis_tensor_degree(max_deg_map)
+            self._basis = generate_basis_tensor_degree(max_deg_map)
         elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
-            self.basis = generate_basis_total_degree(max_deg_map)
+            self._basis = generate_basis_total_degree(max_deg_map)
         else:
             raise NotImplementedError("ADAPTIVE_DEGREE path not implemented")
 
@@ -1099,7 +1040,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         sparse   : bool
             If True, restrict to admissible basis indices.
         analytic : bool
-            If True, compute coefficients with Sympy integrals instead of quadrature.
+            Backwards-compatible flag mapping to symbolic integration when True.
 
         Returns
         -------
@@ -1107,7 +1048,12 @@ class CoordinateSystem(CoordinateSystemInterface):
         """
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
-        return self._vector_inner_product.compute(function, sparse=sparse, mode=mode)
+
+        normalized = self._vector_inner_product._normalize_mode(mode)
+        if normalized is InnerProductMode.SYMBOLIC:
+            symbolic_cs = self._symbolic_coordinate_system()
+            return symbolic_cs.decompose(function, sparse=sparse, mode=normalized)
+        return self._vector_inner_product.compute(function, sparse=sparse, mode=normalized)
 
     def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
         """
@@ -1224,8 +1170,18 @@ class CoordinateSystem(CoordinateSystemInterface):
         """
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+
+        normalized = self._matrix_inner_product._normalize_mode(mode)
+        if normalized is InnerProductMode.SYMBOLIC:
+            symbolic_cs = self._symbolic_coordinate_system()
+            return symbolic_cs.decompose_matrix(
+                function,
+                sparse=sparse,
+                symmetric=symmetric,
+                mode=normalized,
+            )
         return self._matrix_inner_product.compute(
-            function, sparse=sparse, symmetric=symmetric, mode=mode
+            function, sparse=sparse, symmetric=symmetric, mode=normalized
         )
 
     def decompose_matrix_analytic(self, function, sparse=False, symmetric=True):

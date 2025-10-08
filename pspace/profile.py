@@ -29,6 +29,14 @@ class CoordinateSystem(CoordinateSystemInterface):
         self.numeric = NumericCoordinateSystem(basis_type, verbose=verbose)
         self._last_timings: dict[str, float] = {}
 
+    @property
+    def coordinates(self):
+        return self.numeric.coordinates
+
+    @property
+    def basis(self):
+        return self.numeric.basis
+
     # ------------------------------------------------------------------ #
     # Timing utilities                                                    #
     # ------------------------------------------------------------------ #
