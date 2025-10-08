@@ -27,6 +27,15 @@ class CoordinateSystem(CoordinateSystemInterface):
         self.autoplot = autoplot
         self.last_figure: plt.Figure | None = None
 
+    # expose shared state
+    @property
+    def coordinates(self):
+        return self.numeric.coordinates
+
+    @property
+    def basis(self):
+        return self.numeric.basis
+
     # ------------------------------------------------------------------ #
     # Utilities                                                          #
     # ------------------------------------------------------------------ #
@@ -74,14 +83,20 @@ class CoordinateSystem(CoordinateSystemInterface):
             ys = [node["Y"] for node in qmap.values()]
             coords = list(ys[0].keys()) if ys else []
             if len(coords) == 1:
-                xs = [val[coords[0]] for val in ys]
-                ax.stem(xs, [node["W"] for node in qmap.values()], use_line_collection=True)
+                xs = [float(val[coords[0]]) for val in ys]
+                weights = [float(node["W"]) for node in qmap.values()]
+                ax.stem(xs, weights, use_line_collection=True)
                 ax.set_xlabel("y")
                 ax.set_ylabel("weight")
             elif len(coords) >= 2:
-                x_values = [val[coords[0]] for val in ys]
-                y_values = [val[coords[1]] for val in ys]
-                sc = ax.scatter(x_values, y_values, s=60, c=[node["W"] for node in qmap.values()])
+                x_values = [float(val[coords[0]]) for val in ys]
+                y_values = [float(val[coords[1]]) for val in ys]
+                sc = ax.scatter(
+                    x_values,
+                    y_values,
+                    s=60,
+                    c=[float(node["W"]) for node in qmap.values()],
+                )
                 ax.set_xlabel(f"y{coords[0]}")
                 ax.set_ylabel(f"y{coords[1]}")
                 fig.colorbar(sc, ax=ax, label="weight")

@@ -11,9 +11,9 @@ from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.profile import CoordinateSystem as ProfileCoordinateSystem
 
 try:  # pragma: no cover - runtime convenience
-    from profiles._helpers import build_coordinate_system, random_polynomial, rng
+    from profiles.helpers import build_coordinate_system, random_polynomial, rng
 except ImportError:  # pragma: no cover
-    from _helpers import build_coordinate_system, random_polynomial, rng
+    from helpers import build_coordinate_system, random_polynomial, rng
 
 
 DEFAULT_SEED = 2025
