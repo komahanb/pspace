@@ -38,3 +38,22 @@ python3 profiles/profile_matrix_decomposition.py \
 | `--num-coords` | How many coordinates/variables to include. |
 | `--max-degree` | Maximum monomial degree per coordinate. |
 | `--seed` | Reproducibility seed (default `2025`). |
+
+## `profile_single_mode.py`
+
+Profiles a single inner-product mode (vector or matrix) for a chosen configuration:
+
+```bash
+python3 profiles/profile_single_mode.py \
+    --mode analytic \
+    --rank vector \
+    --basis tensor \
+    --num-coords 4 \
+    --max-degree 3 \
+    --trials 10 \
+    --sparse true \
+    --symmetric true \
+    --seed 2025
+```
+
+This script prints the random instance (coordinates, basis size, polynomial terms) along with individual trial timings and aggregate statistics (best, worst, mean). Re-running with the same `--seed` lets you benchmark multiple modes against the exact same problem instance for apples-to-apples comparisons.
