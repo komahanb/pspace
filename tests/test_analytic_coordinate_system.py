@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+from collections import Counter
+
+import numpy as np
+import pytest
+
+from pspace.core import (
+    BasisFunctionType,
+    CoordinateFactory,
+    CoordinateSystem as NumericCoordinateSystem,
+    InnerProductMode,
+    PolyFunction,
+)
+from pspace.analytic import CoordinateSystem as AnalyticCoordinateSystem
+
+
+def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
+    factory = CoordinateFactory()
+    cs = NumericCoordinateSystem(basis_type)
+
+    # Axis 0: Uniform on [-1, 1] with Legendre basis
+    uniform = factory.createUniformCoordinate(
+        factory.newCoordinateID(),
+        "y0",
+        dict(a=-0.5, b=1.5),
+        max_monomial_dof=7,
+    )
+    cs.addCoordinateAxis(uniform)
+
+    # Axis 1: Normal with mean 0, variance 1 using Hermite basis
+    normal = factory.createNormalCoordinate(
+        factory.newCoordinateID(),
+        "y1",
+        dict(mu=1.0, sigma=1.0),
+        max_monomial_dof=6,
+    )
+    cs.addCoordinateAxis(normal)
+
+    cs.initialize()
+    return cs
+
+
+def build_small_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
+    factory = CoordinateFactory()
+    cs = NumericCoordinateSystem(basis_type)
+
+    uniform = factory.createUniformCoordinate(
+        factory.newCoordinateID(),
+        "y0",
+        dict(a=-0.5, b=0.5),
+        max_monomial_dof=2,
+    )
+    cs.addCoordinateAxis(uniform)
+
+    normal = factory.createNormalCoordinate(
+        factory.newCoordinateID(),
+        "y1",
+        dict(mu=0.0, sigma=1.0),
+        max_monomial_dof=2,
+    )
+    cs.addCoordinateAxis(normal)
+
+    cs.initialize()
+    return cs
+
+
+def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
+    # f(y) = 2 + 3*y0 + 1.5*y0^2 - 0.75*y1 + 0.25*y0*y1
+    terms = [
+        (2.0, Counter()),
+        (3.0, Counter({0: 1})),
+        (1.5, Counter({0: 2})),
+        (-0.75, Counter({1: 1})),
+        (0.25, Counter({0: 1, 1: 1})),
+    ]
+    poly = PolyFunction(terms, coordinates=cs.coordinates)
+    return poly
+
+
+def test_analytic_vector_matches_numeric():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_test_polynomial(cs)
+
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+
+    coeffs_numeric = cs.decompose(
+        poly,
+        sparse=False,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    coeffs_analytic = analytic.decompose(
+        poly,
+        sparse=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    assert set(coeffs_numeric.keys()) == set(coeffs_analytic.keys())
+    for k in coeffs_numeric:
+        assert np.isclose(coeffs_numeric[k], coeffs_analytic[k], atol=1e-8)
+
+
+def test_analytic_matrix_matches_numeric():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
+    poly = make_test_polynomial(cs)
+
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
+
+    matrix_numeric = cs.decompose_matrix(
+        poly,
+        sparse=False,
+        symmetric=False,
+        mode=InnerProductMode.NUMERICAL,
+    )
+    matrix_analytic = analytic.decompose_matrix(
+        poly,
+        sparse=False,
+        symmetric=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    assert matrix_numeric.shape == matrix_analytic.shape
+    assert np.allclose(matrix_numeric, matrix_analytic, atol=1e-8)
+
+
+def test_analytic_rejects_non_analytic_mode():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_test_polynomial(cs)
+
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+
+    with pytest.raises(ValueError):
+        analytic.decompose(poly, mode=InnerProductMode.NUMERICAL)
+
+    with pytest.raises(ValueError):
+        analytic.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+
+def test_analytic_sparse_matches_dense_vector():
+    cs = build_small_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_test_polynomial(cs)
+
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+
+    coeffs_sparse = analytic.decompose(
+        poly,
+        sparse=True,
+        mode=InnerProductMode.ANALYTIC,
+    )
+    coeffs_dense = analytic.decompose(
+        poly,
+        sparse=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    assert set(coeffs_sparse.keys()) == set(coeffs_dense.keys())
+    for k in coeffs_sparse:
+        assert np.isclose(coeffs_sparse[k], coeffs_dense[k], atol=1e-8)
+
+
+def test_analytic_sparse_matches_dense_matrix():
+    cs = build_small_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_test_polynomial(cs)
+
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+
+    matrix_sparse = analytic.decompose_matrix(
+        poly,
+        sparse=True,
+        symmetric=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+    matrix_dense = analytic.decompose_matrix(
+        poly,
+        sparse=False,
+        symmetric=False,
+        mode=InnerProductMode.ANALYTIC,
+    )
+
+    assert np.allclose(matrix_sparse, matrix_dense, atol=1e-8)

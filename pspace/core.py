@@ -740,18 +740,13 @@ class CoordinateSystem(CoordinateSystemInterface):
         """
         Detect sparsity for <f, ψ_i>.
 
-        dmapi     : Counter({axis: degree}) for basis ψ_i
-        dmapf     : Counter({axis: degree}) for function f
-        basis_type: "tensor" or "total"
+        dmapi : Counter({axis: degree}) for basis ψ_i
+        dmapf : Counter({axis: degree}) for function f
         """
-        if self.basis_construction == BasisFunctionType.TENSOR_DEGREE:
-            # Axis-by-axis cutoff
-            return all(dmapi[k] <= dmapf[k] for k in dmapf.keys())
-        elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
-            # Global cutoff (total degree)
-            return sum(dmapi.values()) <= sum(dmapf.values())
-        else:
-            raise ValueError("Unknown basis_type")
+        for axis, deg in dmapi.items():
+            if deg > dmapf.get(axis, 0):
+                return False
+        return True
 
     def monomial_vector_sparsity_mask(self, f_deg: Counter):
         mask = set()
