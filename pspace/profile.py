@@ -154,7 +154,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         )
 
     def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool = False, symmetric: bool = True) -> np.ndarray:
-        return self.decompose_matrix(function, sparse=sparse, symmetric=symmetric, mode=InnerProductMode.SYMBOLIC)
+        return self.decompose_matrix(function, sparse=sparse, symmetric=symmetric, mode=InnerProductMode.ANALYTIC)
 
     def reconstruct(
         self,

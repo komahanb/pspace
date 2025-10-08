@@ -13,16 +13,9 @@
 #=====================================================================#
 
 # External modules
-import math
 import sympy as sp
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
-
-from functools import lru_cache
-from numpy.polynomial import polynomial as poly
-from numpy.polynomial import hermite_e as herm_e
-from numpy.polynomial import legendre as leg
-from numpy.polynomial import laguerre as lag
 
 from collections import Counter
 from enum        import Enum
@@ -82,151 +75,6 @@ class InnerProductMode(Enum):
     NUMERICAL = "numerical"
     SYMBOLIC  = "symbolic"
     ANALYTIC  = "analytic"
-
-
-def _coord_signature(coord):
-    dist = coord.distribution
-    if dist == DistributionType.NORMAL:
-        mu = float(coord.dist_coords['mu'])
-        sigma = float(coord.dist_coords['sigma'])
-        return ("normal", mu, sigma)
-    if dist == DistributionType.UNIFORM:
-        a = float(coord.dist_coords['a'])
-        b = float(coord.dist_coords['b'])
-        return ("uniform", a, b)
-    if dist == DistributionType.EXPONENTIAL:
-        mu = float(coord.dist_coords['mu'])
-        beta = float(coord.dist_coords['beta'])
-        return ("exponential", mu, beta)
-    raise NotImplementedError(f"Closed-form integration not implemented for distribution {dist}")
-
-
-def _trim_coeffs(array, tol=1e-15):
-    arr = np.array(array, dtype=float)
-    if not arr.size:
-        return tuple()
-    # remove trailing near-zeros
-    while arr.size > 1 and abs(arr[-1]) < tol:
-        arr = arr[:-1]
-    return tuple(float(x) for x in arr)
-
-
-def _shift_legendre_power_to_unit(power_x):
-    base = np.array([-1.0, 2.0], dtype=float)  # represents (2z - 1)
-    result = np.array([0.0], dtype=float)
-    for m, c in enumerate(power_x):
-        if abs(c) < 1e-15:
-            continue
-        term = poly.polypow(base, m)
-        result = poly.polyadd(result, c * term)
-    return result
-
-
-@lru_cache(None)
-def _phi_power_coeffs(sig, degree):
-    if degree == 0:
-        return (1.0,)
-    dist = sig[0]
-    if dist == "normal":
-        mu, sigma = sig[1], sig[2]
-        coeffs = [
-            math.comb(degree, m) * (mu ** (degree - m)) * (sigma ** m)
-            for m in range(degree + 1)
-        ]
-        return _trim_coeffs(coeffs)
-    if dist == "uniform":
-        a, b = sig[1], sig[2]
-        span = b - a
-        coeffs = [
-            math.comb(degree, m) * (a ** (degree - m)) * (span ** m)
-            for m in range(degree + 1)
-        ]
-        return _trim_coeffs(coeffs)
-    if dist == "exponential":
-        mu, beta = sig[1], sig[2]
-        coeffs = [
-            math.comb(degree, m) * (mu ** (degree - m)) * (beta ** m)
-            for m in range(degree + 1)
-        ]
-        return _trim_coeffs(coeffs)
-    raise NotImplementedError
-
-
-@lru_cache(None)
-def _psi_power_coeffs(sig, degree):
-    if degree == 0:
-        return (1.0,)
-    dist = sig[0]
-    if dist == "normal":
-        coeffs = [0.0] * (degree + 1)
-        coeffs[degree] = 1.0
-        power = herm_e.herme2poly(coeffs)
-        norm = math.sqrt(math.factorial(degree))
-        return _trim_coeffs(np.asarray(power, dtype=float) / norm)
-    if dist == "uniform":
-        coeffs = [0.0] * (degree + 1)
-        coeffs[degree] = 1.0
-        power_x = leg.leg2poly(coeffs)
-        power_z = _shift_legendre_power_to_unit(power_x)
-        factor = math.sqrt(2 * degree + 1)
-        return _trim_coeffs(power_z * factor)
-    if dist == "exponential":
-        coeffs = [0.0] * (degree + 1)
-        coeffs[degree] = 1.0
-        power = lag.lag2poly(coeffs)
-        return _trim_coeffs(power)
-    raise NotImplementedError
-
-
-@lru_cache(None)
-def _gaussian_moment(m):
-    if m % 2 == 1:
-        return 0.0
-    n = m // 2
-    return math.factorial(m) / (2 ** n * math.factorial(n))
-
-
-def _integrate_power_series(sig, coeffs):
-    dist = sig[0]
-    total = 0.0
-    coeffs = np.asarray(coeffs, dtype=float)
-    if dist == "normal":
-        for m, c in enumerate(coeffs):
-            if abs(c) < 1e-15:
-                continue
-            total += c * _gaussian_moment(m)
-        return float(total)
-    if dist == "uniform":
-        for m, c in enumerate(coeffs):
-            if abs(c) < 1e-15:
-                continue
-            total += c / (m + 1)
-        return float(total)
-    if dist == "exponential":
-        for m, c in enumerate(coeffs):
-            if abs(c) < 1e-15:
-                continue
-            total += c * math.factorial(m)
-        return float(total)
-    raise NotImplementedError
-
-
-@lru_cache(None)
-def _vector_axis_integral(sig, phi_deg, psi_deg):
-    phi = np.asarray(_phi_power_coeffs(sig, phi_deg), dtype=float)
-    psi = np.asarray(_psi_power_coeffs(sig, psi_deg), dtype=float)
-    product = poly.polymul(phi, psi)
-    return float(_integrate_power_series(sig, product))
-
-
-@lru_cache(None)
-def _matrix_axis_integral(sig, phi_deg, psi_i_deg, psi_j_deg):
-    phi = np.asarray(_phi_power_coeffs(sig, phi_deg), dtype=float)
-    psi_i = np.asarray(_psi_power_coeffs(sig, psi_i_deg), dtype=float)
-    psi_j = np.asarray(_psi_power_coeffs(sig, psi_j_deg), dtype=float)
-    tmp = poly.polymul(phi, psi_i)
-    product = poly.polymul(tmp, psi_j)
-    return float(_integrate_power_series(sig, product))
 
 class PolyFunction:
     def __init__(self, terms, coordinates=None):
@@ -407,7 +255,10 @@ class VectorInnerProductOperator:
                 "Instantiate the symbolic mirror to evaluate this mode."
             )
         if mode is InnerProductMode.ANALYTIC:
-            return self._compute_closed_form(function, sparse=sparse)
+            raise ValueError(
+                "Analytic inner products have moved to pspace.analytic.CoordinateSystem. "
+                "Instantiate the analytic mirror to evaluate this mode."
+            )
         raise ValueError(f"Unhandled inner product mode {mode}")
 
     def _compute_numerical(self, function, sparse=True):
@@ -433,43 +284,6 @@ class VectorInnerProductOperator:
 
         if sparse:
             for k in cs.basis:
-                if k not in coeffs:
-                    coeffs[k] = 0.0
-
-        return coeffs
-
-    def _compute_closed_form(self, function, sparse=True):
-        cs = self.cs
-        function.bind_coordinates(cs.coordinates)
-
-        if sparse:
-            mask = self.cs.polynomial_vector_sparsity_mask(function.degrees)
-        else:
-            mask = self.cs.basis.keys()
-
-        coeffs = {k: 0.0 for k in mask}
-        basis = self.cs.basis
-        coord_items = list(self.cs.coordinates.items())
-
-        for coeff, degs in function.terms:
-            base_coeff = float(coeff)
-            if abs(base_coeff) < 1e-15:
-                continue
-            for k in mask:
-                psi_degs = basis[k]
-                val = base_coeff
-                for cid, coord in coord_items:
-                    sig = _coord_signature(coord)
-                    phi_deg = degs.get(cid, 0)
-                    psi_deg = psi_degs.get(cid, 0)
-                    val *= _vector_axis_integral(sig, phi_deg, psi_deg)
-                    if abs(val) < 1e-18:
-                        break
-                if abs(val) >= 1e-15:
-                    coeffs[k] += val
-
-        if sparse:
-            for k in self.cs.basis:
                 if k not in coeffs:
                     coeffs[k] = 0.0
 
@@ -506,7 +320,10 @@ class MatrixInnerProductOperator:
                 "Instantiate the symbolic mirror to evaluate this mode."
             )
         if mode is InnerProductMode.ANALYTIC:
-            return self._compute_closed_form(function, sparse=sparse, symmetric=symmetric)
+            raise ValueError(
+                "Analytic inner products have moved to pspace.analytic.CoordinateSystem. "
+                "Instantiate the analytic mirror to evaluate this mode."
+            )
         raise ValueError(f"Unhandled inner product mode {mode}")
 
     def _compute_numerical(self, function, sparse=False, symmetric=True):
@@ -546,47 +363,6 @@ class MatrixInnerProductOperator:
             A[i, j] = s
             if symmetric and i != j:
                 A[j, i] = s
-
-        return A
-
-    def _compute_closed_form(self, function, sparse=False, symmetric=True):
-        cs = self.cs
-        function.bind_coordinates(cs.coordinates)
-
-        nbasis = cs.getNumBasisFunctions()
-        A = np.zeros((nbasis, nbasis))
-
-        if sparse:
-            mask = self.cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-        else:
-            if symmetric:
-                mask = {(i, j) for i in cs.basis for j in cs.basis if i <= j}
-            else:
-                mask = {(i, j) for i in cs.basis for j in cs.basis}
-
-        basis = cs.basis
-        coord_items = list(cs.coordinates.items())
-
-        for coeff, degs in function.terms:
-            base_coeff = float(coeff)
-            if abs(base_coeff) < 1e-15:
-                continue
-            for i, j in mask:
-                psi_i = basis[i]
-                psi_j = basis[j]
-                val = base_coeff
-                for cid, coord in coord_items:
-                    sig = _coord_signature(coord)
-                    phi_deg = degs.get(cid, 0)
-                    deg_i = psi_i.get(cid, 0)
-                    deg_j = psi_j.get(cid, 0)
-                    val *= _matrix_axis_integral(sig, phi_deg, deg_i, deg_j)
-                    if abs(val) < 1e-18:
-                        break
-                if abs(val) >= 1e-15:
-                    A[i, j] += val
-                    if symmetric and i != j:
-                        A[j, i] += val
 
         return A
 
@@ -831,6 +607,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         self._vector_inner_product = VectorInnerProductOperator(self)
         self._matrix_inner_product = MatrixInnerProductOperator(self)
         self._symbolic_mirror = None
+        self._analytic_mirror = None
 
     @property
     def coordinates(self):
@@ -856,6 +633,20 @@ class CoordinateSystem(CoordinateSystemInterface):
                 numeric=self,
             )
         return self._symbolic_mirror
+
+    def _analytic_coordinate_system(self):
+        """
+        Lazily instantiate the analytic mirror bound to this coordinate system.
+        """
+        if self._analytic_mirror is None:
+            from .analytic import CoordinateSystem as AnalyticCoordinateSystem
+
+            self._analytic_mirror = AnalyticCoordinateSystem(
+                self.basis_construction,
+                verbose=self.verbose,
+                numeric=self,
+            )
+        return self._analytic_mirror
 
     #-----------------------------------------------------------------#
     # Basis and initialization
@@ -1053,6 +844,9 @@ class CoordinateSystem(CoordinateSystemInterface):
         if normalized is InnerProductMode.SYMBOLIC:
             symbolic_cs = self._symbolic_coordinate_system()
             return symbolic_cs.decompose(function, sparse=sparse, mode=normalized)
+        if normalized is InnerProductMode.ANALYTIC:
+            analytic_cs = self._analytic_coordinate_system()
+            return analytic_cs.decompose(function, sparse=sparse, mode=normalized)
         return self._vector_inner_product.compute(function, sparse=sparse, mode=normalized)
 
     def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
@@ -1180,14 +974,22 @@ class CoordinateSystem(CoordinateSystemInterface):
                 symmetric=symmetric,
                 mode=normalized,
             )
+        if normalized is InnerProductMode.ANALYTIC:
+            analytic_cs = self._analytic_coordinate_system()
+            return analytic_cs.decompose_matrix(
+                function,
+                sparse=sparse,
+                symmetric=symmetric,
+                mode=normalized,
+            )
         return self._matrix_inner_product.compute(
             function, sparse=sparse, symmetric=symmetric, mode=normalized
         )
 
     def decompose_matrix_analytic(self, function, sparse=False, symmetric=True):
         """
-        Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense),
-        using analytic (Sympy) integration.
+        Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense) using
+        closed-form (analytic) integrals.
 
         Parameters
         ----------
@@ -1207,7 +1009,7 @@ class CoordinateSystem(CoordinateSystemInterface):
             function,
             sparse=sparse,
             symmetric=symmetric,
-            mode=InnerProductMode.SYMBOLIC,
+            mode=InnerProductMode.ANALYTIC,
         )
 
     #-----------------------------------------------------------------#
@@ -1231,7 +1033,7 @@ class CoordinateSystem(CoordinateSystemInterface):
                                                tol=1e-10,
                                                verbose=True):
         """
-        Cross-check numerical vs analytic decomposition.
+        Cross-check numerical vs symbolic decomposition.
         """
         # ensure basis is orthonormal first
         ortho_tol = self.check_orthonormality()
@@ -1247,7 +1049,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         elapsed_num = timer() - start_num
 
         #-------------------------------------------------------------#
-        # Analytic decomposition (Sympy)
+        # Symbolic decomposition (SymPy)
         #-------------------------------------------------------------#
 
         start_sym   = timer()
@@ -1274,8 +1076,8 @@ class CoordinateSystem(CoordinateSystemInterface):
         if verbose or not ok:
             status = "PASSED" if ok else "FAILED"
             print(f"[Consistency Check] {status} with tol = {tol}, ortho tol = {ortho_tol:.2e}")
-            print(f"[Elapsed Time] numerical {elapsed_num:.3e}  analytic = {elapsed_sym:.3e}")
-            header = f"{'Basis':<7} {'numerical':>12} {'analytic':>12} {'error':>12}"
+            print(f"[Elapsed Time] numerical {elapsed_num:.3e}  symbolic = {elapsed_sym:.3e}")
+            header = f"{'Basis':<7} {'numerical':>12} {'symbolic':>12} {'error':>12}"
             print(header)
             print("-" * len(header))
             for k, (n, a, e) in diffs.items():
@@ -1389,7 +1191,7 @@ class CoordinateSystem(CoordinateSystemInterface):
 
     def check_decomposition_matrix_numerical_symbolic(self, function, tol=1e-12, verbose=True):
         """
-        Cross-check numerical vs analytic assembly of rank-2 (matrix)
+        Cross-check numerical vs symbolic assembly of rank-2 (matrix)
         decomposition coefficients.
 
         Parameters
@@ -1406,12 +1208,12 @@ class CoordinateSystem(CoordinateSystemInterface):
         ok : bool
             True if all entries match within tolerance.
         diffs : dict
-            Mapping (i,j) -> (numerical, analytic, error).
+            Mapping (i,j) -> (numerical, symbolic, error).
         """
         from timeit import default_timer as timer
 
         #-------------------------------------------------------------#
-        # Assemble numerical + analytic
+        # Assemble numerical + symbolic
         #-------------------------------------------------------------#
 
         start_num = timer()
@@ -1448,12 +1250,12 @@ class CoordinateSystem(CoordinateSystemInterface):
         #-------------------------------------------------------------#
 
         if verbose or not ok:
-            print(f"[Matrix Numerical vs Analytic Check] {'PASSED' if ok else 'FAILED'} "
+            print(f"[Matrix Numerical vs Symbolic Check] {'PASSED' if ok else 'FAILED'} "
                   f"with tol = {tol}")
             print(f"[Elapsed Time] numerical {elapsed_num:.4e}  "
-                  f"analytic {elapsed_an:.4e}  "
+                  f"symbolic {elapsed_an:.4e}  "
                   f"Ratio {elapsed_an/elapsed_num:.2f}")
-            header = f"{'i':<3} {'j':<3} {'Numerical':>12} {'Analytic':>12} {'Error':>12}"
+            header = f"{'i':<3} {'j':<3} {'Numerical':>12} {'Symbolic':>12} {'Error':>12}"
             print(header)
             print("-" * len(header))
             for (i, j), (vn, va, e) in diffs.items():
