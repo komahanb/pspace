@@ -153,6 +153,13 @@ class CoordinateSystem(CoordinateSystemInterface):
     def basis(self):
         return self.numeric.basis
 
+    @property
+    def sparsity_enabled(self) -> bool:
+        return self.numeric.sparsity_enabled
+
+    def configure_sparsity(self, enabled: bool) -> None:
+        self.numeric.configure_sparsity(enabled)
+
     # ------------------------------------------------------------------ #
     # Coordinate management                                              #
     # ------------------------------------------------------------------ #
@@ -240,10 +247,13 @@ class CoordinateSystem(CoordinateSystemInterface):
     def decompose(
         self,
         function: PolyFunction,
-        sparse: bool = True,
+        sparse: bool | None = None,
         mode: InnerProductMode | str | None = None,
         analytic: bool = False,
     ) -> dict[int, float]:
+        if sparse is None:
+            sparse = self.numeric.sparsity_enabled
+
         mode = self._normalize_mode(mode)
         if mode is not InnerProductMode.SYMBOLIC:
             raise ValueError("Symbolic CoordinateSystem supports only symbolic decomposition.")
@@ -252,17 +262,22 @@ class CoordinateSystem(CoordinateSystemInterface):
     def decompose_matrix(
         self,
         function: PolyFunction,
-        sparse: bool = False,
+        sparse: bool | None = None,
         symmetric: bool = True,
         mode: InnerProductMode | str | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
+        if sparse is None:
+            sparse = self.numeric.sparsity_enabled
+
         mode = self._normalize_mode(mode)
         if mode is not InnerProductMode.SYMBOLIC:
             raise ValueError("Symbolic CoordinateSystem supports only symbolic decomposition.")
         return self._matrix_symbolic.compute(function, sparse=sparse, symmetric=symmetric)
 
-    def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool = False, symmetric: bool = True) -> np.ndarray:
+    def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool | None = None, symmetric: bool = True) -> np.ndarray:
+        if sparse is None:
+            sparse = self.numeric.sparsity_enabled
         return self._matrix_symbolic.compute(function, sparse=sparse, symmetric=symmetric)
 
     def reconstruct(

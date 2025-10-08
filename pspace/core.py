@@ -608,6 +608,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         self._matrix_inner_product = MatrixInnerProductOperator(self)
         self._symbolic_mirror = None
         self._analytic_mirror = None
+        self._sparsity_enabled = True
 
     @property
     def coordinates(self):
@@ -616,6 +617,13 @@ class CoordinateSystem(CoordinateSystemInterface):
     @property
     def basis(self):
         return self._basis
+
+    @property
+    def sparsity_enabled(self) -> bool:
+        return self._sparsity_enabled
+
+    def configure_sparsity(self, enabled: bool) -> None:
+        self._sparsity_enabled = bool(enabled)
 
     def __str__(self):
         return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
@@ -749,6 +757,8 @@ class CoordinateSystem(CoordinateSystemInterface):
         return True
 
     def monomial_vector_sparsity_mask(self, f_deg: Counter):
+        if not self._sparsity_enabled:
+            return set(self.basis.keys())
         mask = set()
         for i, psi_i in self.basis.items():
             if self.sparse_vector(psi_i, f_deg):
@@ -756,6 +766,8 @@ class CoordinateSystem(CoordinateSystemInterface):
         return mask
 
     def polynomial_vector_sparsity_mask(self, f_degrees: list[Counter]):
+        if not self._sparsity_enabled:
+            return set(self.basis.keys())
         mask = set()
         for f_deg in f_degrees:
             mask |= self.monomial_vector_sparsity_mask(f_deg)
@@ -835,6 +847,9 @@ class CoordinateSystem(CoordinateSystemInterface):
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
 
+        if sparse is None:
+            sparse = self._sparsity_enabled
+
         normalized = self._vector_inner_product._normalize_mode(mode)
         if normalized is InnerProductMode.SYMBOLIC:
             symbolic_cs = self._symbolic_coordinate_system()
@@ -892,6 +907,15 @@ class CoordinateSystem(CoordinateSystemInterface):
         Sparsity mask for a single monomial term in f.
         Constant monomial admits all (i,j).
         """
+        if not self._sparsity_enabled:
+            basis_keys = sorted(self.basis.keys())
+            mask_all = set()
+            for ii, i in enumerate(basis_keys):
+                jstart = ii if symmetric else 0
+                for j in basis_keys[jstart:]:
+                    mask_all.add((i, j))
+            return mask_all
+
         mask = set()
         basis_keys = sorted(self.basis.keys())
 
@@ -925,6 +949,15 @@ class CoordinateSystem(CoordinateSystemInterface):
         -------
         mask : set of (i,j) tuples
         """
+        if not self._sparsity_enabled:
+            basis_keys = sorted(self.basis.keys())
+            mask_all = set()
+            for ii, i in enumerate(basis_keys):
+                jstart = ii if symmetric else 0
+                for j in basis_keys[jstart:]:
+                    mask_all.add((i, j))
+            return mask_all
+
         mask = set()
         for f_deg in f_degrees:
             mask |= self.monomial_sparsity_mask(f_deg, symmetric=symmetric)
@@ -960,6 +993,9 @@ class CoordinateSystem(CoordinateSystemInterface):
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
 
+        if sparse is None:
+            sparse = self._sparsity_enabled
+
         normalized = self._matrix_inner_product._normalize_mode(mode)
         if normalized is InnerProductMode.SYMBOLIC:
             symbolic_cs = self._symbolic_coordinate_system()
@@ -981,7 +1017,7 @@ class CoordinateSystem(CoordinateSystemInterface):
             function, sparse=sparse, symmetric=symmetric, mode=normalized
         )
 
-    def decompose_matrix_analytic(self, function, sparse=False, symmetric=True):
+    def decompose_matrix_analytic(self, function, sparse: bool | None = None, symmetric=True):
         """
         Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense) using
         closed-form (analytic) integrals.
@@ -1266,7 +1302,7 @@ class CoordinateSystem(CoordinateSystemInterface):
     #-----------------------------------------------------------------#
 
     def reconstruct(self, function: PolyFunction,
-                    sparse: bool = True,
+                    sparse: bool | None = None,
                     mode: InnerProductMode | str | None = None,
                     analytic: bool = False,
                     precondition: bool = True,
@@ -1280,6 +1316,9 @@ class CoordinateSystem(CoordinateSystemInterface):
         from .core import StateEquation
         from collections import Counter
         import numpy as np
+
+        if sparse is None:
+            sparse = self._sparsity_enabled
 
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
@@ -1352,7 +1391,7 @@ class StateEquation:
     def assemble(self,
                  mode: InnerProductMode | str | None = None,
                  analytic: bool = False,
-                 sparse=True,
+                 sparse: bool | None = None,
                  symmetric=True):
         """
         Assemble operator and RHS in the coordinate basis.
@@ -1361,6 +1400,9 @@ class StateEquation:
         """
         cs = self.cs
         import numpy as np
+
+        if sparse is None:
+            sparse = cs.sparsity_enabled
 
         if mode is None:
             mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL

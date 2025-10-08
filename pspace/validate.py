@@ -34,6 +34,13 @@ class CoordinateSystem(CoordinateSystemInterface):
     def basis(self):
         return self.numeric.basis
 
+    @property
+    def sparsity_enabled(self) -> bool:
+        return self.numeric.sparsity_enabled
+
+    def configure_sparsity(self, enabled: bool) -> None:
+        self.numeric.configure_sparsity(enabled)
+
     # ------------------------------------------------------------------ #
     # Metadata helpers                                                   #
     # ------------------------------------------------------------------ #
@@ -116,7 +123,7 @@ class CoordinateSystem(CoordinateSystemInterface):
     def decompose(
         self,
         function: PolyFunction,
-        sparse: bool = True,
+        sparse: bool | None = None,
         mode: InnerProductMode | str | None = None,
         analytic: bool = False,
     ):
@@ -127,7 +134,7 @@ class CoordinateSystem(CoordinateSystemInterface):
     def decompose_matrix(
         self,
         function: PolyFunction,
-        sparse: bool = False,
+        sparse: bool | None = None,
         symmetric: bool = True,
         mode: InnerProductMode | str | None = None,
         analytic: bool = False,
@@ -142,7 +149,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         self._store("last_matrix", matrix)
         return matrix
 
-    def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool = False, symmetric: bool = True) -> np.ndarray:
+    def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool | None = None, symmetric: bool = True) -> np.ndarray:
         matrix = self.numeric.decompose_matrix_analytic(function, sparse=sparse, symmetric=symmetric)
         self._store("last_matrix", matrix)
         return matrix
@@ -150,7 +157,7 @@ class CoordinateSystem(CoordinateSystemInterface):
     def reconstruct(
         self,
         function: PolyFunction,
-        sparse: bool = True,
+        sparse: bool | None = None,
         mode: InnerProductMode | str | None = None,
         analytic: bool = False,
         precondition: bool = True,

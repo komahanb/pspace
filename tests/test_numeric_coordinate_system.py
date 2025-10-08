@@ -82,16 +82,20 @@ def test_numeric_sparse_and_dense_match_for_vector():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_test_polynomial(cs)
 
+    cs.configure_sparsity(True)
     coeffs_sparse = cs.decompose(
         poly,
-        sparse=True,
+        sparse=None,
         mode=InnerProductMode.NUMERICAL,
     )
+
+    cs.configure_sparsity(False)
     coeffs_dense = cs.decompose(
         poly,
-        sparse=False,
+        sparse=None,
         mode=InnerProductMode.NUMERICAL,
     )
+    cs.configure_sparsity(True)
 
     assert set(coeffs_sparse.keys()) == set(coeffs_dense.keys())
     for k in coeffs_sparse:
@@ -135,6 +139,7 @@ def test_numeric_delegates_symbolic_and_analytic_modes():
 def test_tensor_sparsity_mask_excludes_unused_axes():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_axis_aligned_polynomial(cs)
+    cs.configure_sparsity(True)
     mask = cs.polynomial_vector_sparsity_mask(poly.degrees)
     assert mask  # ensure not empty
     for basis_id in mask:
@@ -145,8 +150,18 @@ def test_tensor_sparsity_mask_excludes_unused_axes():
 def test_total_degree_sparsity_mask_excludes_unused_axes():
     cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
     poly = make_axis_aligned_polynomial(cs)
+    cs.configure_sparsity(True)
     mask = cs.polynomial_vector_sparsity_mask(poly.degrees)
     assert mask
     for basis_id in mask:
         entry = cs.basis[basis_id]
         assert entry.get(1, 0) == 0
+
+
+def test_numeric_configure_sparsity_toggle():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    assert cs.sparsity_enabled is True
+    cs.configure_sparsity(False)
+    assert cs.sparsity_enabled is False
+    cs.configure_sparsity(True)
+    assert cs.sparsity_enabled is True

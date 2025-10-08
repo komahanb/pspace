@@ -138,16 +138,19 @@ def test_symbolic_sparse_matches_dense_vector():
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
+    symbolic.configure_sparsity(True)
     coeffs_sparse = symbolic.decompose(
         poly,
-        sparse=True,
+        sparse=None,
         mode=InnerProductMode.SYMBOLIC,
     )
+    symbolic.configure_sparsity(False)
     coeffs_dense = symbolic.decompose(
         poly,
-        sparse=False,
+        sparse=None,
         mode=InnerProductMode.SYMBOLIC,
     )
+    symbolic.configure_sparsity(True)
 
     assert set(coeffs_sparse.keys()) == set(coeffs_dense.keys())
     for k in coeffs_sparse:
@@ -160,17 +163,30 @@ def test_symbolic_sparse_matches_dense_matrix():
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
+    symbolic.configure_sparsity(True)
     matrix_sparse = symbolic.decompose_matrix(
         poly,
-        sparse=True,
+        sparse=None,
         symmetric=False,
         mode=InnerProductMode.SYMBOLIC,
     )
+    symbolic.configure_sparsity(False)
     matrix_dense = symbolic.decompose_matrix(
         poly,
-        sparse=False,
+        sparse=None,
         symmetric=False,
         mode=InnerProductMode.SYMBOLIC,
     )
+    symbolic.configure_sparsity(True)
 
     assert np.allclose(matrix_sparse, matrix_dense, atol=1e-8)
+
+
+def test_symbolic_configure_sparsity_toggle():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    assert symbolic.sparsity_enabled is True
+    symbolic.configure_sparsity(False)
+    assert symbolic.sparsity_enabled is False
+    symbolic.configure_sparsity(True)
+    assert symbolic.sparsity_enabled is True

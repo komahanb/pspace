@@ -142,16 +142,19 @@ def test_analytic_sparse_matches_dense_vector():
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
+    analytic.configure_sparsity(True)
     coeffs_sparse = analytic.decompose(
         poly,
-        sparse=True,
+        sparse=None,
         mode=InnerProductMode.ANALYTIC,
     )
+    analytic.configure_sparsity(False)
     coeffs_dense = analytic.decompose(
         poly,
-        sparse=False,
+        sparse=None,
         mode=InnerProductMode.ANALYTIC,
     )
+    analytic.configure_sparsity(True)
 
     assert set(coeffs_sparse.keys()) == set(coeffs_dense.keys())
     for k in coeffs_sparse:
@@ -164,17 +167,30 @@ def test_analytic_sparse_matches_dense_matrix():
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
+    analytic.configure_sparsity(True)
     matrix_sparse = analytic.decompose_matrix(
         poly,
-        sparse=True,
+        sparse=None,
         symmetric=False,
         mode=InnerProductMode.ANALYTIC,
     )
+    analytic.configure_sparsity(False)
     matrix_dense = analytic.decompose_matrix(
         poly,
-        sparse=False,
+        sparse=None,
         symmetric=False,
         mode=InnerProductMode.ANALYTIC,
     )
+    analytic.configure_sparsity(True)
 
     assert np.allclose(matrix_sparse, matrix_dense, atol=1e-8)
+
+
+def test_analytic_configure_sparsity_toggle():
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    assert analytic.sparsity_enabled is True
+    analytic.configure_sparsity(False)
+    assert analytic.sparsity_enabled is False
+    analytic.configure_sparsity(True)
+    assert analytic.sparsity_enabled is True

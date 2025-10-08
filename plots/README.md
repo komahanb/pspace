@@ -23,3 +23,18 @@ python3 plots/plot_basis_gallery.py \
 The script builds both numeric and plotting coordinate-system duals, ensuring the
 plots align with the core computations. Additional plotting scripts can follow the
 same pattern, reusing helpers from `plots/_helpers.py`.
+
+## `plot_polynomial_families.py`
+
+Produces PDF figures for Hermite, Legendre, and Laguerre families (standard and
+orthonormal scalings) without requiring a LaTeX installation. By default, output
+is written to `plots/output/`.
+
+```bash
+python3 plots/plot_polynomial_families.py \
+    --output-dir plots/output/polynomials
+```
+
+This script originated from the old `verify_plot_polynomials.py` verification
+script; it now lives alongside other visualisation utilities and avoids
+heavyweight dependencies.

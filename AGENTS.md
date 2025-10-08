@@ -13,45 +13,22 @@ Each agent encapsulates a distinct role (geometry, physics, algebra, or integrat
 
 Think of the framework as a **hall of mirrors** centered on the abstract contract `CoordinateSystem`:
 
-| Mirror                     | Layer               | Core Purpose                                                      |
-| -------------------------- | ------------------- | ----------------------------------------------------------------- |
-| **Numeric**                | `core`              | Evaluate, decompose, reconstruct numerically.                     |
-| **Symbolic**               | `pspace.symbolic`   | Maintain symbolic equivalence (SymPy, recurrences, closed forms). |
-| **Analytic**               | `pspace.analytic`   | Evaluate inner products in closed form (Legendre/Hermite/Laguerre) |
-| **Optimization / Control** | `pspace.optimize`   | Expose gradients, adjoints, sensitivities.                        |
-| **Data / I/O**             | `pspace.export`     | Serialize operations and metadata for reproducibility.            |
-| **Diagnostics / Logging**  | `pspace.diagnostic` | Monitor conditioning, residuals, cache hits, memory.              |
-| **Surrogate / ML**         | `pspace.learn`      | Replace exact evaluation with trained surrogates (GP/Nets).       |
+| Mirror                     | Layer / Module               | Core Purpose                                                                 |
+| -------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| **Numeric**                | `pspace.core`                | Baseline coordinate system: geometry, basis construction, quadrature, sparsity, reconstruction. |
+| **Sparsity Trait**         | `pspace.core` (in progress)  | Axis-aware pruning baked into the core; slated for extraction as an explicit aspect. |
+| **Symbolic**               | `pspace.symbolic`            | SymPy mirror for exact projections/reconstructions.                         |
+| **Analytic**               | `pspace.analytic`            | Closed-form Hermite/Legendre/Laguerre integration mirror.                   |
+| **Profiling**              | `pspace.profile`             | Timing-decorated mirror; powers CLI timing scripts with summaries/speedups. |
+| **Validation / Diagnostics**| `pspace.validate`, `pspace.verify`, `pspace.diagnostic` | Persist residuals, conditioning, cross-checks.            |
+| **Parallel / Distributed** | *(planned)*                  | Aspect to orchestrate MPI/OpenMP/GPU execution while preserving the contract. |
+| **Optimization / Control***| `pspace.optimize`            | Map contract into adjoints/gradient tracking.                               |
+| **Data / I/O***            | `pspace.export`              | Serialize operations/metadata.                                              |
+| **Surrogate / ML***        | `pspace.learn`               | Serve trained surrogates behind the same interface.                         |
 
-Symbolic mirrors live in `pspace/symbolic.py`, while closed-form analytic evaluation sits in `pspace/analytic.py`, each preserving the `CoordinateSystem` contract for their domain.
+`*` denotes future expansion slots. Numeric, symbolic, analytic, and profiling mirrors exist today; sparsity is being teased apart, and parallelism is the next planned basis vector so contexts can be composed (“numeric + sparsity + profiling”, “analytic + parallel”, etc.) against the constant `CoordinateSystem` contract.
 
-The pattern — stable core dipped in layered, interchangeable contexts — is best captured by the **Decorator pattern**, extended philosophically toward **Aspect-Oriented Programming (AOP)**.
-
-| Layer                            | Concept                                     | Essence                                                                                            |
-| -------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **Structural**                   | **Decorator pattern**                       | Dynamically wraps an object to add responsibilities without altering its interface.                |
-| **Behavioral / Cross-cutting**   | **Aspect-Oriented Programming (AOP)**       | Injects context-specific behavior (profiling, logging, validation) orthogonally to the core logic. |
-| **Functional abstraction**       | **Context or Policy pattern**               | Selects variant behavior by changing attached “sauces” rather than subclassing.                    |
-| **Philosophical generalization** | **Reflective / Meta-object protocol (MOP)** | The system can observe and modify its own structure and semantics.                                 |
-
-So:
-
-> “Dipping the stick in multiple sauces” = *Decorators composed through AOP semantics, implemented via a meta-object protocol.*
-
-Down the line we can layer context selectors that pick the right combo for a workload—e.g., sparse analytic for fast verification, dense numeric for debugging, dense symbolic for derivations.
-
-If each “aspect” is a basis vector in the abstract space of behaviors, the concrete coordinate system is just a linear combination (composition)
-  of those vectors. Parallelism naturally fits as another basis element: a parallel aspect can wrap the same contract, orchestrate thread/MPI/GPU execution, and remain orthogonal to geometry, algebra, or
-  sparsity concerns.
-
-  Key considerations:
-
-  - Composition discipline: we’ll want a well-defined order or policy when layering multiple aspects (e.g., parallel + sparsity + profiling) so their interactions stay predictable.
-  - Context selection: eventually a “context composer” can assemble the chosen basis vectors based on the use case (e.g., analytic+parallel for verification, symbolic+sparsity for codegen checks).
-  - Data contracts: shared state (coordinates, basis maps, caches) has to remain consistent across aspects; adopting thin trait wrappers over a common mutable core helps.
-
-  Overall, treating aspects as basis vectors gives us a neat algebra for configuring the system. Parallelism slips right in: it’s another vector we can mix, provided we standardize the interfaces and keep
-  combinations associative/commutative where possible.
+Think of each mirror/trait as a basis vector in an aspect-oriented space: we mix and match the vectors we need, all while the immutable `CoordinateSystem` contract anchors the composition. The Decorator pattern gives the mechanics, the aspect mindset keeps cross-cutting concerns orthogonal, and a future “context composer” will assemble the right combination for each use case.
 
 ### 2. High-Dimensional Dualities
 
@@ -65,6 +42,33 @@ Beyond “basis vs coefficients,” the system mirrors several dual spaces:
 
 Each interface has a dual that traverses an alternative representation seamlessly.
 Keeping the abstract contract consistent allows new mirrors without breaking geometric symmetry.
+
+class InnerProduct(ABC):
+    """Abstract ⟨x, y⟩ contract."""
+    @abstractmethod
+    def compute(self, x: np.ndarray, y: np.ndarray) -> float:
+        ...
+
+Note in the following example code, NumpyInnerProduct, MPIInnerProduct, ProfileInnerProduct are reflections on a particular aspect that we want to embed.
+
+## Mirroring Example:
+x = np.arange(10.0)
+y = np.arange(10.0)
+
+# Base (numeric only)
+serial_ip = NumpyInnerProduct()
+
+# Add profiling
+profiled_ip = ProfileInnerProduct(serial_ip)
+
+# Add parallelism
+parallel_ip = MPIInnerProduct(serial_ip)
+
+# Combine both aspects: parallel + profiling
+parallel_profiled_ip = ProfileInnerProduct(MPIInnerProduct(serial_ip))
+
+# Or reverse order: profiling inside, parallel outside
+profiled_parallel_ip = MPIInnerProduct(ProfileInnerProduct(serial_ip))
 
 ---
 
@@ -116,6 +120,12 @@ analytic:
   AnalyticVectorInnerProductOperator: {description: "Closed-form evaluator for ⟨f,ψ_k⟩.", implementation: analytic.py::AnalyticVectorInnerProductOperator}
   AnalyticMatrixInnerProductOperator: {description: "Closed-form evaluator for ⟨ψ_i,f,ψ_j⟩.", implementation: analytic.py::AnalyticMatrixInnerProductOperator}
 
+profiling:
+  ProfileCoordinateSystem: {description: "Timing-decorated mirror of CoordinateSystem.", implementation: profile.py::CoordinateSystem}
+  profile_vector_decomposition: {description: "Benchmark vector modes; emit CSV and speedup ratios.", implementation: profiles/profile_vector_decomposition.py}
+  profile_matrix_decomposition: {description: "Benchmark matrix modes; emit CSV and speedup ratios.", implementation: profiles/profile_matrix_decomposition.py}
+  profile_single_mode: {description: "Profile one mode/seed with detailed problem summary.", implementation: profiles/profile_single_mode.py}
+
 operators:
   RFMD: {description: "Rigid–Flexible Mode Decomposition separating nullspace and rangespace.", implementation: conceptual}
   LiftingOperator: {description: "Constructs U_lift to impose BCs; isolates homogeneous w(x).", implementation: conceptual}
@@ -134,6 +144,7 @@ orthogonal_polynomials:
 decomposition:
   decompose: {description: "Compute coefficients c_k = ⟨f,ψ_k⟩.", implementation: core.py}
   decompose_matrix: {description: "Assemble A_ij = ⟨ψ_i,f,ψ_j⟩.", implementation: core.py}
+  configure_sparsity: {description: "Toggle axis-aware pruning on/off at runtime.", implementation: core.py::CoordinateSystem.configure_sparsity}
   check_orthonormality: {description: "Verify ⟨ψ_i,ψ_j⟩ = δ_ij.", implementation: core.py}
   check_decomposition_numerical_symbolic: {description: "Compare numeric vs analytic decomposition.", implementation: core.py}
   check_decomposition_matrix_sparse_full: {description: "Validate sparse vs full assembly.", implementation: core.py}
@@ -163,34 +174,6 @@ philosophy:
   - "Physics defines operator."
   - "Algebra defines computation."
   - "Diagonalization reveals hidden simplicity."
-
-
-agents:
-  - name: core.interface
-    role: canonical_contract
-    description: >
-      The base abstract interface defining the invariant operations.
-      All reflections wrap or extend this contract without mutation.
-
-  - name: mirror.profiling
-    type: decorator
-    category: performance
-    role: measures
-    description: >
-      Profiles runtime behavior and performance metrics of the wrapped interface.
-      Reports timing, memory, and call-frequency statistics.
-
-  - name: mirror.validation
-    type: aspect
-    category: correctness
-    role: validates
-    description: >
-      Cross-checks results against analytic references or tolerance thresholds.
-
-  - name: mirror.verification
-    type: aspect
-    category: numerical
-    role: verifies
     description: >
       Ensures the discrete implementation satisfies the governing equations
       within prescribed numerical residual bounds.
@@ -247,7 +230,6 @@ notes:
   - Parallelism is an independent orthogonal axis that can wrap any contract.
   - Ensure all decorators expose identical signatures for composability.
 ```
-
 ---
 
 ## **III. CONTRIBUTOR FORMATTING GUIDELINES**

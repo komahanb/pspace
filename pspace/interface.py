@@ -30,6 +30,15 @@ class CoordinateSystem(ABC):
     def basis(self) -> Mapping[int, Counter]:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def sparsity_enabled(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def configure_sparsity(self, enabled: bool) -> None:
+        raise NotImplementedError
+
     @abstractmethod
     def addCoordinateAxis(self, coordinate: Any) -> None:
         raise NotImplementedError
@@ -120,7 +129,7 @@ class CoordinateSystem(ABC):
     def decompose(
         self,
         function: "PolyFunction",
-        sparse: bool = True,
+        sparse: bool | None = None,
         mode: "InnerProductMode" | str | None = None,
         analytic: bool = False,
     ) -> Dict[int, Any]:
@@ -130,7 +139,7 @@ class CoordinateSystem(ABC):
     def decompose_matrix(
         self,
         function: "PolyFunction",
-        sparse: bool = False,
+        sparse: bool | None = None,
         symmetric: bool = True,
         mode: "InnerProductMode" | str | None = None,
         analytic: bool = False,
