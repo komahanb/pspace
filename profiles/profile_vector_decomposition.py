@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+from collections import defaultdict
 from typing import Iterable, Sequence
 
 import numpy as np
@@ -56,6 +57,39 @@ def profile_vector_modes(
                 }
             )
     return results
+
+
+def summarize_speedups(rows: list[dict]) -> None:
+    grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        elapsed = row.get("elapsed")
+        if elapsed is None or np.isnan(elapsed):
+            continue
+        basis = row.get("basis_type", "UNKNOWN")
+        mode = row.get("mode", "unknown")
+        grouped[basis][mode].append(float(elapsed))
+
+    if not grouped:
+        print("No timing data available to summarize.")
+        return
+
+    print("\nSpeedup summary (relative to numerical mode):")
+    for basis, mode_map in grouped.items():
+        numeric_values = mode_map.get(InnerProductMode.NUMERICAL.value)
+        if not numeric_values:
+            print(f"  {basis}: missing numerical baseline; skipping.")
+            continue
+        numeric_mean = float(np.mean(numeric_values))
+        print(f"  Basis {basis}: numerical avg {numeric_mean:.4e} s")
+        for mode, samples in mode_map.items():
+            mode_mean = float(np.mean(samples))
+            if np.isclose(mode_mean, 0.0):
+                ratio = np.inf
+            else:
+                ratio = numeric_mean / mode_mean
+            label = "baseline" if mode == InnerProductMode.NUMERICAL.value else f"{ratio:.2f}× faster"
+            print(f"    - {mode:<10}: {mode_mean:.4e} s ({label})")
+    print("")
 
 
 def parse_args():
@@ -124,6 +158,7 @@ def main() -> None:
     csv_path = os.path.join(args.output_dir, "vector_timings.csv")
     write_csv(results, csv_path)
     print(f"Wrote vector timing profiles to {csv_path}")
+    summarize_speedups(results)
 
 
 if __name__ == "__main__":
