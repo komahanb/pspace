@@ -15,9 +15,7 @@ try:  # pragma: no cover - runtime convenience
 except ImportError:  # pragma: no cover
     from helpers import build_coordinate_system, random_polynomial, rng
 
-
 DEFAULT_SEED = 2025
-
 
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
@@ -92,6 +90,7 @@ def main() -> None:
             max_degree=args.max_degree,
             generator=generator,
         )
+
         profile_cs = ProfileCoordinateSystem(basis_type, verbose=False)
         for coord in base_cs.coordinates.values():
             profile_cs.addCoordinateAxis(coord)
@@ -102,6 +101,7 @@ def main() -> None:
             generator,
             max_degree=args.max_degree,
         )
+
         modes = list(InnerProductMode)
         result_rows = profile_vector_modes(
             profile_cs,
@@ -110,6 +110,7 @@ def main() -> None:
             sparse=not args.dense,
             trials=args.trials,
         )
+
         for row in result_rows:
             row.update(
                 {
