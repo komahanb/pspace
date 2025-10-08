@@ -5,14 +5,14 @@ scripts do **not** check numerical correctness; they are meant to help
 characterise runtime performance as the number of variables and the
 basis size grow.
 
-## `decomposition_profiles.py`
+## `decomposition_profile.py`
 
 Runs rank-1 (vector) and rank-2 (matrix) decompositions across each
 inner-product backend (`numerical`, `symbolic`, `analytic`). Results are
 saved as a CSV table along with optional bar plots.
 
 ```bash
-python3 profiles/decomposition_profiles.py \
+python3 profiles/decomposition_profile.py \
     --trials 3 \
     --num-coords 4 \
     --max-degree 2 \

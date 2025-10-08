@@ -36,6 +36,7 @@ from .stochastic_utils import (minnum_quadrature_points,
                                safe_zero_degrees,
                                sum_degrees_union_matrix,
                                sum_degrees_union_vector)
+from .interface import CoordinateSystem as CoordinateSystemInterface
 
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
@@ -899,17 +900,16 @@ class CoordinateFactory:
 # Coordinate System
 #=====================================================================#
 
-class CoordinateSystem:
+class CoordinateSystem(CoordinateSystemInterface):
     """
     1) holds coordinates (axes),
     2) manages basis (multi-indices),
     3) integrates inner products via tensor-product quadrature.
     """
     def __init__(self, basis_type, verbose=False):
+        super().__init__(basis_type, verbose=verbose)
         self.coordinates        = {}    # {cid : Coordinate}
-        self.basis_construction = basis_type
         self.basis              = None  # {basis_id: Counter({cid:deg,...})}
-        self.verbose            = bool(verbose)
         self._vector_inner_product = VectorInnerProductOperator(self)
         self._matrix_inner_product = MatrixInnerProductOperator(self)
 
