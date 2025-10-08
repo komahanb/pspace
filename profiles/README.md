@@ -1,36 +1,40 @@
 # Profiles
 
-Benchmark utilities for the `pspace` decomposition operators. These
-scripts do **not** check numerical correctness; they are meant to help
-characterise runtime performance as the number of variables and the
-basis size grow.
+Benchmark utilities for the `pspace` decomposition operators. These scripts do **not**
+check numerical correctness; they are meant to characterise runtime performance as the
+number of variables and the basis size grow.
 
-## `decomposition_profile.py`
+## `profile_vector_decomposition.py`
 
-Runs rank-1 (vector) and rank-2 (matrix) decompositions across each
-inner-product backend (`numerical`, `symbolic`, `analytic`). Results are
-saved as a CSV table along with optional bar plots.
+Profiles the rank-1 (`CoordinateSystem.decompose`) operator across numerical, symbolic,
+and analytic inner-product modes.
 
 ```bash
-python3 profiles/decomposition_profile.py \
+python3 profiles/profile_vector_decomposition.py \
     --trials 3 \
     --num-coords 4 \
     --max-degree 2 \
-    --output-dir profiles/output
+    --output-dir profiles/output/vector
 ```
 
-Key options:
+## `profile_matrix_decomposition.py`
+
+Profiles the rank-2 (`CoordinateSystem.decompose_matrix`) operator across the same set
+of modes, optionally with dense or symmetric assembly toggles.
+
+```bash
+python3 profiles/profile_matrix_decomposition.py \
+    --trials 3 \
+    --num-coords 4 \
+    --max-degree 2 \
+    --output-dir profiles/output/matrix
+```
+
+## Shared options
 
 | Flag | Meaning |
 | --- | --- |
 | `--trials` | Number of repetitions per combination (default `3`). |
 | `--num-coords` | How many coordinates/variables to include. |
 | `--max-degree` | Maximum monomial degree per coordinate. |
-| `--dense` | Use dense assembly instead of sparsity-aware masks. |
-| `--no-plots` | Skip Matplotlib plots (CSV only). |
 | `--seed` | Reproducibility seed (default `2025`). |
-
-Outputs land in the requested directory as:
-
-* `decomposition_timings.csv` – raw measurement table.
-* `[vector|matrix]_timings.png` – optional bar plots (if plotting is enabled).
