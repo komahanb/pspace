@@ -2,9 +2,11 @@ import numpy as np
 from collections import Counter
 
 from pspace.core import (
-    CoordinateFactory, CoordinateSystem,
-    BasisFunctionType, PolyFunction
+    CoordinateFactory,
+    BasisFunctionType,
+    PolyFunction,
 )
+from pspace.verify import CoordinateSystem
 
 """
 1. Create a 1D Legendre system up to degree 3

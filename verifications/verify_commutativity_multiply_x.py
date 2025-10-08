@@ -1,9 +1,11 @@
 import numpy as np
 from collections import Counter
 from pspace.core import (
-    CoordinateFactory, CoordinateSystem,
-    BasisFunctionType, PolyFunction
+    CoordinateFactory,
+    BasisFunctionType,
+    PolyFunction,
 )
+from pspace.verify import CoordinateSystem
 
 """
 In phi-space (monomials): O{phi} is a shift matrix

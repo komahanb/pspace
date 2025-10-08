@@ -7,12 +7,8 @@ from collections import Counter
 
 import sympy as sp
 
-from pspace.core import (
-    CoordinateFactory,
-    CoordinateSystem,
-    BasisFunctionType,
-    PolyFunction,
-)
+from pspace.core import CoordinateFactory, BasisFunctionType, PolyFunction
+from pspace.verify import CoordinateSystem
 
 #=====================================================================#
 # Global test flags

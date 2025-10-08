@@ -15,16 +15,16 @@ import random
 import numpy as np
 from timeit import default_timer as timer
 
+from pspace.validate import CoordinateSystem
 from pspace.core import (CoordinateFactory,
-                         CoordinateSystem,
                          BasisFunctionType,
                          PolyFunction)
 
-from .verify_utils import (random_coordinate,
-                           random_polynomial,
-                           get_coordinate_system_type)
+from verifications.verify_utils import (random_coordinate,
+                                        random_polynomial,
+                                        get_coordinate_system_type)
 
-from .verify_utils import ENABLE_ANALYTIC_TESTS
+from verifications.verify_utils import ENABLE_ANALYTIC_TESTS
 
 #=====================================================================#
 # Parameters for stress regime

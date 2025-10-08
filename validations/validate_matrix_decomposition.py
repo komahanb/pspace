@@ -14,15 +14,15 @@ import random
 import numpy as np
 
 # core imports
+from pspace.validate import CoordinateSystem
 from pspace.core import (CoordinateFactory,
-                         CoordinateSystem,
                          BasisFunctionType,
                          PolyFunction)
 
 # local imports
-from .verify_utils import (random_coordinate,
-                           random_polynomial,
-                           get_coordinate_system_type)
+from verifications.verify_utils import (random_coordinate,
+                                        random_polynomial,
+                                        get_coordinate_system_type)
 
 
 
