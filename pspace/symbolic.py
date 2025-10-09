@@ -6,9 +6,9 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import sympy as sp
 
-from .interface import CoordinateSystem as CoordinateSystemInterface
-from .core import (
-    CoordinateSystem as NumericCoordinateSystem,
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
+from .numeric import (
+    NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
@@ -125,7 +125,7 @@ class SymbolicMatrixInnerProductOperator:
         return matrix
 
 
-class CoordinateSystem(CoordinateSystemInterface):
+class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     Symbolic mirror of the CoordinateSystem contract. Reuses the numeric core for
     structural information while evaluating decompositions with SymPy.
@@ -338,3 +338,5 @@ class CoordinateSystem(CoordinateSystemInterface):
         verbose: bool = True,
     ):
         return self.numeric.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
+
+CoordinateSystem = SymbolicCoordinateSystem

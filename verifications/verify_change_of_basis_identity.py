@@ -1,12 +1,12 @@
 import numpy as np
 from collections import Counter
 
-from pspace.core import (
+from pspace.numeric import (
     CoordinateFactory,
     BasisFunctionType,
     PolyFunction,
 )
-from pspace.verify import CoordinateSystem
+from pspace.verify import NumericCoordinateSystem
 
 """
 1. Create a 1D Legendre system up to degree 3
@@ -19,7 +19,7 @@ from pspace.verify import CoordinateSystem
 """
 def test_change_of_basis_identity():
     cf = CoordinateFactory()
-    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+    cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
     # 1D test (extend later to multi-D)
     coord_x = cf.createUniformCoordinate(cf.newCoordinateID(), "x",

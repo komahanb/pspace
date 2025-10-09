@@ -9,10 +9,10 @@ pytest.skip("Basis transform demo requires manual validation; skipping in automa
 def test_polyfunction_roundtrip():
     import numpy as np
     from collections import Counter
-    from pspace.core import CoordinateFactory, CoordinateSystem, BasisFunctionType, InnerProductMode, PolyFunction
+    from pspace.numeric import CoordinateFactory, NumericCoordinateSystem, BasisFunctionType, InnerProductMode, PolyFunction
 
     cf = CoordinateFactory()
-    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+    cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
     coord_x = cf.createUniformCoordinate(cf.newCoordinateID(), 'x', dict(a=-1, b=1), max_monomial_dof=2)
     coord_y = cf.createUniformCoordinate(cf.newCoordinateID(), 'y', dict(a=-1, b=1), max_monomial_dof=2)

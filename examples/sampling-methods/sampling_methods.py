@@ -1,7 +1,7 @@
 from __future__ import print_function
 import matplotlib.pyplot as plt
 import numpy as np
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 
 N = 30
 

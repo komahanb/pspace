@@ -1,11 +1,11 @@
 import numpy as np
 from collections import Counter
-from pspace.core import (
+from pspace.numeric import (
     CoordinateFactory,
     BasisFunctionType,
     PolyFunction,
 )
-from pspace.verify import CoordinateSystem
+from pspace.verify import NumericCoordinateSystem
 
 """
 In phi-space (monomials): O{phi} is a shift matrix
@@ -70,7 +70,7 @@ def projected_O_phi_multiply_x(max_deg):
 
 def test_commutativity_multiply_x():
     cf = CoordinateFactory()
-    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+    cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
     coord_x = cf.createUniformCoordinate(cf.newCoordinateID(), "x",
                                          dict(a=-1, b=1), max_monomial_dof=4)

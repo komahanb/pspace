@@ -11,9 +11,9 @@ from numpy.polynomial import hermite_e as herm_e
 from numpy.polynomial import legendre as leg
 from numpy.polynomial import laguerre as lag
 
-from .interface import CoordinateSystem as CoordinateSystemInterface
-from .core import (
-    CoordinateSystem as NumericCoordinateSystem,
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
+from .numeric import (
+    NumericCoordinateSystem,
     DistributionType,
     InnerProductMode,
     PolyFunction,
@@ -274,7 +274,7 @@ class AnalyticMatrixInnerProductOperator:
 # Analytic Coordinate System mirror
 # --------------------------------------------------------------------------- #
 
-class CoordinateSystem(CoordinateSystemInterface):
+class AnalyticCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     Analytic mirror of the CoordinateSystem contract. Reuses the numeric core
     for structural information while evaluating inner products with closed-form
@@ -488,3 +488,5 @@ class CoordinateSystem(CoordinateSystemInterface):
         verbose: bool = True,
     ):
         return self.numeric.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
+
+CoordinateSystem = AnalyticCoordinateSystem

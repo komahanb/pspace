@@ -7,8 +7,8 @@ from collections import Counter
 
 import sympy as sp
 
-from pspace.core import CoordinateFactory, BasisFunctionType, PolyFunction
-from pspace.verify import CoordinateSystem
+from pspace.numeric import CoordinateFactory, BasisFunctionType, PolyFunction
+from pspace.verify import NumericCoordinateSystem
 
 #=====================================================================#
 # Global test flags
@@ -96,7 +96,7 @@ def random_polynomial(cs, max_deg=2, max_cross_terms=3):
 
 def get_coordinate_system_type(basis_type, max_deg=4, max_coords=3):
     cf = CoordinateFactory()
-    cs = CoordinateSystem(basis_type)
+    cs = NumericCoordinateSystem(basis_type)
 
     ncoords = random.randint(1, max_coords)
     print(f"[Setup] Using {ncoords} coordinates")

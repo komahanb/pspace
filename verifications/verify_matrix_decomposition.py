@@ -17,7 +17,7 @@ import random
 # core module imports
 import numpy as np
 
-from pspace.core import BasisFunctionType, InnerProductMode
+from pspace.numeric import BasisFunctionType, InnerProductMode
 
 # local module imports
 from .verify_utils import (

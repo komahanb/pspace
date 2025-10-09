@@ -1,5 +1,5 @@
 import numpy as np
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 from pspace.plotter import plot_jacobian
 
 # UQ Parameters

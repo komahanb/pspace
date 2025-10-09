@@ -14,8 +14,8 @@ import random
 import numpy as np
 
 # core imports
-from pspace.validate import CoordinateSystem
-from pspace.core import (CoordinateFactory,
+from pspace.validate import NumericCoordinateSystem
+from pspace.numeric import (CoordinateFactory,
                          BasisFunctionType,
                          PolyFunction)
 

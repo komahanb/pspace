@@ -4,10 +4,10 @@ import argparse
 import time
 from importlib import import_module
 
-from pspace.core import BasisFunctionType, InnerProductMode
-from pspace.profile import CoordinateSystem as ProfileCoordinateSystem
+from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.profile import ProfileNumericCoordinateSystem
 from pspace.parallel import (
-    ParallelCoordinateSystem,
+    ParallelNumericCoordinateSystem,
     ParallelPolicy,
     MPIParallelPolicy,
     MPI4PyParallelPolicy,
@@ -40,9 +40,9 @@ def describe_backend(coordinate_system) -> str:
 
 
 BACKEND_REGISTRY: dict[InnerProductMode, tuple[str, str]] = {
-    InnerProductMode.NUMERICAL: ("pspace.core", "CoordinateSystem"),
-    InnerProductMode.SYMBOLIC: ("pspace.symbolic", "CoordinateSystem"),
-    InnerProductMode.ANALYTIC: ("pspace.analytic", "CoordinateSystem"),
+    InnerProductMode.NUMERICAL: ("pspace.numeric", "NumericNumericCoordinateSystem"),
+    InnerProductMode.SYMBOLIC: ("pspace.symbolic", "SymbolicNumericCoordinateSystem"),
+    InnerProductMode.ANALYTIC: ("pspace.analytic", "AnalyticNumericCoordinateSystem"),
 }
 
 
@@ -143,7 +143,7 @@ def collect_parallel_diagnostics(policy: ParallelPolicy | None) -> list[str]:
 
 
 def configure_parallel(
-    profile_cs: ProfileCoordinateSystem,
+    profile_cs: ProfileNumericCoordinateSystem,
     args: argparse.Namespace,
 ) -> ParallelPolicy | None:
     policies: list[ParallelPolicy] = []
@@ -189,11 +189,11 @@ def configure_parallel(
         policy = compose_parallel_policies(policies)
 
     numeric = profile_cs.numeric
-    if isinstance(numeric, ParallelCoordinateSystem):
+    if isinstance(numeric, ParallelNumericCoordinateSystem):
         numeric.configure_policy(policy)
         return numeric.policy
 
-    profile_cs.numeric = ParallelCoordinateSystem(
+    profile_cs.numeric = ParallelNumericCoordinateSystem(
         numeric,
         policy=policy,
         verbose=getattr(profile_cs, "verbose", False),
@@ -294,7 +294,7 @@ def main() -> None:
         generator=generator,
     )
 
-    profile_cs = ProfileCoordinateSystem(basis_type, verbose=False, backend=backend_cs)
+    profile_cs = ProfileNumericCoordinateSystem(basis_type, verbose=False, backend=backend_cs)
     for coord in base_cs.coordinates.values():
         profile_cs.addCoordinateAxis(coord)
     profile_cs.initialize()
@@ -302,7 +302,7 @@ def main() -> None:
     active_policy: ParallelPolicy | None = None
     if args.parallel or args.shared.lower() != "none":
         active_policy = configure_parallel(profile_cs, args)
-    elif isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+    elif isinstance(profile_cs.numeric, ParallelNumericCoordinateSystem):
         active_policy = profile_cs.numeric.policy
 
     polynomial = random_polynomial(
@@ -326,7 +326,7 @@ def main() -> None:
         else:
             term_summaries.append(f"{coeff:+.3g}")
 
-    if isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+    if isinstance(profile_cs.numeric, ParallelNumericCoordinateSystem):
         active_policy = profile_cs.numeric.policy
     policy_summary = summarize_policy(active_policy)
 
@@ -389,7 +389,7 @@ def main() -> None:
     print(f"  worst: {worst:.6f} s")
     print(f"  mean : {mean:.6f} s")
 
-    if isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+    if isinstance(profile_cs.numeric, ParallelNumericCoordinateSystem):
         diagnostics = collect_parallel_diagnostics(profile_cs.numeric.policy)
         if diagnostics:
             print("\nParallel diagnostics:")

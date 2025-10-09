@@ -9,8 +9,8 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 
 import numpy as np
 
-from .core import InnerProductMode, PolyFunction
-from .interface import CoordinateSystem as CoordinateSystemInterface
+from .numeric import InnerProductMode, PolyFunction
+from .interface import CoordinateSystem
 
 
 def _partition_list(sequence: Sequence[Any], parts: int) -> list[list[Any]]:
@@ -58,12 +58,12 @@ class ParallelPolicy(ABC):
     name: str = "sequential"
     category: str = "generic"
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:  # pragma: no cover - hook
+    def setup(self, coordinate_system: CoordinateSystem) -> None:  # pragma: no cover - hook
         """Opportunity for a policy to inspect the wrapped coordinate system."""
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -74,7 +74,7 @@ class ParallelPolicy(ABC):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -132,7 +132,7 @@ class DistributedBasisParallel(ParallelPolicy):
         self.chunks = max(1, chunks)
         self.last_basis_partitions: list[tuple[int, int]] = []
 
-    def _plan(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def _plan(self, coordinate_system: CoordinateSystem) -> None:
         nbasis = coordinate_system.getNumBasisFunctions()
         size = max(1, nbasis // self.chunks)
         partitions = []
@@ -145,7 +145,7 @@ class DistributedBasisParallel(ParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -157,7 +157,7 @@ class DistributedBasisParallel(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -185,7 +185,7 @@ class DistributedCoordinateParallel(ParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -197,7 +197,7 @@ class DistributedCoordinateParallel(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -232,13 +232,13 @@ class CompositeParallelPolicy(ParallelPolicy):
     def name(self) -> str:
         return "+".join(policy.name for policy in self.policies)
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def setup(self, coordinate_system: CoordinateSystem) -> None:
         for policy in self.policies:
             policy.setup(coordinate_system)
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -262,7 +262,7 @@ class CompositeParallelPolicy(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -309,7 +309,7 @@ class MPIParallelPolicy(ParallelPolicy):
         self.ranks = list(ranks) if ranks else None
         self.last_plan: Dict[str, Any] | None = None
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def setup(self, coordinate_system: CoordinateSystem) -> None:
         nbasis = coordinate_system.getNumBasisFunctions()
         if not self.world_size:
             if self.ranks:
@@ -340,7 +340,7 @@ class MPIParallelPolicy(ParallelPolicy):
     def _record_plan(
         self,
         operation: str,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         sparse: bool,
         mode: InnerProductMode | str | None,
         analytic: bool,
@@ -360,7 +360,7 @@ class MPIParallelPolicy(ParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -372,7 +372,7 @@ class MPIParallelPolicy(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -408,7 +408,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         self.chunk_size = chunk_size
         self.last_schedule: Dict[str, Any] | None = None
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def setup(self, coordinate_system: CoordinateSystem) -> None:
         if self.workers is None and self.backend.lower() not in {"cuda", "cupy"}:
             self.workers = max(1, os.cpu_count() or 1)
         if self.backend.lower() in {"cuda", "cupy"} and self.device is None:
@@ -432,7 +432,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
     def _record_schedule(
         self,
         operation: str,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         sparse: bool,
         mode: InnerProductMode | str | None,
         analytic: bool,
@@ -455,7 +455,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -507,7 +507,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -603,7 +603,7 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         self._comm = mpi_comm
         self.rank: int | None = None
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def setup(self, coordinate_system: CoordinateSystem) -> None:
         try:
             from mpi4py import MPI  # type: ignore
         except ImportError:  # pragma: no cover - optional dependency
@@ -626,7 +626,7 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -675,7 +675,7 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -746,7 +746,7 @@ class CudaCupyParallelPolicy(ParallelPolicy):
         self.last_vector_basis_order: list[int] | None = None
         self.last_matrix_gpu = None
 
-    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+    def setup(self, coordinate_system: CoordinateSystem) -> None:
         try:
             import cupy as cp  # type: ignore
         except ImportError:  # pragma: no cover - optional dependency
@@ -759,7 +759,7 @@ class CudaCupyParallelPolicy(ParallelPolicy):
 
     def execute_vector(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         mode: InnerProductMode | str | None,
@@ -780,7 +780,7 @@ class CudaCupyParallelPolicy(ParallelPolicy):
 
     def execute_matrix(
         self,
-        coordinate_system: CoordinateSystemInterface,
+        coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
@@ -859,7 +859,7 @@ def _ensure_parallel_policy(policy: "ParallelPolicy | Sequence[ParallelPolicy] |
     raise TypeError(f"Unsupported policy argument: {policy!r}")
 
 
-class ParallelCoordinateSystem(CoordinateSystemInterface):
+class ParallelCoordinateSystem(CoordinateSystem):
     """
     Decorator that routes decomposition/reconstruction through a parallel policy.
 
@@ -869,7 +869,7 @@ class ParallelCoordinateSystem(CoordinateSystemInterface):
 
     def __init__(
         self,
-        base: CoordinateSystemInterface,
+        base: CoordinateSystem,
         policy: ParallelPolicy | None = None,
         verbose: bool = False,
     ) -> None:

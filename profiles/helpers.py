@@ -5,10 +5,10 @@ from typing import List, Tuple
 
 import numpy as np
 
-from pspace.core import (
+from pspace.numeric import (
     BasisFunctionType,
     CoordinateFactory,
-    CoordinateSystem,
+    NumericCoordinateSystem,
     PolyFunction,
 )
 
@@ -22,9 +22,9 @@ def build_coordinate_system(
     num_coords: int,
     max_degree: int,
     generator: np.random.Generator,
-) -> CoordinateSystem:
+) -> NumericCoordinateSystem:
     cf = CoordinateFactory()
-    cs = CoordinateSystem(basis_type)
+    cs = NumericCoordinateSystem(basis_type)
 
     for idx in range(num_coords):
         coord_id = cf.newCoordinateID()
@@ -52,7 +52,7 @@ def build_coordinate_system(
 
 
 def random_polynomial(
-    cs: CoordinateSystem,
+    cs: NumericCoordinateSystem,
     generator: np.random.Generator,
     max_degree: int,
     max_terms: int = 6,

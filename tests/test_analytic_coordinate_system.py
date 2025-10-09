@@ -5,13 +5,13 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from pspace.core import (
+from pspace.numeric import (
     BasisFunctionType,
-    CoordinateSystem as NumericCoordinateSystem,
+    NumericNumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
-from pspace.analytic import CoordinateSystem as AnalyticCoordinateSystem
+from pspace.analytic import AnalyticNumericCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system
 
 DEFAULT_COORDS = [
@@ -25,7 +25,7 @@ SMALL_COORDS = [
 ]
 
 
-def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
+def make_test_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
     # f(y) = 2 + 3*y0 + 1.5*y0^2 - 0.75*y1 + 0.25*y0*y1
     terms = [
         (2.0, Counter()),
@@ -42,7 +42,7 @@ def test_analytic_vector_matches_numeric():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     coeffs_numeric = cs.decompose(
         poly,
@@ -64,7 +64,7 @@ def test_analytic_matrix_matches_numeric():
     cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
 
     matrix_numeric = cs.decompose_matrix(
         poly,
@@ -87,7 +87,7 @@ def test_analytic_rejects_non_analytic_mode():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_test_polynomial(cs)
 
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     with pytest.raises(ValueError):
         analytic.decompose(poly, mode=InnerProductMode.NUMERICAL)
@@ -100,7 +100,7 @@ def test_analytic_sparse_matches_dense_vector():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     analytic.configure_sparsity(True)
     coeffs_sparse = analytic.decompose(
@@ -125,7 +125,7 @@ def test_analytic_sparse_matches_dense_matrix():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     analytic.configure_sparsity(True)
     matrix_sparse = analytic.decompose_matrix(
@@ -148,7 +148,7 @@ def test_analytic_sparse_matches_dense_matrix():
 
 def test_analytic_configure_sparsity_toggle():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
-    analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
     assert analytic.sparsity_enabled is True
     analytic.configure_sparsity(False)
     assert analytic.sparsity_enabled is False

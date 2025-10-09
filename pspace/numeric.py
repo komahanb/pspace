@@ -29,7 +29,7 @@ from .stochastic_utils import (
     sum_degrees,
     safe_zero_degrees,
 )
-from .interface import CoordinateSystem as CoordinateSystemInterface
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
 
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
@@ -180,16 +180,16 @@ class OrthoPolyFunction:
         """
         from numpy.polynomial import legendre as npleg
         from numpy.polynomial import polynomial as nppoly
-        from .core import PolyFunction  # adjust import if needed
+        from .numeric import PolyFunction  # adjust import if needed
 
-        monomial_terms = Counter()
+        monomial_terms = {}
 
         for coeff, degs in self._terms:
             # Build tensor product expansion for each coordinate
             expansions = []
             for cid, d in degs.items():
                 coord = self._coords[cid]
-                if coord.dist_type.name == "UNIFORM":  # Legendre basis
+                if coord.distribution.name == "UNIFORM":  # Legendre basis
                     Pn = npleg.Legendre.basis(d)
                     poly = Pn.convert(kind=nppoly.Polynomial)
                     coeffs_power = np.array(poly.coef, dtype=float)
@@ -202,7 +202,8 @@ class OrthoPolyFunction:
             # Recursive tensor product accumulation
             def recurse(idx, running_coeff, running_degs):
                 if idx == len(expansions):
-                    monomial_terms[running_degs] += coeff * running_coeff
+                    key = tuple(sorted(running_degs.items()))
+                    monomial_terms[key] = monomial_terms.get(key, 0.0) + coeff * running_coeff
                     return
                 cid, coeffs_power = expansions[idx]
                 for p, val in enumerate(coeffs_power):
@@ -214,7 +215,11 @@ class OrthoPolyFunction:
             recurse(0, 1.0, Counter())
 
         # Build PolyFunction terms
-        terms = [(float(val), degs) for degs, val in monomial_terms.items() if abs(val) > 1e-15]
+        terms = [
+            (float(val), Counter(dict(key)))
+            for key, val in monomial_terms.items()
+            if abs(val) > 1e-15
+        ]
         return PolyFunction(terms, coordinates=self._coords)
 
     def coeffs(self):
@@ -555,7 +560,7 @@ class CoordinateFactory:
 # Coordinate System
 #=====================================================================#
 
-class CoordinateSystem(CoordinateSystemInterface):
+class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     1) holds coordinates (axes),
     2) manages basis (multi-indices),
@@ -570,6 +575,32 @@ class CoordinateSystem(CoordinateSystemInterface):
         self._symbolic_mirror = None
         self._analytic_mirror = None
         self._sparsity_enabled = True
+
+    #-----------------------------------------------------------------#
+    # Representation conversions                                      #
+    #-----------------------------------------------------------------#
+    def to_orthopoly(
+        self,
+        poly: PolyFunction,
+        *,
+        sparse: bool | None = True,
+        mode: InnerProductMode | str | None = None,
+        analytic: bool = False,
+    ) -> OrthoPolyFunction:
+        coeffs = self.decompose(
+            poly,
+            sparse=sparse,
+            mode=mode,
+            analytic=analytic,
+        )
+        terms = [
+            (float(coeffs.get(idx, 0.0)), self.basis[idx])
+            for idx in self.basis
+        ]
+        return OrthoPolyFunction(terms, self.coordinates)
+
+    def from_orthopoly(self, ortho: OrthoPolyFunction) -> PolyFunction:
+        return ortho.toPolyFunction()
 
     @property
     def coordinates(self):
@@ -594,7 +625,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         Lazily instantiate the symbolic mirror bound to this coordinate system.
         """
         if self._symbolic_mirror is None:
-            from .symbolic import CoordinateSystem as SymbolicCoordinateSystem
+            from .symbolic import SymbolicCoordinateSystem
 
             self._symbolic_mirror = SymbolicCoordinateSystem(
                 self.basis_construction,
@@ -608,7 +639,7 @@ class CoordinateSystem(CoordinateSystemInterface):
         Lazily instantiate the analytic mirror bound to this coordinate system.
         """
         if self._analytic_mirror is None:
-            from .analytic import CoordinateSystem as AnalyticCoordinateSystem
+            from .analytic import AnalyticCoordinateSystem
 
             self._analytic_mirror = AnalyticCoordinateSystem(
                 self.basis_construction,
@@ -1274,7 +1305,7 @@ class CoordinateSystem(CoordinateSystemInterface):
             G_φ a_φ = <f, φ>
         Returns PolyFunction with coefficients a_φ.
         """
-        from .core import StateEquation
+        from .numeric import StateEquation
         from collections import Counter
         import numpy as np
 
@@ -1444,3 +1475,6 @@ class StateEquation:
 
     def __repr__(self):
         return f"StateEquation({self.name}, nbasis={self.cs.getNumBasisFunctions()})"
+
+# Backwards compatibility alias (will be deprecated)
+CoordinateSystem = NumericCoordinateSystem

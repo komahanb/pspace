@@ -5,11 +5,11 @@ from typing import Any, Dict, Mapping, Sequence
 
 import numpy as np
 
-from .core import InnerProductMode, PolyFunction
-from .interface import CoordinateSystem as CoordinateSystemInterface
+from .numeric import InnerProductMode, PolyFunction
+from .interface import CoordinateSystem
 
 
-class CoordinateSystem(CoordinateSystemInterface):
+class SparsityCoordinateSystem(CoordinateSystem):
     """
     Sparsity-aware decorator for CoordinateSystem instances.
 
@@ -22,7 +22,7 @@ class CoordinateSystem(CoordinateSystemInterface):
 
     def __init__(
         self,
-        base: CoordinateSystemInterface,
+        base: CoordinateSystem,
         enabled: bool = True,
         verbose: bool = False,
     ) -> None:
@@ -227,3 +227,6 @@ class CoordinateSystem(CoordinateSystemInterface):
         verbose: bool = True,
     ):
         return self._base.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
+
+CoordinateSystem = SparsityCoordinateSystem
+

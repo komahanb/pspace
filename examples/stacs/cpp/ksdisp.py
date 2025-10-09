@@ -55,7 +55,7 @@ import numpy as np
 from collections import Counter
 from timeit import default_timer as timer
 
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 from pspace.plotter import plot_jacobian
 
 # Create "Parameter" using "Parameter Factory" object

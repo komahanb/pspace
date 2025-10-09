@@ -5,13 +5,13 @@ from typing import List, Tuple
 
 import numpy as np
 
-from pspace.core import (
+from pspace.numeric import (
     BasisFunctionType,
     CoordinateFactory,
-    CoordinateSystem as NumericCoordinateSystem,
+    NumericNumericCoordinateSystem,
     PolyFunction,
 )
-from pspace.plotter import CoordinateSystem as PlottingCoordinateSystem
+from pspace.plotter import NumericCoordinateSystem as PlottingNumericCoordinateSystem
 
 
 def rng(seed: int) -> np.random.Generator:
@@ -23,9 +23,9 @@ def build_coordinate_systems(
     num_coords: int,
     max_degree: int,
     generator: np.random.Generator,
-) -> Tuple[NumericCoordinateSystem, PlottingCoordinateSystem]:
+) -> Tuple[NumericNumericCoordinateSystem, PlottingNumericCoordinateSystem]:
     cf = CoordinateFactory()
-    numeric = NumericCoordinateSystem(basis_type)
+    numeric = NumericNumericCoordinateSystem(basis_type)
 
     for idx in range(num_coords):
         coord_id = cf.newCoordinateID()
@@ -50,7 +50,7 @@ def build_coordinate_systems(
 
     numeric.initialize()
 
-    plotting = PlottingCoordinateSystem(basis_type, verbose=False)
+    plotting = PlottingNumericCoordinateSystem(basis_type, verbose=False)
     for coord in numeric.coordinates.values():
         plotting.addCoordinateAxis(coord)
     plotting.initialize()
@@ -59,7 +59,7 @@ def build_coordinate_systems(
 
 
 def random_polynomial(
-    numeric: NumericCoordinateSystem,
+    numeric: NumericNumericCoordinateSystem,
     generator: np.random.Generator,
     max_degree: int,
     max_terms: int = 6,

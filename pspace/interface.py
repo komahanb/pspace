@@ -7,7 +7,8 @@ from typing import Any, Dict, Iterable, Mapping, Sequence, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .core import InnerProductMode, PolyFunction
+    from .numeric import InnerProductMode, PolyFunction
+    from .numeric import OrthoPolyFunction  # type: ignore
 
 
 class CoordinateSystem(ABC):
@@ -175,7 +176,7 @@ class CoordinateSystem(ABC):
 
     def compute_matrix_entries(
         self,
-        function: "PolyFunction",
+        function: Any,
         pairs: Sequence[tuple[int, int]],
         symmetric: bool,
         *,
@@ -300,11 +301,84 @@ class CoordinateSystem(ABC):
             if coords is not self.coordinates:
                 function.bind_coordinates(self.coordinates)
 
+
+class MonomialCoordinateSystemMixin(ABC):
+    """
+    Coordinate-system mixin for monomial (non-orthonormal) polynomial spaces.
+    """
+
     @abstractmethod
-    def check_decomposition_matrix_numerical_symbolic(
+    def decompose(
         self,
         function: "PolyFunction",
-        tol: float = 1e-12,
-        verbose: bool = True,
-    ) -> tuple[bool, Dict[Any, tuple[float, float, float]]]:
+        sparse: bool | None = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        **kwargs: Any,
+    ) -> Dict[int, float]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def decompose_matrix(
+        self,
+        function: "PolyFunction",
+        sparse: bool | None = False,
+        symmetric: bool = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        **kwargs: Any,
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def reconstruct(
+        self,
+        function: "PolyFunction",
+        sparse: bool | None = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        precondition: bool = True,
+        **kwargs: Any,
+    ) -> "PolyFunction":
+        raise NotImplementedError
+
+
+class OrthonormalCoordinateSystemMixin(ABC):
+    """
+    Coordinate-system mixin for orthonormal polynomial spaces.
+    """
+
+    @abstractmethod
+    def decompose(
+        self,
+        function: "OrthoPolyFunction",
+        sparse: bool | None = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        **kwargs: Any,
+    ) -> Dict[int, float]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def decompose_matrix(
+        self,
+        function: "OrthoPolyFunction",
+        sparse: bool | None = False,
+        symmetric: bool = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        **kwargs: Any,
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def reconstruct(
+        self,
+        function: "OrthoPolyFunction",
+        sparse: bool | None = True,
+        mode: "InnerProductMode | str | None" = None,
+        analytic: bool = False,
+        precondition: bool = True,
+        **kwargs: Any,
+    ) -> "OrthoPolyFunction":
         raise NotImplementedError

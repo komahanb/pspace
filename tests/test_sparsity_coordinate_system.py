@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from pspace.core import BasisFunctionType, InnerProductMode
-from pspace.sparsity import CoordinateSystem as SparsityCoordinateSystem
+from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.sparsity import SparsityNumericCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system, make_polynomial
 
 
@@ -15,7 +15,7 @@ def test_sparsity_wrapper_matches_base_results():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
 
-    wrapper = SparsityCoordinateSystem(base, enabled=True)
+    wrapper = SparsityNumericCoordinateSystem(base, enabled=True)
 
     coeffs_sparse = wrapper.decompose(
         poly,
@@ -38,7 +38,7 @@ def test_sparsity_wrapper_matches_base_results():
 def test_sparsity_wrapper_respects_per_call_override():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
-    wrapper = SparsityCoordinateSystem(base, enabled=False)
+    wrapper = SparsityNumericCoordinateSystem(base, enabled=False)
 
     coeffs_dense = wrapper.decompose(poly, sparse=None, mode=InnerProductMode.NUMERICAL)
     coeffs_force_sparse = wrapper.decompose(poly, sparse=True, mode=InnerProductMode.NUMERICAL)
@@ -51,7 +51,7 @@ def test_sparsity_wrapper_respects_per_call_override():
 def test_sparsity_wrapper_matrix_paths():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
-    wrapper = SparsityCoordinateSystem(base, enabled=True)
+    wrapper = SparsityNumericCoordinateSystem(base, enabled=True)
 
     matrix_sparse = wrapper.decompose_matrix(
         poly,
@@ -73,7 +73,7 @@ def test_sparsity_wrapper_matrix_paths():
 def test_sparsity_wrapper_reconstruct_delegation():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
-    wrapper = SparsityCoordinateSystem(base, enabled=True)
+    wrapper = SparsityNumericCoordinateSystem(base, enabled=True)
 
     recon_sparse = wrapper.reconstruct(poly, sparse=None)
     wrapper.configure_sparsity(False)

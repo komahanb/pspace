@@ -15,7 +15,8 @@ Think of the framework as a **hall of mirrors** centered on the abstract contrac
 
 | Mirror                     | Layer / Module               | Core Purpose                                                                 |
 | -------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| **Numeric**                | `pspace.core`                | Baseline coordinate system: geometry, basis construction, quadrature, sparsity, reconstruction. |
+| **Monomial (Numeric)**                | `pspace.numeric`                | Baseline coordinate system: geometry, basis construction, quadrature, sparsity, reconstruction. |
+| **Orthonormal (Orthopoly)**           | `pspace.orthonormal`            | Orthogonal-basis wrapper exposing conversions to/from monomial representations. |
 | **Sparsity Mirror**        | `pspace.sparsity`            | Decorator that enforces sparse/dense behavior on any coordinate-system instance.      |
 | **Symbolic**               | `pspace.symbolic`            | SymPy mirror for exact projections/reconstructions.                         |
 | **Analytic**               | `pspace.analytic`            | Closed-form Hermite/Legendre/Laguerre integration mirror.                   |
@@ -26,7 +27,7 @@ Think of the framework as a **hall of mirrors** centered on the abstract contrac
 | **Data / I/O***            | `pspace.export`              | Serialize operations/metadata.                                              |
 | **Surrogate / ML***        | `pspace.learn`               | Serve trained surrogates behind the same interface.                         |
 
-`*` denotes future expansion slots. Numeric, symbolic, analytic, and profiling mirrors exist today; sparsity is being teased apart, and parallelism is the next planned basis vector so contexts can be composed (“numeric + sparsity + profiling”, “analytic + parallel”, etc.) against the constant `CoordinateSystem` contract.
+`*` denotes future expansion slots. Monomial (Numeric), symbolic, analytic, and profiling mirrors exist today; sparsity is being teased apart, and parallelism is the next planned basis vector so contexts can be composed (“numeric + sparsity + profiling”, “analytic + parallel”, etc.) against the constant `CoordinateSystem` contract.
 
 Think of each mirror/trait as a basis vector in an aspect-oriented space: we mix and match the vectors we need, all while the immutable `CoordinateSystem` contract anchors the composition. The Decorator pattern gives the mechanics, the aspect mindset keeps cross-cutting concerns orthogonal, and a future “context composer” will assemble the right combination for each use case.
 

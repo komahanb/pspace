@@ -4,7 +4,7 @@ import numpy as np
 from collections import Counter
 
 # Import from your package
-from pspace.core import CoordinateFactory, CoordinateSystem, BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem, BasisFunctionType, PolyFunction
 
 def main():
 
@@ -31,7 +31,7 @@ def main():
     )
 
     # Tensor-degree basis
-    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+    cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
     cs.addCoordinateAxis(coord0)
     cs.addCoordinateAxis(coord1)
     cs.initialize()

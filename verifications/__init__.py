@@ -1,1 +1,1 @@
-from pspace.core import *
+from pspace.numeric import *

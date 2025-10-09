@@ -1,4 +1,4 @@
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 
 # Create "Parameter" using "Parameter Factory" object
 pfactory = ParameterFactory()

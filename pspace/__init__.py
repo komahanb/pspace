@@ -35,11 +35,12 @@ def get_libraries():
     return lib_dirs, libs
 
 # Optional re-exports for convenience
-from .core import CoordinateSystem as NumericCoordinateSystem  # noqa: E402
-from .symbolic import CoordinateSystem as SymbolicCoordinateSystem  # noqa: E402
-from .analytic import CoordinateSystem as AnalyticCoordinateSystem  # noqa: E402
-from .profile import CoordinateSystem as ProfileCoordinateSystem  # noqa: E402
-from .validate import CoordinateSystem as ValidateCoordinateSystem  # noqa: E402
-from .verify import CoordinateSystem as VerifyCoordinateSystem  # noqa: E402
-from .sparsity import CoordinateSystem as SparsityCoordinateSystem  # noqa: E402
+from .numeric import NumericCoordinateSystem  # noqa: E402
+from .symbolic import SymbolicCoordinateSystem  # noqa: E402
+from .analytic import AnalyticCoordinateSystem  # noqa: E402
+from .profile import ProfileCoordinateSystem  # noqa: E402
+from .validate import ValidateCoordinateSystem  # noqa: E402
+from .verify import VerifyCoordinateSystem  # noqa: E402
+from .sparsity import SparsityCoordinateSystem  # noqa: E402
 from .parallel import ParallelCoordinateSystem  # noqa: E402
+from .orthonormal import OrthonormalCoordinateSystem  # noqa: E402

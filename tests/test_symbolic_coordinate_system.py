@@ -5,13 +5,13 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from pspace.core import (
+from pspace.numeric import (
     BasisFunctionType,
-    CoordinateSystem as NumericCoordinateSystem,
+    NumericNumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
-from pspace.symbolic import CoordinateSystem as SymbolicCoordinateSystem
+from pspace.symbolic import SymbolicNumericCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system
 
 DEFAULT_COORDS = [
@@ -25,7 +25,7 @@ SMALL_COORDS = [
 ]
 
 
-def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
+def make_test_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
     terms = [
         (1.0, Counter()),
         (-2.5, Counter({0: 1})),
@@ -40,7 +40,7 @@ def test_symbolic_vector_matches_numeric():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     coeffs_numeric = cs.decompose(
         poly,
@@ -62,7 +62,7 @@ def test_symbolic_matrix_matches_numeric():
     cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
 
     matrix_numeric = cs.decompose_matrix(
         poly,
@@ -85,7 +85,7 @@ def test_symbolic_rejects_non_symbolic_mode():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     with pytest.raises(ValueError):
         symbolic.decompose(poly, mode=InnerProductMode.NUMERICAL)
@@ -98,7 +98,7 @@ def test_symbolic_sparse_matches_dense_vector():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     symbolic.configure_sparsity(True)
     coeffs_sparse = symbolic.decompose(
@@ -123,7 +123,7 @@ def test_symbolic_sparse_matches_dense_matrix():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
 
     symbolic.configure_sparsity(True)
     matrix_sparse = symbolic.decompose_matrix(
@@ -146,7 +146,7 @@ def test_symbolic_sparse_matches_dense_matrix():
 
 def test_symbolic_configure_sparsity_toggle():
     cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
-    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
+    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
     assert symbolic.sparsity_enabled is True
     symbolic.configure_sparsity(False)
     assert symbolic.sparsity_enabled is False

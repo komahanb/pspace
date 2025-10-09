@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 import numpy as np
 from collections import Counter
-from pspace.core import (
-    CoordinateFactory, CoordinateSystem,
+from pspace.numeric import (
+    CoordinateFactory, NumericCoordinateSystem,
     BasisFunctionType, PolyFunction, OrthoPolyFunction,
 )
 
 # Coordinate system: 1D Normal (ψ = Hermite), φ = monomials
 cf = CoordinateFactory()
-cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 cx = cf.createNormalCoordinate(cf.newCoordinateID(), "x",
                                dict(mu=0, sigma=1), max_monomial_dof=3)
 cs.addCoordinateAxis(cx)

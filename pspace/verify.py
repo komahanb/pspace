@@ -5,15 +5,15 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .interface import CoordinateSystem as CoordinateSystemInterface
-from .core import (
-    CoordinateSystem as NumericCoordinateSystem,
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
+from .numeric import (
+    NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 
 
-class CoordinateSystem(CoordinateSystemInterface):
+class VerifyCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     Verification-oriented coordinate system.
 
@@ -185,3 +185,5 @@ class CoordinateSystem(CoordinateSystemInterface):
         verbose: bool = True,
     ):
         return self.numeric.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
+
+CoordinateSystem = VerifyCoordinateSystem

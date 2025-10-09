@@ -6,15 +6,15 @@ from typing import Any, Mapping, Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .interface import CoordinateSystem as CoordinateSystemInterface
-from .core import (
-    CoordinateSystem as NumericCoordinateSystem,
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
+from .numeric import (
+    NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 
 
-class CoordinateSystem(CoordinateSystemInterface):
+class PlotCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     Visualization-oriented coordinate system. Delegates all numerical work to
     the underlying numeric CoordinateSystem and records Matplotlib figures for
@@ -271,3 +271,5 @@ class CoordinateSystem(CoordinateSystemInterface):
         verbose: bool = True,
     ):
         return self.numeric.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
+
+CoordinateSystem = PlotCoordinateSystem

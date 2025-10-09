@@ -9,8 +9,8 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pspace.core import BasisFunctionType, DistributionType
-from pspace.plotter import CoordinateSystem as PlottingCoordinateSystem
+from pspace.numeric import BasisFunctionType, DistributionType
+from pspace.plotter import NumericCoordinateSystem as PlottingNumericCoordinateSystem
 
 try:  # pragma: no cover
     from plots.helpers import build_coordinate_systems, random_polynomial, rng
@@ -59,7 +59,7 @@ def coordinate_range(coord, num_points: int = 200) -> Tuple[np.ndarray, Tuple[fl
     return xs, (a, b)
 
 
-def plot_axis_basis(output_dir: str, plotting_cs: PlottingCoordinateSystem) -> None:
+def plot_axis_basis(output_dir: str, plotting_cs: PlottingNumericCoordinateSystem) -> None:
     for cid, coord in plotting_cs.coordinates.items():
         xs, _ = coordinate_range(coord)
         fig, ax = plt.subplots()
@@ -75,7 +75,7 @@ def plot_axis_basis(output_dir: str, plotting_cs: PlottingCoordinateSystem) -> N
         plt.close(fig)
 
 
-def plot_pairwise_basis(output_dir: str, plotting_cs: PlottingCoordinateSystem, max_degree: int = 3) -> None:
+def plot_pairwise_basis(output_dir: str, plotting_cs: PlottingNumericCoordinateSystem, max_degree: int = 3) -> None:
     coord_items = list(plotting_cs.coordinates.items())
     for (cid_i, coord_i), (cid_j, coord_j) in combinations(coord_items, 2):
         xs, _ = coordinate_range(coord_i, 100)
@@ -109,7 +109,7 @@ def plot_pairwise_basis(output_dir: str, plotting_cs: PlottingCoordinateSystem, 
                 plt.close(fig)
 
 
-def plot_quadrature(output_dir: str, plotting_cs: PlottingCoordinateSystem) -> None:
+def plot_quadrature(output_dir: str, plotting_cs: PlottingNumericCoordinateSystem) -> None:
     degrees = Counter({cid: coord.degree for cid, coord in plotting_cs.coordinates.items()})
     plotting_cs.build_quadrature(degrees)
     fig = plotting_cs.get_last_figure()
@@ -171,7 +171,7 @@ def plot_polynomial_surfaces(
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Generate basis and polynomial visualisations for a CoordinateSystem."
+        description="Generate basis and polynomial visualisations for a NumericCoordinateSystem."
     )
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--basis-type", type=str, default="tensor", help="tensor or total")

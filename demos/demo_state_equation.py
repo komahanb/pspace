@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import numpy as np
 from collections import Counter
-from pspace.core import (
-    CoordinateFactory, CoordinateSystem,
+from pspace.numeric import (
+    CoordinateFactory, NumericCoordinateSystem,
     BasisFunctionType, PolyFunction, StateEquation, InnerProductMode
 )
 
@@ -11,7 +11,7 @@ from pspace.core import (
 #---------------------------------------------------------------------#
 
 cf = CoordinateFactory()
-cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, verbose=False)
+cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, verbose=False)
 
 coord_x = cf.createUniformCoordinate(cf.newCoordinateID(), "x", dict(a=-1, b=1), max_monomial_dof=2)
 coord_y = cf.createUniformCoordinate(cf.newCoordinateID(), "y", dict(a=-1, b=1), max_monomial_dof=2)

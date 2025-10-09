@@ -14,7 +14,7 @@ Author: Komahan Boopathy
 from __future__ import print_function
 import numpy as np
 from spring import Spring
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 
 def get_func_deriv(k):
     """

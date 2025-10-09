@@ -6,15 +6,15 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .interface import CoordinateSystem as CoordinateSystemInterface
-from .core import (
-    CoordinateSystem as NumericCoordinateSystem,
+from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
+from .numeric import (
+    NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 
 
-class CoordinateSystem(CoordinateSystemInterface):
+class ProfileCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     """
     Profiling-oriented CoordinateSystem.
 
@@ -24,7 +24,7 @@ class CoordinateSystem(CoordinateSystemInterface):
     (e.g., "decompose", "decompose_matrix", "reconstruct").
     """
 
-    def __init__(self, basis_type, verbose: bool = False, backend: CoordinateSystemInterface | None = None):
+    def __init__(self, basis_type, verbose: bool = False, backend: CoordinateSystem | None = None):
         super().__init__(basis_type, verbose=verbose)
         if backend is None:
             backend = NumericCoordinateSystem(basis_type, verbose=verbose)
@@ -240,3 +240,5 @@ class CoordinateSystem(CoordinateSystemInterface):
             "check_decomposition_matrix_numerical_symbolic",
             lambda: self.numeric.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose),
         )
+
+CoordinateSystem = ProfileCoordinateSystem

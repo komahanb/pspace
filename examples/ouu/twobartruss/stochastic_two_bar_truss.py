@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 from two_bar_truss import TwoBarTruss
-from pspace.core import ParameterFactory, ParameterContainer
+from pspace.numeric import ParameterFactory, ParameterContainer
 
 class StochasticTwoBarTruss:
     def __init__(self, dtruss):
