@@ -42,3 +42,4 @@ from .profile import CoordinateSystem as ProfileCoordinateSystem  # noqa: E402
 from .validate import CoordinateSystem as ValidateCoordinateSystem  # noqa: E402
 from .verify import CoordinateSystem as VerifyCoordinateSystem  # noqa: E402
 from .sparsity import CoordinateSystem as SparsityCoordinateSystem  # noqa: E402
+from .parallel import ParallelCoordinateSystem  # noqa: E402

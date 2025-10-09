@@ -21,7 +21,7 @@ Think of the framework as a **hall of mirrors** centered on the abstract contrac
 | **Analytic**               | `pspace.analytic`            | Closed-form Hermite/Legendre/Laguerre integration mirror.                   |
 | **Profiling**              | `pspace.profile`             | Timing-decorated mirror; powers CLI timing scripts with summaries/speedups. |
 | **Validation / Diagnostics**| `pspace.validate`, `pspace.verify`, `pspace.diagnostic` | Persist residuals, conditioning, cross-checks.            |
-| **Parallel / Distributed** | *(planned)*                  | Aspect to orchestrate MPI/OpenMP/GPU execution while preserving the contract. |
+| **Parallel / Distributed** | `pspace.parallel`            | Decorator that dispatches vector/matrix work according to a parallel policy (basis- or coordinate-partitioned, etc.). |
 | **Optimization / Control***| `pspace.optimize`            | Map contract into adjoints/gradient tracking.                               |
 | **Data / I/O***            | `pspace.export`              | Serialize operations/metadata.                                              |
 | **Surrogate / ML***        | `pspace.learn`               | Serve trained surrogates behind the same interface.                         |
@@ -128,6 +128,11 @@ profiling:
   profile_vector_decomposition: {description: "Benchmark vector modes; emit CSV and speedup ratios.", implementation: profiles/profile_vector_decomposition.py}
   profile_matrix_decomposition: {description: "Benchmark matrix modes; emit CSV and speedup ratios.", implementation: profiles/profile_matrix_decomposition.py}
   profile_single_mode: {description: "Profile one mode/seed with detailed problem summary.", implementation: profiles/profile_single_mode.py}
+
+parallel:
+  ParallelCoordinateSystem: {description: "Decorator routing work through a parallel policy.", implementation: parallel.py::ParallelCoordinateSystem}
+  DistributedBasisParallel: {description: "Policy sketch that partitions work by basis blocks.", implementation: parallel.py::DistributedBasisParallel}
+  DistributedCoordinateParallel: {description: "Policy sketch that partitions work by coordinates/axes.", implementation: parallel.py::DistributedCoordinateParallel}
 
 operators:
   RFMD: {description: "Rigid–Flexible Mode Decomposition separating nullspace and rangespace.", implementation: conceptual}
