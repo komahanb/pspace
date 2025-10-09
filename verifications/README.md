@@ -17,5 +17,4 @@ pytest verifications/verify_change_of_basis_identity.py -q
 - `verify_vector_decomposition.py` / `verify_matrix_decomposition.py` – Randomised decompositions comparing numerical vs symbolic vs analytic modes.
 - `verify_reconstruction.py` / `verify_reconstruction_mixed.py` – Reconstruction consistency in 1D and mixed distributions.
 - `verify_adjoint_function_gradient.py` – Dual reconstruction for gradients.
-- `verify_plot_polynomials.py` – Legacy plotting helper (to be migrated into plots/).
 - Utilities live in `verify_utils.py` for randomized coordinate systems and polynomials.

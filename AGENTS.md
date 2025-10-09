@@ -16,7 +16,7 @@ Think of the framework as a **hall of mirrors** centered on the abstract contrac
 | Mirror                     | Layer / Module               | Core Purpose                                                                 |
 | -------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
 | **Numeric**                | `pspace.core`                | Baseline coordinate system: geometry, basis construction, quadrature, sparsity, reconstruction. |
-| **Sparsity Trait**         | `pspace.core` (in progress)  | Axis-aware pruning baked into the core; slated for extraction as an explicit aspect. |
+| **Sparsity Mirror**        | `pspace.sparsity`            | Decorator that enforces sparse/dense behavior on any coordinate-system instance.      |
 | **Symbolic**               | `pspace.symbolic`            | SymPy mirror for exact projections/reconstructions.                         |
 | **Analytic**               | `pspace.analytic`            | Closed-form Hermite/Legendre/Laguerre integration mirror.                   |
 | **Profiling**              | `pspace.profile`             | Timing-decorated mirror; powers CLI timing scripts with summaries/speedups. |
@@ -114,6 +114,9 @@ symbolic:
   SymbolicCoordinateSystem: {description: "Mirror of CoordinateSystem using SymPy backends.", implementation: symbolic.py::CoordinateSystem}
   SymbolicVectorInnerProductOperator: {description: "Symbolic evaluator for ⟨f,ψ_k⟩.", implementation: symbolic.py::SymbolicVectorInnerProductOperator}
   SymbolicMatrixInnerProductOperator: {description: "Symbolic evaluator for ⟨ψ_i,f,ψ_j⟩.", implementation: symbolic.py::SymbolicMatrixInnerProductOperator}
+
+sparsity:
+  SparsityCoordinateSystem: {description: "Decorator toggling sparse/dense execution on wrapped coordinate systems.", implementation: sparsity.py::CoordinateSystem}
 
 analytic:
   AnalyticCoordinateSystem: {description: "Closed-form mirror of CoordinateSystem.", implementation: analytic.py::CoordinateSystem}

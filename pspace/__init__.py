@@ -33,3 +33,12 @@ def get_libraries():
     	lib_dirs.append(os.path.join(root_path, path))
 
     return lib_dirs, libs
+
+# Optional re-exports for convenience
+from .core import CoordinateSystem as NumericCoordinateSystem  # noqa: E402
+from .symbolic import CoordinateSystem as SymbolicCoordinateSystem  # noqa: E402
+from .analytic import CoordinateSystem as AnalyticCoordinateSystem  # noqa: E402
+from .profile import CoordinateSystem as ProfileCoordinateSystem  # noqa: E402
+from .validate import CoordinateSystem as ValidateCoordinateSystem  # noqa: E402
+from .verify import CoordinateSystem as VerifyCoordinateSystem  # noqa: E402
+from .sparsity import CoordinateSystem as SparsityCoordinateSystem  # noqa: E402
