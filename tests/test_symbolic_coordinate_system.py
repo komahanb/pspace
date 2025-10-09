@@ -7,60 +7,22 @@ import pytest
 
 from pspace.core import (
     BasisFunctionType,
-    CoordinateFactory,
     CoordinateSystem as NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 from pspace.symbolic import CoordinateSystem as SymbolicCoordinateSystem
+from tests.utils.factories import build_numeric_coordinate_system
 
+DEFAULT_COORDS = [
+    ("uniform", dict(a=-1.0, b=1.0), 4),
+    ("exponential", dict(mu=0.0, beta=1.0), 3),
+]
 
-def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-1.0, b=1.0),
-        max_monomial_dof=4,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    exponential = factory.createExponentialCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.0, beta=1.0),
-        max_monomial_dof=3,
-    )
-    cs.addCoordinateAxis(exponential)
-
-    cs.initialize()
-    return cs
-
-
-def build_small_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-1.0, b=1.0),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.0, sigma=1.0),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
+SMALL_COORDS = [
+    ("uniform", dict(a=-1.0, b=1.0), 2),
+    ("normal", dict(mu=0.0, sigma=1.0), 2),
+]
 
 
 def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
@@ -75,7 +37,7 @@ def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
 
 
 def test_symbolic_vector_matches_numeric():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -97,7 +59,7 @@ def test_symbolic_vector_matches_numeric():
 
 
 def test_symbolic_matrix_matches_numeric():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
@@ -120,7 +82,7 @@ def test_symbolic_matrix_matches_numeric():
 
 
 def test_symbolic_rejects_non_symbolic_mode():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -133,7 +95,7 @@ def test_symbolic_rejects_non_symbolic_mode():
 
 
 def test_symbolic_sparse_matches_dense_vector():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -158,7 +120,7 @@ def test_symbolic_sparse_matches_dense_vector():
 
 
 def test_symbolic_sparse_matches_dense_matrix():
-    cs = build_small_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -183,7 +145,7 @@ def test_symbolic_sparse_matches_dense_matrix():
 
 
 def test_symbolic_configure_sparsity_toggle():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
     assert symbolic.sparsity_enabled is True
     symbolic.configure_sparsity(False)

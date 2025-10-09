@@ -24,9 +24,11 @@ class CoordinateSystem(CoordinateSystemInterface):
     (e.g., "decompose", "decompose_matrix", "reconstruct").
     """
 
-    def __init__(self, basis_type, verbose: bool = False):
+    def __init__(self, basis_type, verbose: bool = False, backend: CoordinateSystemInterface | None = None):
         super().__init__(basis_type, verbose=verbose)
-        self.numeric = NumericCoordinateSystem(basis_type, verbose=verbose)
+        if backend is None:
+            backend = NumericCoordinateSystem(basis_type, verbose=verbose)
+        self.numeric = backend
         self._last_timings: dict[str, float] = {}
 
     @property

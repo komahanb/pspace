@@ -181,3 +181,54 @@ def sum_degrees_union_matrix(f_degrees, psi_i: Counter, psi_j: Counter) -> Count
             degs[a] = max(degs.get(a, 0), total)
 
     return degs
+
+
+def vector_sparsity_mask(coordinate_system, function, sparse: bool, *, sort_indices: bool = False) -> list[int]:
+    """
+    Canonical ordering of basis indices to visit for vector decompositions.
+
+    Parameters
+    ----------
+    coordinate_system : CoordinateSystem interface
+        Coordinate system providing basis metadata and sparsity helpers.
+    function : PolyFunction
+        Function being decomposed (provides term degrees).
+    sparse : bool
+        Whether to respect sparsity masking or iterate over the full basis.
+    """
+    if sparse:
+        mask = coordinate_system.polynomial_vector_sparsity_mask(function.degrees)
+    else:
+        mask = coordinate_system.basis.keys()
+    indices = [int(idx) for idx in mask]
+    if sort_indices:
+        indices.sort()
+    return indices
+
+
+def matrix_sparsity_mask(
+    coordinate_system,
+    function,
+    sparse: bool,
+    symmetric: bool,
+    *,
+    sort_pairs: bool = False,
+) -> list[tuple[int, int]]:
+    """
+    Canonical ordering of basis index pairs for matrix decompositions.
+
+    Mirrors the numeric-coordinate-system logic but works with any object
+    implementing the CoordinateSystem interface.
+    """
+    if sparse:
+        mask = list(coordinate_system.polynomial_sparsity_mask(function.degrees, symmetric=symmetric))
+    else:
+        basis_ids = list(coordinate_system.basis.keys())
+        if symmetric:
+            mask = [(i, j) for ii, i in enumerate(basis_ids) for j in basis_ids[ii:]]
+        else:
+            mask = [(i, j) for i in basis_ids for j in basis_ids]
+    pairs = [(int(i), int(j)) for i, j in mask]
+    if sort_pairs:
+        pairs.sort()
+    return pairs

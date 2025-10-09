@@ -11,32 +11,12 @@ import numpy as np
 
 from .core import InnerProductMode, PolyFunction
 from .interface import CoordinateSystem as CoordinateSystemInterface
-from .stochastic_utils import sum_degrees_union_matrix, sum_degrees_union_vector
-
-
-def _vector_mask(cs: CoordinateSystemInterface, function: PolyFunction, sparse: bool) -> list[int]:
-    if sparse:
-        mask = cs.polynomial_vector_sparsity_mask(function.degrees)
-    else:
-        mask = cs.basis.keys()
-    return sorted(int(idx) for idx in mask)
-
-
-def _matrix_mask(
-    cs: CoordinateSystemInterface,
-    function: PolyFunction,
-    sparse: bool,
-    symmetric: bool,
-) -> list[tuple[int, int]]:
-    if sparse:
-        mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-    else:
-        basis_ids = sorted(cs.basis.keys())
-        if symmetric:
-            mask = {(i, j) for ii, i in enumerate(basis_ids) for j in basis_ids[ii:]}
-        else:
-            mask = {(i, j) for i in basis_ids for j in basis_ids}
-    return sorted((int(i), int(j)) for i, j in mask)
+from .stochastic_utils import (
+    sum_degrees_union_matrix,
+    sum_degrees_union_vector,
+    vector_sparsity_mask,
+    matrix_sparsity_mask,
+)
 
 
 def _compute_vector_chunk(
@@ -551,7 +531,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         coordinate_system_eval = coordinate_system
         function.bind_coordinates(coordinate_system_eval.coordinates)
 
-        mask = _vector_mask(coordinate_system_eval, function, sparse)
+        mask = vector_sparsity_mask(coordinate_system_eval, function, sparse, sort_indices=True)
         total_items = len(mask)
 
         self._record_schedule("vector", coordinate_system_eval, sparse, mode, analytic, total_items=total_items)
@@ -599,7 +579,13 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         coordinate_system_eval = coordinate_system
         function.bind_coordinates(coordinate_system_eval.coordinates)
 
-        mask_pairs = _matrix_mask(coordinate_system_eval, function, sparse, symmetric)
+        mask_pairs = matrix_sparsity_mask(
+            coordinate_system_eval,
+            function,
+            sparse,
+            symmetric,
+            sort_pairs=True,
+        )
         total_items = len(mask_pairs)
         self._record_schedule(
             "matrix",
@@ -709,7 +695,7 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         coordinate_system_eval = coordinate_system
         function.bind_coordinates(coordinate_system_eval.coordinates)
 
-        mask = _vector_mask(coordinate_system_eval, function, sparse)
+        mask = vector_sparsity_mask(coordinate_system_eval, function, sparse, sort_indices=True)
         partitions = _partition_list(mask, self.world_size)
         self.last_plan = {
             "operation": "vector",
@@ -752,7 +738,13 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         coordinate_system_eval = coordinate_system
         function.bind_coordinates(coordinate_system_eval.coordinates)
 
-        mask_pairs = _matrix_mask(coordinate_system_eval, function, sparse, symmetric)
+        mask_pairs = matrix_sparsity_mask(
+            coordinate_system_eval,
+            function,
+            sparse,
+            symmetric,
+            sort_pairs=True,
+        )
         partitions = _partition_list(mask_pairs, self.world_size)
         self.last_plan = {
             "operation": "matrix",

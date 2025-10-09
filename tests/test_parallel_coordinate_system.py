@@ -1,15 +1,7 @@
 from __future__ import annotations
 
-from collections import Counter
-
 import numpy as np
-from pspace.core import (
-    BasisFunctionType,
-    CoordinateFactory,
-    CoordinateSystem as NumericCoordinateSystem,
-    InnerProductMode,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.parallel import (
     ParallelCoordinateSystem,
     ParallelPolicy,
@@ -25,40 +17,7 @@ from pspace.parallel import (
     compose_parallel_policies,
 )
 from pspace.sparsity import CoordinateSystem as SparsityCoordinateSystem
-
-
-def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-1.0, b=1.0),
-        max_monomial_dof=3,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.0, sigma=1.0),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
-
-
-def make_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
-    terms = [
-        (1.0, Counter()),
-        (-0.6, Counter({0: 1})),
-        (0.4, Counter({0: 2})),
-        (0.2, Counter({1: 1})),
-    ]
-    return PolyFunction(terms, coordinates=cs.coordinates)
+from tests.utils.factories import build_numeric_coordinate_system, make_polynomial
 
 
 class CountingPolicy(ParallelPolicy):
@@ -243,24 +202,30 @@ def test_mpi4py_parallel_policy_comm_self(monkeypatch):
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
 
-    class DummyComm:
-        def Get_size(self):
-            return 1
+    try:
+        from mpi4py import MPI  # type: ignore
+    except ImportError:
+        class DummyComm:
+            def Get_size(self):
+                return 1
 
-        def Get_rank(self):
-            return 0
+            def Get_rank(self):
+                return 0
 
-        def allgather(self, value):
-            return [value]
+            def allgather(self, value):
+                return [value]
 
-    def fake_setup(self, coordinate_system):
-        self.world_size = self._comm.Get_size() if self._comm is not None else 1
-        self.rank = self._comm.Get_rank() if self._comm is not None else 0
-        self.ranks = list(range(self.world_size))
+        def fake_setup(self, coordinate_system):
+            self.world_size = self._comm.Get_size() if self._comm is not None else 1
+            self.rank = self._comm.Get_rank() if self._comm is not None else 0
+            self.ranks = list(range(self.world_size))
 
-    monkeypatch.setattr(MPI4PyParallelPolicy, "setup", fake_setup, raising=False)
+        monkeypatch.setattr(MPI4PyParallelPolicy, "setup", fake_setup, raising=False)
 
-    policy = MPI4PyParallelPolicy(mpi_comm=DummyComm())
+        policy = MPI4PyParallelPolicy(mpi_comm=DummyComm())
+    else:
+        policy = MPI4PyParallelPolicy(mpi_comm=MPI.COMM_SELF)
+
     wrapper = ParallelCoordinateSystem(base, policy=policy)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)

@@ -1,50 +1,14 @@
 from __future__ import annotations
 
-from collections import Counter
-
 import numpy as np
 
-from pspace.core import (
-    BasisFunctionType,
-    CoordinateFactory,
-    CoordinateSystem as NumericCoordinateSystem,
-    InnerProductMode,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.sparsity import CoordinateSystem as SparsityCoordinateSystem
+from tests.utils.factories import build_numeric_coordinate_system, make_polynomial
 
 
-def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-1.0, b=1.0),
-        max_monomial_dof=3,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.0, sigma=1.0),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
-
-
-def make_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
-    terms = [
-        (1.0, Counter()),
-        (1.2, Counter({0: 1})),
-        (-0.8, Counter({0: 2})),
-    ]
-    return PolyFunction(terms, coordinates=cs.coordinates)
+def nonzero_terms(poly, tol: float = 1e-12):
+    return [(coeff, degs) for coeff, degs in poly.terms if abs(coeff) > tol]
 
 
 def test_sparsity_wrapper_matches_base_results():
@@ -115,7 +79,10 @@ def test_sparsity_wrapper_reconstruct_delegation():
     wrapper.configure_sparsity(False)
     recon_dense = wrapper.reconstruct(poly, sparse=None)
 
-    assert len(recon_sparse.terms) == len(recon_dense.terms)
-    for (coeff_s, deg_s), (coeff_d, deg_d) in zip(recon_sparse.terms, recon_dense.terms):
+    sparse_terms = nonzero_terms(recon_sparse)
+    dense_terms = nonzero_terms(recon_dense)
+
+    assert len(sparse_terms) == len(dense_terms)
+    for (coeff_s, deg_s), (coeff_d, deg_d) in zip(sparse_terms, dense_terms):
         assert deg_s == deg_d
         assert abs(coeff_s - coeff_d) < 1e-10

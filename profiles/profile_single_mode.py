@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from importlib import import_module
 
 from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.profile import CoordinateSystem as ProfileCoordinateSystem
@@ -31,6 +32,39 @@ def str_to_bool(value: str) -> bool:
     if lowered in falsy:
         return False
     raise argparse.ArgumentTypeError(f"Expected boolean value, got '{value}'")
+
+
+def describe_backend(coordinate_system) -> str:
+    cls = coordinate_system.__class__
+    return f"{cls.__module__}.{cls.__name__}"
+
+
+BACKEND_REGISTRY: dict[InnerProductMode, tuple[str, str]] = {
+    InnerProductMode.NUMERICAL: ("pspace.core", "CoordinateSystem"),
+    InnerProductMode.SYMBOLIC: ("pspace.symbolic", "CoordinateSystem"),
+    InnerProductMode.ANALYTIC: ("pspace.analytic", "CoordinateSystem"),
+}
+
+
+def build_backend_coordinate_system(
+    mode: InnerProductMode,
+    basis_type: BasisFunctionType,
+    verbose: bool = False,
+):
+    module_name, class_name = BACKEND_REGISTRY.get(
+        mode,
+        BACKEND_REGISTRY[InnerProductMode.NUMERICAL],
+    )
+    try:
+        module = import_module(module_name)
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            f"Unable to import backend '{module_name}' required for mode '{mode.value}'. "
+            "Ensure the optional dependencies for that backend are installed."
+        ) from exc
+
+    backend_cls = getattr(module, class_name)
+    return backend_cls(basis_type, verbose=verbose)
 
 
 def _walk_policies(policy: ParallelPolicy | None):
@@ -249,6 +283,10 @@ def main() -> None:
         else BasisFunctionType.TOTAL_DEGREE
     )
 
+    mode = InnerProductMode(args.mode)
+    backend_cs = build_backend_coordinate_system(mode, basis_type, verbose=False)
+    backend_label = describe_backend(backend_cs)
+
     base_cs = build_coordinate_system(
         basis_type=basis_type,
         num_coords=args.num_coords,
@@ -256,7 +294,7 @@ def main() -> None:
         generator=generator,
     )
 
-    profile_cs = ProfileCoordinateSystem(basis_type, verbose=False)
+    profile_cs = ProfileCoordinateSystem(basis_type, verbose=False, backend=backend_cs)
     for coord in base_cs.coordinates.values():
         profile_cs.addCoordinateAxis(coord)
     profile_cs.initialize()
@@ -273,7 +311,6 @@ def main() -> None:
         max_degree=args.max_degree,
     )
 
-    mode = InnerProductMode(args.mode)
     nbasis = profile_cs.getNumBasisFunctions()
     coord_descriptions = []
     for coord in profile_cs.numeric.coordinates.values():
@@ -298,13 +335,17 @@ def main() -> None:
         f"coords={args.num_coords}, max_degree={args.max_degree}, trials={args.trials}"
     )
     if args.rank == "vector":
-        print(f"Sparse={args.sparse}, parallel={policy_summary}\n")
+        print(f"Sparse={args.sparse}, backend={backend_label}, parallel={policy_summary}\n")
     else:
-        print(f"Sparse={args.sparse}, symmetric={args.symmetric}, parallel={policy_summary}\n")
+        print(
+            f"Sparse={args.sparse}, symmetric={args.symmetric}, "
+            f"backend={backend_label}, parallel={policy_summary}\n"
+        )
 
     print("Problem summary:")
     print(f"  seed       : {args.seed}")
     print(f"  nbasis     : {nbasis}")
+    print(f"  backend    : {backend_label}")
     print(f"  parallel   : {policy_summary}")
     print(f"  coordinates: {coords_summary or 'none'}")
     print(f"  polynomial : {len(polynomial.terms)} terms")

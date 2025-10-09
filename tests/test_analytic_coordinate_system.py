@@ -7,62 +7,22 @@ import pytest
 
 from pspace.core import (
     BasisFunctionType,
-    CoordinateFactory,
     CoordinateSystem as NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 from pspace.analytic import CoordinateSystem as AnalyticCoordinateSystem
+from tests.utils.factories import build_numeric_coordinate_system
 
+DEFAULT_COORDS = [
+    ("uniform", dict(a=-0.5, b=1.5), 7),
+    ("normal", dict(mu=1.0, sigma=1.0), 6),
+]
 
-def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    # Axis 0: Uniform on [-1, 1] with Legendre basis
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-0.5, b=1.5),
-        max_monomial_dof=7,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    # Axis 1: Normal with mean 0, variance 1 using Hermite basis
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=1.0, sigma=1.0),
-        max_monomial_dof=6,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
-
-
-def build_small_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-0.5, b=0.5),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.0, sigma=1.0),
-        max_monomial_dof=2,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
+SMALL_COORDS = [
+    ("uniform", dict(a=-0.5, b=0.5), 2),
+    ("normal", dict(mu=0.0, sigma=1.0), 2),
+]
 
 
 def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
@@ -79,7 +39,7 @@ def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
 
 
 def test_analytic_vector_matches_numeric():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -101,7 +61,7 @@ def test_analytic_vector_matches_numeric():
 
 
 def test_analytic_matrix_matches_numeric():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
@@ -137,7 +97,7 @@ def test_analytic_rejects_non_analytic_mode():
 
 
 def test_analytic_sparse_matches_dense_vector():
-    cs = build_small_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -162,7 +122,7 @@ def test_analytic_sparse_matches_dense_vector():
 
 
 def test_analytic_sparse_matches_dense_matrix():
-    cs = build_small_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, SMALL_COORDS)
     poly = make_test_polynomial(cs)
 
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
@@ -187,7 +147,7 @@ def test_analytic_sparse_matches_dense_matrix():
 
 
 def test_analytic_configure_sparsity_toggle():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     analytic = AnalyticCoordinateSystem(BasisFunctionType.TENSOR_DEGREE, numeric=cs)
     assert analytic.sparsity_enabled is True
     analytic.configure_sparsity(False)

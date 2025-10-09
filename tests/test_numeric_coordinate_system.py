@@ -6,38 +6,18 @@ import numpy as np
 
 from pspace.core import (
     BasisFunctionType,
-    CoordinateFactory,
     CoordinateSystem as NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
 from pspace.symbolic import CoordinateSystem as SymbolicCoordinateSystem
 from pspace.analytic import CoordinateSystem as AnalyticCoordinateSystem
+from tests.utils.factories import build_numeric_coordinate_system
 
-
-def build_numeric_coordinate_system(basis_type: BasisFunctionType) -> NumericCoordinateSystem:
-    factory = CoordinateFactory()
-    cs = NumericCoordinateSystem(basis_type)
-
-    uniform = factory.createUniformCoordinate(
-        factory.newCoordinateID(),
-        "y0",
-        dict(a=-0.75, b=0.75),
-        max_monomial_dof=4,
-    )
-    cs.addCoordinateAxis(uniform)
-
-    normal = factory.createNormalCoordinate(
-        factory.newCoordinateID(),
-        "y1",
-        dict(mu=0.5, sigma=0.75),
-        max_monomial_dof=3,
-    )
-    cs.addCoordinateAxis(normal)
-
-    cs.initialize()
-    return cs
-
+DEFAULT_COORDS = [
+    ("uniform", dict(a=-0.75, b=0.75), 4),
+    ("normal", dict(mu=0.5, sigma=0.75), 3),
+]
 
 def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
     terms = [
@@ -60,7 +40,7 @@ def make_axis_aligned_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
 
 
 def test_numeric_default_mode_matches_explicit_numerical():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     coeffs_default = cs.decompose(
@@ -79,7 +59,7 @@ def test_numeric_default_mode_matches_explicit_numerical():
 
 
 def test_numeric_sparse_and_dense_match_for_vector():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     cs.configure_sparsity(True)
@@ -103,7 +83,7 @@ def test_numeric_sparse_and_dense_match_for_vector():
 
 
 def test_numeric_delegates_symbolic_and_analytic_modes():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
     symbolic = SymbolicCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
@@ -137,7 +117,7 @@ def test_numeric_delegates_symbolic_and_analytic_modes():
 
 
 def test_tensor_sparsity_mask_excludes_unused_axes():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     poly = make_axis_aligned_polynomial(cs)
     cs.configure_sparsity(True)
     mask = cs.polynomial_vector_sparsity_mask(poly.degrees)
@@ -148,7 +128,7 @@ def test_tensor_sparsity_mask_excludes_unused_axes():
 
 
 def test_total_degree_sparsity_mask_excludes_unused_axes():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_axis_aligned_polynomial(cs)
     cs.configure_sparsity(True)
     mask = cs.polynomial_vector_sparsity_mask(poly.degrees)
@@ -159,7 +139,7 @@ def test_total_degree_sparsity_mask_excludes_unused_axes():
 
 
 def test_numeric_configure_sparsity_toggle():
-    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    cs = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE, DEFAULT_COORDS)
     assert cs.sparsity_enabled is True
     cs.configure_sparsity(False)
     assert cs.sparsity_enabled is False

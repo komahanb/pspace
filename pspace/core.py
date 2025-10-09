@@ -22,13 +22,17 @@ from enum        import Enum
 from itertools   import product
 
 # Local modules
-from .stochastic_utils import (minnum_quadrature_points,
-                               generate_basis_tensor_degree,
-                               generate_basis_total_degree,
-                               sum_degrees,
-                               safe_zero_degrees,
-                               sum_degrees_union_matrix,
-                               sum_degrees_union_vector)
+from .stochastic_utils import (
+    minnum_quadrature_points,
+    generate_basis_tensor_degree,
+    generate_basis_total_degree,
+    sum_degrees,
+    safe_zero_degrees,
+    sum_degrees_union_matrix,
+    sum_degrees_union_vector,
+    vector_sparsity_mask,
+    matrix_sparsity_mask,
+)
 from .interface import CoordinateSystem as CoordinateSystemInterface
 
 from .orthogonal_polynomials import unit_hermite
@@ -265,10 +269,7 @@ class VectorInnerProductOperator:
         cs = self.cs
         function.bind_coordinates(cs.coordinates)
 
-        if sparse:
-            mask = cs.polynomial_vector_sparsity_mask(function.degrees)
-        else:
-            mask = cs.basis.keys()
+        mask = vector_sparsity_mask(cs, function, sparse)
 
         coeffs = {}
         for k in mask:
@@ -333,13 +334,7 @@ class MatrixInnerProductOperator:
         nbasis = cs.getNumBasisFunctions()
         A = np.zeros((nbasis, nbasis))
 
-        if sparse:
-            mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
-        else:
-            if symmetric:
-                mask = {(i, j) for i in cs.basis for j in cs.basis if i <= j}
-            else:
-                mask = {(i, j) for i in cs.basis for j in cs.basis}
+        mask = matrix_sparsity_mask(cs, function, sparse, symmetric)
 
         qcache = {}
         for i, j in mask:
