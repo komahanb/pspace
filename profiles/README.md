@@ -101,5 +101,15 @@ The profilers understand the parallel coordination layer added to `pspace` and c
       --max-degree 2 \
       --trials 3
   ```
+- Combine distributed MPI with GPU mirroring (hybrid):
 
+  ```bash
+  mpiexec -n 2 python profiles/profile_single_mode.py \
+      --mode numerical \
+      --rank vector \
+      --parallel true \
+      --shared cupy \
+      --shared-device cuda:0 \
+      --trials 3
+  ```
 Adjust the MPI launch parameters, shared workers, or CUDA device identifiers as appropriate for your hardware. Each run reports the active policy composition so you can confirm the configuration that was exercised.
