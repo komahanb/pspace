@@ -14,8 +14,13 @@ from pspace.core import (
 from pspace.parallel import (
     ParallelCoordinateSystem,
     ParallelPolicy,
+    CompositeParallelPolicy,
     DistributedBasisParallel,
     DistributedCoordinateParallel,
+    HybridParallelPolicy,
+    MPIParallelPolicy,
+    SharedMemoryParallelPolicy,
+    compose_parallel_policies,
 )
 from pspace.sparsity import CoordinateSystem as SparsityCoordinateSystem
 
@@ -120,3 +125,73 @@ def test_parallel_composed_with_sparsity():
     assert set(coeffs_parallel.keys()) == set(coeffs_dense.keys())
     for k in coeffs_parallel:
         assert np.isclose(coeffs_parallel[k], coeffs_dense[k])
+
+
+def test_parallel_policy_composite_runtime():
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    mpi = MPIParallelPolicy(world_size=3)
+    shared = SharedMemoryParallelPolicy(backend="openmp", workers=4)
+    hybrid = HybridParallelPolicy(mpi, shared)
+
+    wrapper = ParallelCoordinateSystem(base, policy=hybrid)
+
+    coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert isinstance(wrapper.policy, CompositeParallelPolicy)
+    assert hybrid.distributed.last_plan is not None
+    assert hybrid.distributed.last_plan["operation"] == "matrix"
+    assert hybrid.distributed.last_plan["world_size"] == 3
+    assert len(hybrid.distributed.last_plan["partitions"]) <= 3
+
+    assert hybrid.shared.last_schedule is not None
+    assert hybrid.shared.last_schedule["operation"] == "matrix"
+    assert hybrid.shared.last_schedule["backend"] == "openmp"
+    assert hybrid.shared.last_schedule["workers"] == 4
+    assert len(hybrid.shared.last_schedule["schedule"]) <= 4
+
+    coeffs_direct = base.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix_direct = base.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert set(coeffs.keys()) == set(coeffs_direct.keys())
+    assert np.allclose(matrix, matrix_direct)
+
+
+def test_parallel_policy_sequence_and_operator_overload():
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    mpi = MPIParallelPolicy(world_size=2)
+    shared = SharedMemoryParallelPolicy(backend="cuda", workers=None, device="cuda:1")
+
+    wrapper_list = ParallelCoordinateSystem(base, policy=[mpi, shared])
+    policy_from_list = wrapper_list.policy
+    assert isinstance(policy_from_list, CompositeParallelPolicy)
+    assert policy_from_list.policies[0] is mpi
+    assert policy_from_list.policies[1] is shared
+
+    coeffs_list = wrapper_list.decompose(poly, mode=InnerProductMode.NUMERICAL)
+
+    # Use operator composition
+    mpi2 = MPIParallelPolicy(world_size=2)
+    shared2 = SharedMemoryParallelPolicy(backend="threadpool", workers=2)
+    composed = mpi2 | shared2
+
+    assert isinstance(composed, CompositeParallelPolicy)
+    assert composed.policies[0] is mpi2
+    assert composed.policies[1] is shared2
+
+    wrapper = ParallelCoordinateSystem(base, policy=composed)
+    coeffs_or = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+
+    manual = compose_parallel_policies(mpi2, [shared2])
+    assert isinstance(manual, CompositeParallelPolicy)
+    coeffs_manual = ParallelCoordinateSystem(base, policy=manual).decompose(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert set(coeffs_list.keys()) == set(coeffs_or.keys())
+    assert set(coeffs_or.keys()) == set(coeffs_manual.keys())
+    for k in coeffs_list:
+        assert np.isclose(coeffs_list[k], coeffs_or[k])
+        assert np.isclose(coeffs_or[k], coeffs_manual[k])

@@ -133,6 +133,10 @@ parallel:
   ParallelCoordinateSystem: {description: "Decorator routing work through a parallel policy.", implementation: parallel.py::ParallelCoordinateSystem}
   DistributedBasisParallel: {description: "Policy sketch that partitions work by basis blocks.", implementation: parallel.py::DistributedBasisParallel}
   DistributedCoordinateParallel: {description: "Policy sketch that partitions work by coordinates/axes.", implementation: parallel.py::DistributedCoordinateParallel}
+  CompositeParallelPolicy: {description: "Compose multiple reflections into one execution pipeline.", implementation: parallel.py::CompositeParallelPolicy}
+  MPIParallelPolicy: {description: "Reflection describing MPI-based distributed scheduling.", implementation: parallel.py::MPIParallelPolicy}
+  SharedMemoryParallelPolicy: {description: "Reflection modeling shared-memory backends (OpenMP, CUDA, CuPy).", implementation: parallel.py::SharedMemoryParallelPolicy}
+  HybridParallelPolicy: {description: "Hybrid reflection chaining distributed and shared policies.", implementation: parallel.py::HybridParallelPolicy}
 
 operators:
   RFMD: {description: "Rigid–Flexible Mode Decomposition separating nullspace and rangespace.", implementation: conceptual}
