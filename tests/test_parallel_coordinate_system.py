@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import Counter
 
 import numpy as np
-
 from pspace.core import (
     BasisFunctionType,
     CoordinateFactory,
@@ -20,6 +19,9 @@ from pspace.parallel import (
     HybridParallelPolicy,
     MPIParallelPolicy,
     SharedMemoryParallelPolicy,
+    OpenMPParallelPolicy,
+    MPI4PyParallelPolicy,
+    CudaCupyParallelPolicy,
     compose_parallel_policies,
 )
 from pspace.sparsity import CoordinateSystem as SparsityCoordinateSystem
@@ -126,6 +128,28 @@ def test_parallel_composed_with_sparsity():
     for k in coeffs_parallel:
         assert np.isclose(coeffs_parallel[k], coeffs_dense[k])
 
+def test_shared_memory_parallel_policy_threads():
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    policy = SharedMemoryParallelPolicy(backend="threadpool", workers=2)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
+
+    coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    coeffs_direct = base.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix_direct = base.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert policy.last_schedule is not None
+    assert policy.last_schedule["operation"] == "matrix"
+    assert len(policy.last_schedule["schedule"]) <= policy.workers
+
+    assert set(coeffs.keys()) == set(coeffs_direct.keys())
+    for k in coeffs_direct:
+        assert np.isclose(coeffs[k], coeffs_direct[k])
+    assert np.allclose(matrix, matrix_direct)
+
 
 def test_parallel_policy_composite_runtime():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
@@ -195,3 +219,84 @@ def test_parallel_policy_sequence_and_operator_overload():
     for k in coeffs_list:
         assert np.isclose(coeffs_list[k], coeffs_or[k])
         assert np.isclose(coeffs_or[k], coeffs_manual[k])
+
+
+def test_openmp_parallel_policy_alias():
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    policy = OpenMPParallelPolicy(workers=2)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
+    coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    coeffs_direct = base.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix_direct = base.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert set(coeffs.keys()) == set(coeffs_direct.keys())
+    for k in coeffs_direct:
+        assert np.isclose(coeffs[k], coeffs_direct[k])
+    assert np.allclose(matrix, matrix_direct)
+
+
+def test_mpi4py_parallel_policy_comm_self(monkeypatch):
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    class DummyComm:
+        def Get_size(self):
+            return 1
+
+        def Get_rank(self):
+            return 0
+
+        def allgather(self, value):
+            return [value]
+
+    def fake_setup(self, coordinate_system):
+        self.world_size = self._comm.Get_size() if self._comm is not None else 1
+        self.rank = self._comm.Get_rank() if self._comm is not None else 0
+        self.ranks = list(range(self.world_size))
+
+    monkeypatch.setattr(MPI4PyParallelPolicy, "setup", fake_setup, raising=False)
+
+    policy = MPI4PyParallelPolicy(mpi_comm=DummyComm())
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
+
+    coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+
+    coeffs_direct = base.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    assert set(coeffs.keys()) == set(coeffs_direct.keys())
+    for k in coeffs_direct:
+        assert np.isclose(coeffs[k], coeffs_direct[k])
+
+    assert policy.last_plan is not None
+    assert policy.last_plan["world_size"] == 1
+
+
+def test_cuda_cupy_parallel_policy_mirror():
+    base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
+    poly = make_polynomial(base)
+
+    policy = CudaCupyParallelPolicy(mirror_vector=True, mirror_matrix=True)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
+
+    coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    coeffs_direct = base.decompose(poly, mode=InnerProductMode.NUMERICAL)
+    matrix_direct = base.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
+
+    assert set(coeffs.keys()) == set(coeffs_direct.keys())
+    for k in coeffs_direct:
+        assert np.isclose(coeffs[k], coeffs_direct[k])
+    assert np.allclose(matrix, matrix_direct)
+
+    if policy._cupy is None:
+        assert policy.last_vector_gpu is None
+        assert policy.last_matrix_gpu is None
+    else:
+        import cupy
+
+        assert isinstance(policy.last_vector_gpu, cupy.ndarray)
+        assert isinstance(policy.last_matrix_gpu, cupy.ndarray)

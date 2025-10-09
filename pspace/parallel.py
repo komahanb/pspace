@@ -4,12 +4,122 @@ from abc import ABC, abstractmethod
 from collections import Counter
 import math
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 
 import numpy as np
 
 from .core import InnerProductMode, PolyFunction
 from .interface import CoordinateSystem as CoordinateSystemInterface
+from .stochastic_utils import sum_degrees_union_matrix, sum_degrees_union_vector
+
+
+def _vector_mask(cs: CoordinateSystemInterface, function: PolyFunction, sparse: bool) -> list[int]:
+    if sparse:
+        mask = cs.polynomial_vector_sparsity_mask(function.degrees)
+    else:
+        mask = cs.basis.keys()
+    return sorted(int(idx) for idx in mask)
+
+
+def _matrix_mask(
+    cs: CoordinateSystemInterface,
+    function: PolyFunction,
+    sparse: bool,
+    symmetric: bool,
+) -> list[tuple[int, int]]:
+    if sparse:
+        mask = cs.polynomial_sparsity_mask(function.degrees, symmetric=symmetric)
+    else:
+        basis_ids = sorted(cs.basis.keys())
+        if symmetric:
+            mask = {(i, j) for ii, i in enumerate(basis_ids) for j in basis_ids[ii:]}
+        else:
+            mask = {(i, j) for i in basis_ids for j in basis_ids}
+    return sorted((int(i), int(j)) for i, j in mask)
+
+
+def _compute_vector_chunk(
+    cs: CoordinateSystemInterface,
+    function: PolyFunction,
+    indices: Sequence[int],
+) -> Dict[int, float]:
+    coeffs: Dict[int, float] = {}
+    for k in indices:
+        psi_k = cs.basis[k]
+        need = sum_degrees_union_vector(function.max_degrees, psi_k)
+        qmap = cs.build_quadrature(need)
+        s = 0.0
+        for q in qmap.values():
+            y = q["Y"]
+            s += function(y) * cs.evaluateBasisDegreesY(y, psi_k) * q["W"]
+        coeffs[int(k)] = float(s)
+    return coeffs
+
+
+def _compute_matrix_chunk(
+    cs: CoordinateSystemInterface,
+    function: PolyFunction,
+    pairs: Sequence[tuple[int, int]],
+    symmetric: bool,
+) -> Dict[tuple[int, int], float]:
+    qcache: Dict[tuple[tuple[int, int], ...], Mapping[int, Mapping[str, Any]]] = {}
+    partial: Dict[tuple[int, int], float] = {}
+    for i, j in pairs:
+        psi_i, psi_j = cs.basis[i], cs.basis[j]
+        need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
+        key = tuple(sorted(need.items()))
+        qmap = qcache.get(key)
+        if qmap is None:
+            qmap = cs.build_quadrature(need)
+            qcache[key] = qmap
+        s = 0.0
+        for q in qmap.values():
+            y = q["Y"]
+            s += (
+                function(y)
+                * cs.evaluateBasisDegreesY(y, psi_i)
+                * cs.evaluateBasisDegreesY(y, psi_j)
+                * q["W"]
+            )
+        sval = float(s)
+        partial[(int(i), int(j))] = sval
+        if symmetric and i != j:
+            partial[(int(j), int(i))] = sval
+    return partial
+
+
+def _partition_list(sequence: Sequence[Any], parts: int) -> list[list[Any]]:
+    if not sequence:
+        return []
+    parts = max(1, parts)
+    size = max(1, math.ceil(len(sequence) / parts))
+    return [list(sequence[idx : idx + size]) for idx in range(0, len(sequence), size)]
+
+
+def _ensure_sparse_fill(
+    coeffs: Dict[int, float],
+    mask: Sequence[int],
+    basis_keys: Iterable[int] | None = None,
+) -> Dict[int, float]:
+    for idx in mask:
+        coeffs.setdefault(int(idx), 0.0)
+    if basis_keys is not None:
+        for idx in basis_keys:
+            coeffs.setdefault(int(idx), 0.0)
+    return coeffs
+
+
+def _normalize_mode(mode: InnerProductMode | str | bool | None) -> InnerProductMode:
+    if mode is None:
+        return InnerProductMode.NUMERICAL
+    if isinstance(mode, bool):
+        return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
+    if isinstance(mode, InnerProductMode):
+        return mode
+    if isinstance(mode, str):
+        return InnerProductMode(mode.lower())
+    raise ValueError(f"Unsupported inner product mode: {mode}")
 
 
 class ParallelPolicy(ABC):
@@ -403,8 +513,9 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         mode: InnerProductMode | str | None,
         analytic: bool,
         symmetric: bool | None = None,
+        total_items: int | None = None,
     ) -> None:
-        nbasis = coordinate_system.getNumBasisFunctions()
+        items = total_items if total_items is not None else coordinate_system.getNumBasisFunctions()
         self.last_schedule = {
             "operation": operation,
             "backend": self.backend,
@@ -415,7 +526,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
             "mode": str(mode) if mode is not None else None,
             "analytic": bool(analytic),
             "symmetric": symmetric,
-            "schedule": self._schedule(nbasis),
+            "schedule": self._schedule(items),
         }
 
     def execute_vector(
@@ -427,8 +538,44 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
-        self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
-        return thunk()
+        normalized = _normalize_mode(mode)
+        if analytic or normalized is not InnerProductMode.NUMERICAL:
+            self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
+            return thunk()
+
+        if self.backend.lower() in {"cuda", "cupy"}:
+            # GPU-backed shared memory is handled by the CUDA policy.
+            self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
+            return thunk()
+
+        coordinate_system_eval = coordinate_system
+        function.bind_coordinates(coordinate_system_eval.coordinates)
+
+        mask = _vector_mask(coordinate_system_eval, function, sparse)
+        total_items = len(mask)
+
+        self._record_schedule("vector", coordinate_system_eval, sparse, mode, analytic, total_items=total_items)
+
+        workers = self.workers or 1
+        if total_items == 0 or workers <= 1 or len(mask) <= 1:
+            return thunk()
+
+        partitions = [chunk for chunk in _partition_list(mask, workers) if chunk]
+        if not partitions:
+            return thunk()
+
+        coeffs: Dict[int, float] = {}
+        with ThreadPoolExecutor(max_workers=len(partitions)) as executor:
+            futures = [
+                executor.submit(_compute_vector_chunk, coordinate_system_eval, function, chunk)
+                for chunk in partitions
+            ]
+            for future in as_completed(futures):
+                coeffs.update(future.result())
+
+        coeffs = _ensure_sparse_fill(coeffs, mask, coordinate_system_eval.basis.keys())
+
+        return coeffs
 
     def execute_matrix(
         self,
@@ -440,8 +587,269 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
-        self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
-        return thunk()
+        normalized = _normalize_mode(mode)
+        if analytic or normalized is not InnerProductMode.NUMERICAL:
+            self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
+            return thunk()
+
+        if self.backend.lower() in {"cuda", "cupy"}:
+            self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
+            return thunk()
+
+        coordinate_system_eval = coordinate_system
+        function.bind_coordinates(coordinate_system_eval.coordinates)
+
+        mask_pairs = _matrix_mask(coordinate_system_eval, function, sparse, symmetric)
+        total_items = len(mask_pairs)
+        self._record_schedule(
+            "matrix",
+            coordinate_system_eval,
+            sparse,
+            mode,
+            analytic,
+            symmetric=symmetric,
+            total_items=total_items,
+        )
+
+        workers = self.workers or 1
+        if total_items == 0 or workers <= 1:
+            return thunk()
+
+        partitions = [chunk for chunk in _partition_list(mask_pairs, workers) if chunk]
+        if not partitions:
+            return thunk()
+
+        nbasis = coordinate_system_eval.getNumBasisFunctions()
+        matrix = np.zeros((nbasis, nbasis))
+
+        with ThreadPoolExecutor(max_workers=len(partitions)) as executor:
+            futures = [
+                executor.submit(
+                    _compute_matrix_chunk,
+                    coordinate_system_eval,
+                    function,
+                    chunk,
+                    symmetric,
+                )
+                for chunk in partitions
+            ]
+            for future in as_completed(futures):
+                partial = future.result()
+                for (i, j), value in partial.items():
+                    matrix[int(i), int(j)] = value
+
+        return matrix
+
+
+class OpenMPParallelPolicy(SharedMemoryParallelPolicy):
+    """
+    Convenience policy configuring the shared-memory reflection for OpenMP-style workers.
+    """
+
+    name = "shared.openmp"
+
+    def __init__(self, workers: int | None = None, chunk_size: int | None = None) -> None:
+        super().__init__(backend="openmp", workers=workers, chunk_size=chunk_size)
+
+
+class MPI4PyParallelPolicy(MPIParallelPolicy):
+    """
+    Distributed reflection backed by mpi4py for multi-process execution.
+    """
+
+    name = "distributed.mpi4py"
+
+    def __init__(
+        self,
+        world_size: int | None = None,
+        ranks: Sequence[int] | None = None,
+        communicator: str = "COMM_WORLD",
+        mpi_comm: Any | None = None,
+    ) -> None:
+        super().__init__(world_size=world_size, ranks=ranks, communicator=communicator)
+        self._comm = mpi_comm
+        self.rank: int | None = None
+
+    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+        try:
+            from mpi4py import MPI  # type: ignore
+        except ImportError:  # pragma: no cover - optional dependency
+            self._comm = None
+            self.rank = 0
+            self.world_size = 1
+            self.ranks = [0]
+            return
+
+        if self._comm is None:
+            comm_name = self.communicator
+            if isinstance(comm_name, str) and hasattr(MPI, comm_name):
+                self._comm = getattr(MPI, comm_name)
+            else:
+                self._comm = MPI.COMM_WORLD
+
+        self.rank = self._comm.Get_rank()
+        self.world_size = self._comm.Get_size()
+        self.ranks = list(range(self.world_size))
+
+    def execute_vector(
+        self,
+        coordinate_system: CoordinateSystemInterface,
+        function: PolyFunction,
+        sparse: bool,
+        mode: InnerProductMode | str | None,
+        analytic: bool,
+        thunk: Callable[[], Dict[int, Any]],
+    ) -> Dict[int, Any]:
+        normalized = _normalize_mode(mode)
+        if analytic or normalized is not InnerProductMode.NUMERICAL:
+            return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
+        if self._comm is None or self.world_size <= 1:
+            return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
+
+        coordinate_system_eval = coordinate_system
+        function.bind_coordinates(coordinate_system_eval.coordinates)
+
+        mask = _vector_mask(coordinate_system_eval, function, sparse)
+        partitions = _partition_list(mask, self.world_size)
+        self.last_plan = {
+            "operation": "vector",
+            "sparse": bool(sparse),
+            "mode": str(mode) if mode is not None else None,
+            "analytic": bool(analytic),
+            "symmetric": None,
+            "partitions": partitions,
+            "communicator": self.communicator,
+            "world_size": self.world_size,
+        }
+
+        rank = self.rank or 0
+        indices = partitions[rank] if rank < len(partitions) else []
+        partial = _compute_vector_chunk(coordinate_system_eval, function, indices) if indices else {}
+        gathered = self._comm.allgather(partial)
+        coeffs: Dict[int, float] = {}
+        for chunk in gathered:
+            coeffs.update(chunk)
+
+        coeffs = _ensure_sparse_fill(coeffs, mask, coordinate_system_eval.basis.keys())
+        return coeffs
+
+    def execute_matrix(
+        self,
+        coordinate_system: CoordinateSystemInterface,
+        function: PolyFunction,
+        sparse: bool,
+        symmetric: bool,
+        mode: InnerProductMode | str | None,
+        analytic: bool,
+        thunk: Callable[[], np.ndarray],
+    ) -> np.ndarray:
+        normalized = _normalize_mode(mode)
+        if analytic or normalized is not InnerProductMode.NUMERICAL:
+            return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
+        if self._comm is None or self.world_size <= 1:
+            return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
+
+        coordinate_system_eval = coordinate_system
+        function.bind_coordinates(coordinate_system_eval.coordinates)
+
+        mask_pairs = _matrix_mask(coordinate_system_eval, function, sparse, symmetric)
+        partitions = _partition_list(mask_pairs, self.world_size)
+        self.last_plan = {
+            "operation": "matrix",
+            "sparse": bool(sparse),
+            "mode": str(mode) if mode is not None else None,
+            "analytic": bool(analytic),
+            "symmetric": symmetric,
+            "partitions": partitions,
+            "communicator": self.communicator,
+            "world_size": self.world_size,
+        }
+
+        rank = self.rank or 0
+        pairs = partitions[rank] if rank < len(partitions) else []
+        partial = _compute_matrix_chunk(coordinate_system_eval, function, pairs, symmetric) if pairs else {}
+
+        gathered = self._comm.allgather(partial)
+
+        nbasis = coordinate_system_eval.getNumBasisFunctions()
+        matrix = np.zeros((nbasis, nbasis))
+        for chunk in gathered:
+            for (i, j), value in chunk.items():
+                matrix[int(i), int(j)] = value
+        return matrix
+
+
+class CudaCupyParallelPolicy(ParallelPolicy):
+    """
+    Shared-memory reflection that mirrors assembled data onto a CUDA device via CuPy.
+    """
+
+    name = "shared.cuda"
+    category = "shared"
+
+    def __init__(
+        self,
+        device: str | None = None,
+        mirror_vector: bool = True,
+        mirror_matrix: bool = True,
+    ) -> None:
+        self.device = device
+        self.mirror_vector = mirror_vector
+        self.mirror_matrix = mirror_matrix
+        self._cupy: Any | None = None
+        self.last_vector_gpu = None
+        self.last_vector_basis_order: list[int] | None = None
+        self.last_matrix_gpu = None
+
+    def setup(self, coordinate_system: CoordinateSystemInterface) -> None:
+        try:
+            import cupy as cp  # type: ignore
+        except ImportError:  # pragma: no cover - optional dependency
+            self._cupy = None
+            return
+
+        self._cupy = cp
+        if self.device is not None:
+            cp.cuda.Device(self.device).use()
+
+    def execute_vector(
+        self,
+        coordinate_system: CoordinateSystemInterface,
+        function: PolyFunction,
+        sparse: bool,
+        mode: InnerProductMode | str | None,
+        analytic: bool,
+        thunk: Callable[[], Dict[int, Any]],
+    ) -> Dict[int, Any]:
+        coeffs = thunk()
+        if not self.mirror_vector or self._cupy is None:
+            self.last_vector_gpu = None
+            self.last_vector_basis_order = None
+            return coeffs
+
+        basis_order = sorted(int(k) for k in coeffs)
+        host_vec = np.array([coeffs[k] for k in basis_order], dtype=np.float64)
+        self.last_vector_gpu = self._cupy.asarray(host_vec)
+        self.last_vector_basis_order = basis_order
+        return coeffs
+
+    def execute_matrix(
+        self,
+        coordinate_system: CoordinateSystemInterface,
+        function: PolyFunction,
+        sparse: bool,
+        symmetric: bool,
+        mode: InnerProductMode | str | None,
+        analytic: bool,
+        thunk: Callable[[], np.ndarray],
+    ) -> np.ndarray:
+        matrix = thunk()
+        if not self.mirror_matrix or self._cupy is None:
+            self.last_matrix_gpu = None
+            return matrix
+
+        self.last_matrix_gpu = self._cupy.asarray(matrix)
+        return matrix
 
 
 class HybridParallelPolicy(CompositeParallelPolicy):

@@ -137,6 +137,9 @@ parallel:
   MPIParallelPolicy: {description: "Reflection describing MPI-based distributed scheduling.", implementation: parallel.py::MPIParallelPolicy}
   SharedMemoryParallelPolicy: {description: "Reflection modeling shared-memory backends (OpenMP, CUDA, CuPy).", implementation: parallel.py::SharedMemoryParallelPolicy}
   HybridParallelPolicy: {description: "Hybrid reflection chaining distributed and shared policies.", implementation: parallel.py::HybridParallelPolicy}
+  OpenMPParallelPolicy: {description: "Shared-memory reflection configured for OpenMP-style threading.", implementation: parallel.py::OpenMPParallelPolicy}
+  MPI4PyParallelPolicy: {description: "mpi4py-backed distributed reflection operating on communicators.", implementation: parallel.py::MPI4PyParallelPolicy}
+  CudaCupyParallelPolicy: {description: "Mirrors assembled data onto CUDA devices via CuPy.", implementation: parallel.py::CudaCupyParallelPolicy}
 
 operators:
   RFMD: {description: "Rigid–Flexible Mode Decomposition separating nullspace and rangespace.", implementation: conceptual}
