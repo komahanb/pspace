@@ -5,6 +5,16 @@ import time
 
 from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.profile import CoordinateSystem as ProfileCoordinateSystem
+from pspace.parallel import (
+    ParallelCoordinateSystem,
+    ParallelPolicy,
+    MPIParallelPolicy,
+    MPI4PyParallelPolicy,
+    SharedMemoryParallelPolicy,
+    OpenMPParallelPolicy,
+    CudaCupyParallelPolicy,
+    compose_parallel_policies,
+)
 
 try:  # pragma: no cover - runtime convenience
     from profiles.helpers import build_coordinate_system, random_polynomial, rng
@@ -21,6 +31,140 @@ def str_to_bool(value: str) -> bool:
     if lowered in falsy:
         return False
     raise argparse.ArgumentTypeError(f"Expected boolean value, got '{value}'")
+
+
+def _walk_policies(policy: ParallelPolicy | None):
+    if policy is None:
+        return
+    children = getattr(policy, "policies", None)
+    if children:
+        for child in children:
+            yield from _walk_policies(child)
+    else:
+        yield policy
+
+
+def summarize_policy(policy: ParallelPolicy | None) -> str:
+    if policy is None:
+        return "sequential"
+
+    children = getattr(policy, "policies", None)
+    if children:
+        return " + ".join(summarize_policy(child) for child in children)
+
+    details: list[str] = []
+    if isinstance(policy, MPIParallelPolicy):
+        world = getattr(policy, "world_size", None)
+        communicator = getattr(policy, "communicator", None)
+        if communicator:
+            details.append(f"comm={communicator}")
+        if world:
+            details.append(f"world={world}")
+    if isinstance(policy, SharedMemoryParallelPolicy):
+        backend = getattr(policy, "backend", None)
+        workers = getattr(policy, "workers", None)
+        chunk = getattr(policy, "chunk_size", None)
+        if backend:
+            details.append(str(backend))
+        if workers:
+            details.append(f"workers={workers}")
+        if chunk:
+            details.append(f"chunk={chunk}")
+    if isinstance(policy, CudaCupyParallelPolicy):
+        device = getattr(policy, "device", None)
+        if device:
+            details.append(f"device={device}")
+
+    name = getattr(policy, "name", policy.__class__.__name__)
+    if details:
+        return f"{name}({', '.join(details)})"
+    return name
+
+
+def collect_parallel_diagnostics(policy: ParallelPolicy | None) -> list[str]:
+    notes: list[str] = []
+    for component in _walk_policies(policy):
+        if isinstance(component, MPIParallelPolicy):
+            plan = getattr(component, "last_plan", None)
+            if plan:
+                partitions = plan.get("partitions") or []
+                notes.append(
+                    f"MPI plan: world={plan.get('world_size')}, comm={plan.get('communicator')}, partitions={len(partitions)}"
+                )
+        elif isinstance(component, SharedMemoryParallelPolicy):
+            schedule = getattr(component, "last_schedule", None)
+            if schedule:
+                entries = schedule.get("schedule") or []
+                notes.append(
+                    f"Shared schedule ({schedule.get('backend')}): workers={schedule.get('workers')}, chunks={len(entries)}"
+                )
+        elif isinstance(component, CudaCupyParallelPolicy):
+            if getattr(component, "last_vector_gpu", None) is not None:
+                size = int(component.last_vector_gpu.size)
+                notes.append(f"CuPy vector mirror: length={size}")
+            if getattr(component, "last_matrix_gpu", None) is not None:
+                shape = tuple(int(dim) for dim in component.last_matrix_gpu.shape)
+                notes.append(f"CuPy matrix mirror: shape={shape}")
+    return notes
+
+
+def configure_parallel(
+    profile_cs: ProfileCoordinateSystem,
+    args: argparse.Namespace,
+) -> ParallelPolicy | None:
+    policies: list[ParallelPolicy] = []
+
+    if getattr(args, "parallel", False):
+        policies.append(
+            MPI4PyParallelPolicy(communicator=getattr(args, "parallel_communicator", "COMM_WORLD"))
+        )
+
+    shared = getattr(args, "shared", "none") or "none"
+    shared = shared.lower()
+    if shared not in {"none", "threads", "threadpool", "openmp", "cupy", "cuda"}:
+        raise argparse.ArgumentTypeError(f"Unsupported shared backend '{shared}'")
+
+    if shared in {"threads", "threadpool"}:
+        policies.append(
+            SharedMemoryParallelPolicy(
+                backend="threadpool",
+                workers=getattr(args, "shared_workers", None),
+                chunk_size=getattr(args, "shared_chunk_size", None),
+            )
+        )
+    elif shared == "openmp":
+        policies.append(
+            OpenMPParallelPolicy(
+                workers=getattr(args, "shared_workers", None),
+                chunk_size=getattr(args, "shared_chunk_size", None),
+            )
+        )
+    elif shared in {"cupy", "cuda"}:
+        policies.append(
+            CudaCupyParallelPolicy(
+                device=getattr(args, "shared_device", None),
+            )
+        )
+
+    if not policies:
+        return None
+
+    if len(policies) == 1:
+        policy = policies[0]
+    else:
+        policy = compose_parallel_policies(policies)
+
+    numeric = profile_cs.numeric
+    if isinstance(numeric, ParallelCoordinateSystem):
+        numeric.configure_policy(policy)
+        return numeric.policy
+
+    profile_cs.numeric = ParallelCoordinateSystem(
+        numeric,
+        policy=policy,
+        verbose=getattr(profile_cs, "verbose", False),
+    )
+    return profile_cs.numeric.policy
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,6 +198,44 @@ def parse_args() -> argparse.Namespace:
         metavar="{true,false}",
         help="Enforce symmetric assembly for matrices (default: true).",
     )
+    parser.add_argument(
+        "--parallel",
+        type=str_to_bool,
+        default=False,
+        metavar="{true,false}",
+        help="Enable MPI-driven distributed parallelism (default: false).",
+    )
+    parser.add_argument(
+        "--parallel-communicator",
+        type=str,
+        default="COMM_WORLD",
+        help="MPI communicator name to use when --parallel=true (default: COMM_WORLD).",
+    )
+    parser.add_argument(
+        "--shared",
+        type=str,
+        default="none",
+        choices=["none", "threads", "threadpool", "openmp", "cupy", "cuda"],
+        help="Shared-memory accelerator to activate (default: none).",
+    )
+    parser.add_argument(
+        "--shared-workers",
+        type=int,
+        default=None,
+        help="Worker count for shared thread/OpenMP backends.",
+    )
+    parser.add_argument(
+        "--shared-chunk-size",
+        type=int,
+        default=None,
+        help="Chunk size per worker for shared thread/OpenMP backends.",
+    )
+    parser.add_argument(
+        "--shared-device",
+        type=str,
+        default=None,
+        help="CUDA device string for the CuPy backend (default: CuPy default).",
+    )
     return parser.parse_args()
 
 
@@ -79,6 +261,12 @@ def main() -> None:
         profile_cs.addCoordinateAxis(coord)
     profile_cs.initialize()
 
+    active_policy: ParallelPolicy | None = None
+    if args.parallel or args.shared.lower() != "none":
+        active_policy = configure_parallel(profile_cs, args)
+    elif isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+        active_policy = profile_cs.numeric.policy
+
     polynomial = random_polynomial(
         profile_cs.numeric,
         generator,
@@ -101,18 +289,23 @@ def main() -> None:
         else:
             term_summaries.append(f"{coeff:+.3g}")
 
+    if isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+        active_policy = profile_cs.numeric.policy
+    policy_summary = summarize_policy(active_policy)
+
     print(
         f"Profiling mode={mode.value}, rank={args.rank}, basis={basis_type.name}, "
         f"coords={args.num_coords}, max_degree={args.max_degree}, trials={args.trials}"
     )
     if args.rank == "vector":
-        print(f"Sparse={args.sparse}\n")
+        print(f"Sparse={args.sparse}, parallel={policy_summary}\n")
     else:
-        print(f"Sparse={args.sparse}, symmetric={args.symmetric}\n")
+        print(f"Sparse={args.sparse}, symmetric={args.symmetric}, parallel={policy_summary}\n")
 
     print("Problem summary:")
     print(f"  seed       : {args.seed}")
     print(f"  nbasis     : {nbasis}")
+    print(f"  parallel   : {policy_summary}")
     print(f"  coordinates: {coords_summary or 'none'}")
     print(f"  polynomial : {len(polynomial.terms)} terms")
     for idx, summary in enumerate(term_summaries, start=1):
@@ -154,6 +347,13 @@ def main() -> None:
     print(f"  best : {best:.6f} s")
     print(f"  worst: {worst:.6f} s")
     print(f"  mean : {mean:.6f} s")
+
+    if isinstance(profile_cs.numeric, ParallelCoordinateSystem):
+        diagnostics = collect_parallel_diagnostics(profile_cs.numeric.policy)
+        if diagnostics:
+            print("\nParallel diagnostics:")
+            for note in diagnostics:
+                print(f"  - {note}")
 
 
 if __name__ == "__main__":

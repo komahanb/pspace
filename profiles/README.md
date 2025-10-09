@@ -57,3 +57,49 @@ python3 profiles/profile_single_mode.py \
 ```
 
 This script prints the random instance (coordinates, basis size, polynomial terms) along with individual trial timings and aggregate statistics (best, worst, mean). Re-running with the same `--seed` lets you benchmark multiple modes against the exact same problem instance for apples-to-apples comparisons.
+
+## Parallel examples
+
+The profilers understand the parallel coordination layer added to `pspace` and can exercise MPI and shared-memory policies directly from the CLI. A few sample invocations:
+
+- Launch a vector profile with MPI ranks distributing the basis and threads handling shared work on each rank:
+
+  ```bash
+  mpiexec -n 4 python profiles/profile_single_mode.py \
+      --mode numerical \
+      --rank vector \
+      --basis tensor \
+      --parallel true \
+      --shared threads \
+      --shared-workers 8 \
+      --trials 5
+  ```
+
+- Profile matrix assembly while mirroring the result to a CUDA device via CuPy:
+
+  ```bash
+  python profiles/profile_single_mode.py \
+      --mode numerical \
+      --rank matrix \
+      --parallel false \
+      --shared cupy \
+      --shared-device cuda:0 \
+      --symmetric true \
+      --trials 3
+  ```
+
+- Run a matrix-mode benchmark with MPI ranks and OpenMP-style shared threading:
+
+  ```bash
+  mpiexec -n 2 python profiles/profile_single_mode.py \
+      --mode numerical \
+      --rank matrix \
+      --basis total \
+      --parallel true \
+      --shared openmp \
+      --shared-workers 4 \
+      --max-degree 2 \
+      --trials 3
+  ```
+
+Adjust the MPI launch parameters, shared workers, or CUDA device identifiers as appropriate for your hardware. Each run reports the active policy composition so you can confirm the configuration that was exercised.

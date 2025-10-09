@@ -1,47 +1,34 @@
-import os
-import sys
-import numpy
+from __future__ import annotations
 
-# Import distutils
-from setuptools import setup
-from distutils.core import Extension as Ext
-from Cython.Build import cythonize
+from pathlib import Path
 
-# Convert from local to absolute directories
-def get_global_dir(files):
-    root = os.path.abspath(os.path.dirname(__file__))
-    new = []
-    for f in files:
-        new.append(os.path.join(root, f))
-    return new
+from setuptools import find_packages, setup
 
-inc_dirs         = []
-lib_dirs         = []
-libs             = []
-runtime_lib_dirs = []
+BASE_DIR = Path(__file__).resolve().parent
+README_PATH = BASE_DIR / "README.md"
+REQUIREMENTS_PATH = BASE_DIR / "requirements.txt"
 
-# Add the numpy/mpi4py directories
-inc_dirs.extend([numpy.get_include()])
 
-# PSPACE
-inc_dirs.extend(get_global_dir(['pspace']))
-inc_dirs.extend(get_global_dir(['src/include']))
-lib_dirs.extend(get_global_dir(['lib']))
-runtime_lib_dirs.extend(lib_dirs)
-libs.extend(['pspace'])
+def read_requirements() -> list[str]:
+    if not REQUIREMENTS_PATH.exists():
+        return []
+    return [
+        line.strip()
+        for line in REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
 
-exts = []
-for mod in ['PSPACE']:
-    exts.append(Ext('pspace.%s'%(mod), sources=['pspace/%s.pyx'%(mod)],
-                    include_dirs=inc_dirs,
-                    libraries=libs,
-                    library_dirs=lib_dirs,
-                    runtime_library_dirs=runtime_lib_dirs,
-                    cython_directives={"embedsignature": True, "binding": True}))
 
-setup(name='pspace',
-      version=1.0,
-      description='Probabilistic space package for uncertainty quantification and optimization under uncertainty',
-      author='Komahan Boopathy',
-      author_email='komibuddy@gmail.com',
-      ext_modules=cythonize(exts, include_path=inc_dirs))
+setup(
+    name="pspace",
+    version="1.0",
+    description="Probabilistic space package for uncertainty quantification and optimization under uncertainty",
+    long_description=README_PATH.read_text(encoding="utf-8") if README_PATH.exists() else "",
+    long_description_content_type="text/markdown",
+    author="Komahan Boopathy",
+    author_email="komibuddy@gmail.com",
+    packages=find_packages(exclude=("tests", "examples")),
+    include_package_data=True,
+    install_requires=read_requirements(),
+    python_requires=">=3.9",
+)
