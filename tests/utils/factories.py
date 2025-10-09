@@ -6,17 +6,17 @@ from typing import Iterable
 from pspace.numeric import (
     BasisFunctionType,
     CoordinateFactory,
-    NumericNumericCoordinateSystem,
+    NumericCoordinateSystem,
     PolyFunction,
     OrthoPolyFunction,
 )
-from pspace.orthonormal import OrthonormalNumericCoordinateSystem
+from pspace.orthonormal import OrthonormalCoordinateSystem
 
 
 def build_numeric_coordinate_system(
     basis_type: BasisFunctionType,
     coordinates: Iterable[tuple[str, dict, int]] | None = None,
-) -> NumericNumericCoordinateSystem:
+) -> NumericCoordinateSystem:
     """Construct a numeric coordinate system with standard coordinates.
 
     Parameters
@@ -28,7 +28,7 @@ def build_numeric_coordinate_system(
         uniform + normal pair is created.
     """
     factory = CoordinateFactory()
-    cs = NumericNumericCoordinateSystem(basis_type)
+    cs = NumericCoordinateSystem(basis_type)
 
     coords = list(coordinates) if coordinates is not None else [
         ("uniform", dict(a=-1.0, b=1.0), 3),
@@ -51,7 +51,7 @@ def build_numeric_coordinate_system(
     return cs
 
 
-def make_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
+def make_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
     """Create a simple polynomial convenient for tests."""
     terms = [
         (1.0, Counter()),
@@ -65,8 +65,8 @@ def make_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
 def build_orthonormal_coordinate_system(
     basis_type: BasisFunctionType,
     coordinates: Iterable[tuple[str, dict, int]] | None = None,
-) -> OrthonormalNumericCoordinateSystem:
-    cs = OrthonormalNumericCoordinateSystem(basis_type)
+) -> OrthonormalCoordinateSystem:
+    cs = OrthonormalCoordinateSystem(basis_type)
     factory = CoordinateFactory()
 
     coords = list(coordinates) if coordinates is not None else [
@@ -90,7 +90,7 @@ def build_orthonormal_coordinate_system(
     return cs
 
 
-def make_orthopoly(cs: OrthonormalNumericCoordinateSystem) -> OrthoPolyFunction:
+def make_orthopoly(cs: OrthonormalCoordinateSystem) -> OrthoPolyFunction:
     coeffs = [
         (1.0, Counter()),
         (0.5, Counter({0: 1})),

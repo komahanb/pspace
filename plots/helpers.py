@@ -8,7 +8,7 @@ import numpy as np
 from pspace.numeric import (
     BasisFunctionType,
     CoordinateFactory,
-    NumericNumericCoordinateSystem,
+    NumericCoordinateSystem,
     PolyFunction,
 )
 from pspace.plotter import NumericCoordinateSystem as PlottingNumericCoordinateSystem
@@ -23,9 +23,9 @@ def build_coordinate_systems(
     num_coords: int,
     max_degree: int,
     generator: np.random.Generator,
-) -> Tuple[NumericNumericCoordinateSystem, PlottingNumericCoordinateSystem]:
+) -> Tuple[NumericCoordinateSystem, PlottingNumericCoordinateSystem]:
     cf = CoordinateFactory()
-    numeric = NumericNumericCoordinateSystem(basis_type)
+    numeric = NumericCoordinateSystem(basis_type)
 
     for idx in range(num_coords):
         coord_id = cf.newCoordinateID()
@@ -59,7 +59,7 @@ def build_coordinate_systems(
 
 
 def random_polynomial(
-    numeric: NumericNumericCoordinateSystem,
+    numeric: NumericCoordinateSystem,
     generator: np.random.Generator,
     max_degree: int,
     max_terms: int = 6,

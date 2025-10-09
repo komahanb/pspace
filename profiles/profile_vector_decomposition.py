@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import argparse
 import csv
 import os
@@ -9,7 +14,7 @@ from typing import Iterable, Sequence
 import numpy as np
 
 from pspace.numeric import BasisFunctionType, InnerProductMode
-from pspace.profile import ProfileNumericCoordinateSystem
+from pspace.profile import ProfileCoordinateSystem
 
 try:  # pragma: no cover - runtime convenience
     from profiles.helpers import build_coordinate_system, random_polynomial, rng
@@ -34,7 +39,7 @@ def write_csv(rows: Iterable[dict], path: str) -> None:
 
 
 def profile_vector_modes(
-    cs: ProfileNumericCoordinateSystem,
+    cs: ProfileCoordinateSystem,
     polynomial,
     modes: Sequence[InnerProductMode],
     sparse: bool,
@@ -125,7 +130,7 @@ def main() -> None:
             generator=generator,
         )
 
-        profile_cs = ProfileNumericCoordinateSystem(basis_type, verbose=False)
+        profile_cs = ProfileCoordinateSystem(basis_type, verbose=False)
         for coord in base_cs.coordinates.values():
             profile_cs.addCoordinateAxis(coord)
         profile_cs.initialize()

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import numpy as np
 from pspace.numeric import BasisFunctionType, InnerProductMode
 from pspace.parallel import (
-    ParallelNumericCoordinateSystem,
+    ParallelCoordinateSystem,
     ParallelPolicy,
     CompositeParallelPolicy,
     DistributedBasisParallel,
@@ -16,7 +20,7 @@ from pspace.parallel import (
     CudaCupyParallelPolicy,
     compose_parallel_policies,
 )
-from pspace.sparsity import SparsityNumericCoordinateSystem
+from pspace.sparsity import SparsityCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system, make_polynomial
 
 
@@ -39,7 +43,7 @@ def test_parallel_policy_invocation():
     poly = make_polynomial(base)
 
     policy = CountingPolicy()
-    wrapper = ParallelNumericCoordinateSystem(base, policy=policy)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
     matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
@@ -60,7 +64,7 @@ def test_parallel_policy_switching():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
 
-    wrapper = ParallelNumericCoordinateSystem(base, policy=DistributedBasisParallel(chunks=2))
+    wrapper = ParallelCoordinateSystem(base, policy=DistributedBasisParallel(chunks=2))
     coeffs_basis = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
 
     wrapper.configure_policy(DistributedCoordinateParallel())
@@ -73,8 +77,8 @@ def test_parallel_policy_switching():
 
 def test_parallel_composed_with_sparsity():
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
-    sparse = SparsityNumericCoordinateSystem(base, enabled=True)
-    parallel = ParallelNumericCoordinateSystem(sparse, policy=DistributedBasisParallel())
+    sparse = SparsityCoordinateSystem(base, enabled=True)
+    parallel = ParallelCoordinateSystem(sparse, policy=DistributedBasisParallel())
 
     poly = make_polynomial(base)
     coeffs_parallel = parallel.decompose(poly, sparse=None, mode=InnerProductMode.NUMERICAL)
@@ -92,7 +96,7 @@ def test_shared_memory_parallel_policy_threads():
     poly = make_polynomial(base)
 
     policy = SharedMemoryParallelPolicy(backend="threadpool", workers=2)
-    wrapper = ParallelNumericCoordinateSystem(base, policy=policy)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
     matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
@@ -118,7 +122,7 @@ def test_parallel_policy_composite_runtime():
     shared = SharedMemoryParallelPolicy(backend="openmp", workers=4)
     hybrid = HybridParallelPolicy(mpi, shared)
 
-    wrapper = ParallelNumericCoordinateSystem(base, policy=hybrid)
+    wrapper = ParallelCoordinateSystem(base, policy=hybrid)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
     matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
@@ -149,7 +153,7 @@ def test_parallel_policy_sequence_and_operator_overload():
     mpi = MPIParallelPolicy(world_size=2)
     shared = SharedMemoryParallelPolicy(backend="cuda", workers=None, device="cuda:1")
 
-    wrapper_list = ParallelNumericCoordinateSystem(base, policy=[mpi, shared])
+    wrapper_list = ParallelCoordinateSystem(base, policy=[mpi, shared])
     policy_from_list = wrapper_list.policy
     assert isinstance(policy_from_list, CompositeParallelPolicy)
     assert policy_from_list.policies[0] is mpi
@@ -166,12 +170,12 @@ def test_parallel_policy_sequence_and_operator_overload():
     assert composed.policies[0] is mpi2
     assert composed.policies[1] is shared2
 
-    wrapper = ParallelNumericCoordinateSystem(base, policy=composed)
+    wrapper = ParallelCoordinateSystem(base, policy=composed)
     coeffs_or = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
 
     manual = compose_parallel_policies(mpi2, [shared2])
     assert isinstance(manual, CompositeParallelPolicy)
-    coeffs_manual = ParallelNumericCoordinateSystem(base, policy=manual).decompose(poly, mode=InnerProductMode.NUMERICAL)
+    coeffs_manual = ParallelCoordinateSystem(base, policy=manual).decompose(poly, mode=InnerProductMode.NUMERICAL)
 
     assert set(coeffs_list.keys()) == set(coeffs_or.keys())
     assert set(coeffs_or.keys()) == set(coeffs_manual.keys())
@@ -185,7 +189,7 @@ def test_openmp_parallel_policy_alias():
     poly = make_polynomial(base)
 
     policy = OpenMPParallelPolicy(workers=2)
-    wrapper = ParallelNumericCoordinateSystem(base, policy=policy)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
     matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)
 
@@ -226,7 +230,7 @@ def test_mpi4py_parallel_policy_comm_self(monkeypatch):
     else:
         policy = MPI4PyParallelPolicy(mpi_comm=MPI.COMM_SELF)
 
-    wrapper = ParallelNumericCoordinateSystem(base, policy=policy)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
 
@@ -244,7 +248,7 @@ def test_cuda_cupy_parallel_policy_mirror():
     poly = make_polynomial(base)
 
     policy = CudaCupyParallelPolicy(mirror_vector=True, mirror_matrix=True)
-    wrapper = ParallelNumericCoordinateSystem(base, policy=policy)
+    wrapper = ParallelCoordinateSystem(base, policy=policy)
 
     coeffs = wrapper.decompose(poly, mode=InnerProductMode.NUMERICAL)
     matrix = wrapper.decompose_matrix(poly, mode=InnerProductMode.NUMERICAL)

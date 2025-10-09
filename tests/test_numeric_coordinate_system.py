@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from collections import Counter
 
 import numpy as np
 
 from pspace.numeric import (
     BasisFunctionType,
-    NumericNumericCoordinateSystem,
+    NumericCoordinateSystem,
     InnerProductMode,
     PolyFunction,
 )
-from pspace.symbolic import SymbolicNumericCoordinateSystem
-from pspace.analytic import AnalyticNumericCoordinateSystem
+from pspace.symbolic import SymbolicCoordinateSystem
+from pspace.analytic import AnalyticCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system
 
 DEFAULT_COORDS = [
@@ -19,7 +23,7 @@ DEFAULT_COORDS = [
     ("normal", dict(mu=0.5, sigma=0.75), 3),
 ]
 
-def make_test_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
+def make_test_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
     terms = [
         (1.0, Counter()),
         (0.8, Counter({0: 1})),
@@ -30,7 +34,7 @@ def make_test_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
     return PolyFunction(terms, coordinates=cs.coordinates)
 
 
-def make_axis_aligned_polynomial(cs: NumericNumericCoordinateSystem) -> PolyFunction:
+def make_axis_aligned_polynomial(cs: NumericCoordinateSystem) -> PolyFunction:
     terms = [
         (1.0, Counter()),
         (0.7, Counter({0: 1})),
@@ -86,8 +90,8 @@ def test_numeric_delegates_symbolic_and_analytic_modes():
     cs = build_numeric_coordinate_system(BasisFunctionType.TOTAL_DEGREE, DEFAULT_COORDS)
     poly = make_test_polynomial(cs)
 
-    symbolic = SymbolicNumericCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
-    analytic = AnalyticNumericCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
+    symbolic = SymbolicCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
+    analytic = AnalyticCoordinateSystem(BasisFunctionType.TOTAL_DEGREE, numeric=cs)
 
     coeffs_symbolic_core = cs.decompose(
         poly,
