@@ -106,6 +106,99 @@ class CoordinateSystem(ABC):
         raise NotImplementedError
 
     # ------------------------------------------------------------------
+    # Sparsity helpers (default implementations)
+    # ------------------------------------------------------------------
+    def vector_mask(
+        self,
+        function: "PolyFunction",
+        sparse: bool,
+        *,
+        sort: bool = False,
+    ) -> list[int]:
+        self._ensure_function_bound(function)
+        if sparse:
+            mask_iter = self.polynomial_vector_sparsity_mask(function.degrees)
+        else:
+            mask_iter = self.basis.keys()
+        indices = [int(idx) for idx in mask_iter]
+        if sort:
+            indices.sort()
+        return indices
+
+    def matrix_mask(
+        self,
+        function: "PolyFunction",
+        sparse: bool,
+        symmetric: bool,
+        *,
+        sort: bool = False,
+    ) -> list[tuple[int, int]]:
+        self._ensure_function_bound(function)
+        if sparse:
+            mask_iter = list(self.polynomial_sparsity_mask(function.degrees, symmetric=symmetric))
+        else:
+            basis_ids = list(self.basis.keys())
+            if symmetric:
+                mask_iter = [(i, j) for ii, i in enumerate(basis_ids) for j in basis_ids[ii:]]
+            else:
+                mask_iter = [(i, j) for i in basis_ids for j in basis_ids]
+        pairs = [(int(i), int(j)) for i, j in mask_iter]
+        if sort:
+            pairs.sort()
+        return pairs
+
+    def compute_vector_coefficients(
+        self,
+        function: "PolyFunction",
+        indices: Sequence[int],
+        *,
+        bind_coordinates: bool = True,
+    ) -> Dict[int, float]:
+        if bind_coordinates:
+            self._ensure_function_bound(function)
+        coeffs: Dict[int, float] = {}
+        max_degrees = getattr(function, "max_degrees", None)
+        for idx in indices:
+            psi = self.basis[idx]
+
+            def psi_eval(y, basis_deg=psi):
+                return self.evaluateBasisDegreesY(y, basis_deg)
+
+            coeff = self.inner_product(
+                function,
+                psi_eval,
+                f_deg=max_degrees,
+                g_deg=psi,
+            )
+            coeffs[int(idx)] = float(coeff)
+        return coeffs
+
+    def compute_matrix_entries(
+        self,
+        function: "PolyFunction",
+        pairs: Sequence[tuple[int, int]],
+        symmetric: bool,
+        *,
+        bind_coordinates: bool = True,
+    ) -> Dict[tuple[int, int], float]:
+        if bind_coordinates:
+            self._ensure_function_bound(function)
+        max_degrees = getattr(function, "max_degrees", None)
+        partial: Dict[tuple[int, int], float] = {}
+        for i, j in pairs:
+            value = self.inner_product_basis(
+                i,
+                j,
+                f_eval=function,
+                f_deg=max_degrees,
+            )
+            sval = float(value)
+            partial[(int(i), int(j))] = sval
+            if symmetric and i != j:
+                partial[(int(j), int(i))] = sval
+        return partial
+
+    # ------------------------------------------------------------------
     # Inner products
     # ------------------------------------------------------------------
     @abstractmethod
@@ -197,6 +290,15 @@ class CoordinateSystem(ABC):
         verbose: bool = True,
     ) -> tuple[bool, Dict[Any, tuple[float, float, float]]]:
         raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # Utilities
+    # ------------------------------------------------------------------
+    def _ensure_function_bound(self, function: Any) -> None:
+        if hasattr(function, "bind_coordinates"):
+            coords = getattr(function, "_coords", None)
+            if coords is not self.coordinates:
+                function.bind_coordinates(self.coordinates)
 
     @abstractmethod
     def check_decomposition_matrix_numerical_symbolic(

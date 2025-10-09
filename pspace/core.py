@@ -28,10 +28,6 @@ from .stochastic_utils import (
     generate_basis_total_degree,
     sum_degrees,
     safe_zero_degrees,
-    sum_degrees_union_matrix,
-    sum_degrees_union_vector,
-    vector_sparsity_mask,
-    matrix_sparsity_mask,
 )
 from .interface import CoordinateSystem as CoordinateSystemInterface
 
@@ -269,19 +265,8 @@ class VectorInnerProductOperator:
         cs = self.cs
         function.bind_coordinates(cs.coordinates)
 
-        mask = vector_sparsity_mask(cs, function, sparse)
-
-        coeffs = {}
-        for k in mask:
-            psi_k = cs.basis[k]
-            need = sum_degrees_union_vector(function.max_degrees, psi_k)
-            qmap = cs.build_quadrature(need)
-
-            s = 0.0
-            for q in qmap.values():
-                y = q['Y']
-                s += function(y) * cs.evaluateBasisDegreesY(y, psi_k) * q['W']
-            coeffs[k] = float(s)
+        mask = cs.vector_mask(function, sparse)
+        coeffs = cs.compute_vector_coefficients(function, mask, bind_coordinates=False)
 
         if sparse:
             for k in cs.basis:
@@ -334,30 +319,11 @@ class MatrixInnerProductOperator:
         nbasis = cs.getNumBasisFunctions()
         A = np.zeros((nbasis, nbasis))
 
-        mask = matrix_sparsity_mask(cs, function, sparse, symmetric)
+        mask = cs.matrix_mask(function, sparse, symmetric)
 
-        qcache = {}
-        for i, j in mask:
-            psi_i, psi_j = cs.basis[i], cs.basis[j]
-            need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
-
-            key = tuple(sorted(need.items()))
-            qmap = qcache.get(key)
-            if qmap is None:
-                qmap = cs.build_quadrature(need)
-                qcache[key] = qmap
-
-            s = 0.0
-            for q in qmap.values():
-                y = q['Y']
-                s += (function(y)
-                      * cs.evaluateBasisDegreesY(y, psi_i)
-                      * cs.evaluateBasisDegreesY(y, psi_j)) * q['W']
-            s = float(s)
-
-            A[i, j] = s
-            if symmetric and i != j:
-                A[j, i] = s
+        partial = cs.compute_matrix_entries(function, mask, symmetric, bind_coordinates=False)
+        for (i, j), value in partial.items():
+            A[i, j] = value
 
         return A
 

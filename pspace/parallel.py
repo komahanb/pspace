@@ -11,62 +11,6 @@ import numpy as np
 
 from .core import InnerProductMode, PolyFunction
 from .interface import CoordinateSystem as CoordinateSystemInterface
-from .stochastic_utils import (
-    sum_degrees_union_matrix,
-    sum_degrees_union_vector,
-    vector_sparsity_mask,
-    matrix_sparsity_mask,
-)
-
-
-def _compute_vector_chunk(
-    cs: CoordinateSystemInterface,
-    function: PolyFunction,
-    indices: Sequence[int],
-) -> Dict[int, float]:
-    coeffs: Dict[int, float] = {}
-    for k in indices:
-        psi_k = cs.basis[k]
-        need = sum_degrees_union_vector(function.max_degrees, psi_k)
-        qmap = cs.build_quadrature(need)
-        s = 0.0
-        for q in qmap.values():
-            y = q["Y"]
-            s += function(y) * cs.evaluateBasisDegreesY(y, psi_k) * q["W"]
-        coeffs[int(k)] = float(s)
-    return coeffs
-
-
-def _compute_matrix_chunk(
-    cs: CoordinateSystemInterface,
-    function: PolyFunction,
-    pairs: Sequence[tuple[int, int]],
-    symmetric: bool,
-) -> Dict[tuple[int, int], float]:
-    qcache: Dict[tuple[tuple[int, int], ...], Mapping[int, Mapping[str, Any]]] = {}
-    partial: Dict[tuple[int, int], float] = {}
-    for i, j in pairs:
-        psi_i, psi_j = cs.basis[i], cs.basis[j]
-        need = sum_degrees_union_matrix(function.max_degrees, psi_i, psi_j)
-        key = tuple(sorted(need.items()))
-        qmap = qcache.get(key)
-        if qmap is None:
-            qmap = cs.build_quadrature(need)
-            qcache[key] = qmap
-        s = 0.0
-        for q in qmap.values():
-            y = q["Y"]
-            s += (
-                function(y)
-                * cs.evaluateBasisDegreesY(y, psi_i)
-                * cs.evaluateBasisDegreesY(y, psi_j)
-                * q["W"]
-            )
-        sval = float(s)
-        partial[(int(i), int(j))] = sval
-        if symmetric and i != j:
-            partial[(int(j), int(i))] = sval
-    return partial
 
 
 def _partition_list(sequence: Sequence[Any], parts: int) -> list[list[Any]]:
@@ -528,13 +472,20 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
             self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
             return thunk()
 
-        coordinate_system_eval = coordinate_system
-        function.bind_coordinates(coordinate_system_eval.coordinates)
+        mask_fn = getattr(coordinate_system, "_vector_mask", None)
+        chunk_fn = getattr(coordinate_system, "_compute_vector_chunk", None)
+        bind_fn = getattr(coordinate_system, "_bind_function_to_base", None)
+        basis_map = getattr(coordinate_system, "basis", None)
 
-        mask = vector_sparsity_mask(coordinate_system_eval, function, sparse, sort_indices=True)
+        if mask_fn is None or chunk_fn is None or bind_fn is None or basis_map is None:
+            self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
+            return thunk()
+
+        bind_fn(function)
+        mask = mask_fn(function, sparse)
         total_items = len(mask)
 
-        self._record_schedule("vector", coordinate_system_eval, sparse, mode, analytic, total_items=total_items)
+        self._record_schedule("vector", coordinate_system, sparse, mode, analytic, total_items=total_items)
 
         workers = self.workers or 1
         if total_items == 0 or workers <= 1 or len(mask) <= 1:
@@ -546,14 +497,11 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
 
         coeffs: Dict[int, float] = {}
         with ThreadPoolExecutor(max_workers=len(partitions)) as executor:
-            futures = [
-                executor.submit(_compute_vector_chunk, coordinate_system_eval, function, chunk)
-                for chunk in partitions
-            ]
+            futures = [executor.submit(chunk_fn, function, chunk) for chunk in partitions]
             for future in as_completed(futures):
                 coeffs.update(future.result())
 
-        coeffs = _ensure_sparse_fill(coeffs, mask, coordinate_system_eval.basis.keys())
+        coeffs = _ensure_sparse_fill(coeffs, mask, basis_map.keys())
 
         return coeffs
 
@@ -576,20 +524,20 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
             self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
             return thunk()
 
-        coordinate_system_eval = coordinate_system
-        function.bind_coordinates(coordinate_system_eval.coordinates)
+        mask_fn = getattr(coordinate_system, "_matrix_mask", None)
+        chunk_fn = getattr(coordinate_system, "_compute_matrix_chunk", None)
+        bind_fn = getattr(coordinate_system, "_bind_function_to_base", None)
 
-        mask_pairs = matrix_sparsity_mask(
-            coordinate_system_eval,
-            function,
-            sparse,
-            symmetric,
-            sort_pairs=True,
-        )
+        if mask_fn is None or chunk_fn is None or bind_fn is None:
+            self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
+            return thunk()
+
+        bind_fn(function)
+        mask_pairs = mask_fn(function, sparse, symmetric)
         total_items = len(mask_pairs)
         self._record_schedule(
             "matrix",
-            coordinate_system_eval,
+            coordinate_system,
             sparse,
             mode,
             analytic,
@@ -605,14 +553,13 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         if not partitions:
             return thunk()
 
-        nbasis = coordinate_system_eval.getNumBasisFunctions()
+        nbasis = coordinate_system.getNumBasisFunctions()
         matrix = np.zeros((nbasis, nbasis))
 
         with ThreadPoolExecutor(max_workers=len(partitions)) as executor:
             futures = [
                 executor.submit(
-                    _compute_matrix_chunk,
-                    coordinate_system_eval,
+                    chunk_fn,
                     function,
                     chunk,
                     symmetric,
@@ -692,10 +639,17 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         if self._comm is None or self.world_size <= 1:
             return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
 
-        coordinate_system_eval = coordinate_system
-        function.bind_coordinates(coordinate_system_eval.coordinates)
+        mask_fn = getattr(coordinate_system, "_vector_mask", None)
+        chunk_fn = getattr(coordinate_system, "_compute_vector_chunk", None)
+        bind_fn = getattr(coordinate_system, "_bind_function_to_base", None)
+        basis_map = getattr(coordinate_system, "basis", None)
 
-        mask = vector_sparsity_mask(coordinate_system_eval, function, sparse, sort_indices=True)
+        if mask_fn is None or chunk_fn is None or bind_fn is None or basis_map is None:
+            return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
+
+        bind_fn(function)
+
+        mask = mask_fn(function, sparse)
         partitions = _partition_list(mask, self.world_size)
         self.last_plan = {
             "operation": "vector",
@@ -710,13 +664,13 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
 
         rank = self.rank or 0
         indices = partitions[rank] if rank < len(partitions) else []
-        partial = _compute_vector_chunk(coordinate_system_eval, function, indices) if indices else {}
+        partial = chunk_fn(function, indices) if indices else {}
         gathered = self._comm.allgather(partial)
         coeffs: Dict[int, float] = {}
         for chunk in gathered:
             coeffs.update(chunk)
 
-        coeffs = _ensure_sparse_fill(coeffs, mask, coordinate_system_eval.basis.keys())
+        coeffs = _ensure_sparse_fill(coeffs, mask, basis_map.keys())
         return coeffs
 
     def execute_matrix(
@@ -735,16 +689,15 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         if self._comm is None or self.world_size <= 1:
             return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
 
-        coordinate_system_eval = coordinate_system
-        function.bind_coordinates(coordinate_system_eval.coordinates)
+        mask_fn = getattr(coordinate_system, "_matrix_mask", None)
+        chunk_fn = getattr(coordinate_system, "_compute_matrix_chunk", None)
+        bind_fn = getattr(coordinate_system, "_bind_function_to_base", None)
 
-        mask_pairs = matrix_sparsity_mask(
-            coordinate_system_eval,
-            function,
-            sparse,
-            symmetric,
-            sort_pairs=True,
-        )
+        if mask_fn is None or chunk_fn is None or bind_fn is None:
+            return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
+
+        bind_fn(function)
+        mask_pairs = mask_fn(function, sparse, symmetric)
         partitions = _partition_list(mask_pairs, self.world_size)
         self.last_plan = {
             "operation": "matrix",
@@ -759,11 +712,11 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
 
         rank = self.rank or 0
         pairs = partitions[rank] if rank < len(partitions) else []
-        partial = _compute_matrix_chunk(coordinate_system_eval, function, pairs, symmetric) if pairs else {}
+        partial = chunk_fn(function, pairs, symmetric) if pairs else {}
 
         gathered = self._comm.allgather(partial)
 
-        nbasis = coordinate_system_eval.getNumBasisFunctions()
+        nbasis = coordinate_system.getNumBasisFunctions()
         matrix = np.zeros((nbasis, nbasis))
         for chunk in gathered:
             for (i, j), value in chunk.items():
@@ -953,6 +906,32 @@ class ParallelCoordinateSystem(CoordinateSystemInterface):
             self._base.configure_sparsity(enabled)
 
     # ------------------------------------------------------------------ #
+    # Helpers for parallel policies                                      #
+    # ------------------------------------------------------------------ #
+    def _bind_function_to_base(self, function: PolyFunction) -> PolyFunction:
+        if hasattr(function, "bind_coordinates"):
+            if getattr(function, "_coords", None) is not self._base.coordinates:
+                function.bind_coordinates(self._base.coordinates)
+        return function
+
+    def _vector_mask(self, function: PolyFunction, sparse: bool) -> list[int]:
+        return self._base.vector_mask(function, sparse, sort=True)
+
+    def _matrix_mask(self, function: PolyFunction, sparse: bool, symmetric: bool) -> list[tuple[int, int]]:
+        return self._base.matrix_mask(function, sparse, symmetric, sort=True)
+
+    def _compute_vector_chunk(self, function: PolyFunction, indices: Sequence[int]) -> Dict[int, float]:
+        return self._base.compute_vector_coefficients(function, indices, bind_coordinates=False)
+
+    def _compute_matrix_chunk(
+        self,
+        function: PolyFunction,
+        pairs: Sequence[tuple[int, int]],
+        symmetric: bool,
+    ) -> Dict[tuple[int, int], float]:
+        return self._base.compute_matrix_entries(function, pairs, symmetric, bind_coordinates=False)
+
+    # ------------------------------------------------------------------ #
     # Delegate remaining interface                                       #
     # ------------------------------------------------------------------ #
     def addCoordinateAxis(self, coordinate: Any) -> None:
@@ -1027,7 +1006,7 @@ class ParallelCoordinateSystem(CoordinateSystemInterface):
         def thunk():
             return self._base.decompose(function, sparse=sflag, mode=mode, analytic=analytic)
 
-        return self._policy.execute_vector(self._base, function, sflag, mode, analytic, thunk)
+        return self._policy.execute_vector(self, function, sflag, mode, analytic, thunk)
 
     def decompose_matrix(
         self,
@@ -1048,7 +1027,7 @@ class ParallelCoordinateSystem(CoordinateSystemInterface):
                 analytic=analytic,
             )
 
-        return self._policy.execute_matrix(self._base, function, sflag, symmetric, mode, analytic, thunk)
+        return self._policy.execute_matrix(self, function, sflag, symmetric, mode, analytic, thunk)
 
     def decompose_matrix_analytic(self, function: PolyFunction, sparse: bool | None = None, symmetric: bool = True) -> np.ndarray:
         return self.decompose_matrix(function, sparse=sparse, symmetric=symmetric, mode=InnerProductMode.ANALYTIC)
