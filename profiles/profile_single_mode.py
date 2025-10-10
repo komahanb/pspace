@@ -46,8 +46,8 @@ def describe_backend(coordinate_system) -> str:
 
 BACKEND_REGISTRY: dict[InnerProductMode, tuple[str, str]] = {
     InnerProductMode.NUMERICAL: ("pspace.numeric", "NumericCoordinateSystem"),
-    InnerProductMode.SYMBOLIC: ("pspace.symbolic", "SymbolicNumericCoordinateSystem"),
-    InnerProductMode.ANALYTIC: ("pspace.analytic", "AnalyticNumericCoordinateSystem"),
+    InnerProductMode.SYMBOLIC: ("pspace.symbolic", "SymbolicCoordinateSystem"),
+    InnerProductMode.ANALYTIC: ("pspace.analytic", "AnalyticCoordinateSystem"),
 }
 
 
