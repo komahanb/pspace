@@ -33,11 +33,18 @@ Komahan Boopathy
 
 ## Development Environment
 
-Use the helper script to create an isolated virtual environment and install all dependencies:
+Linux/macOS:
 
 ```bash
 scripts/setup_env.sh
 source .venv/bin/activate
 ```
 
-Override the Python interpreter with `PYTHON_BIN=/path/to/python scripts/setup_env.sh` if you need a specific version.
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup_env.ps1
+.\.venv\Scripts\Activate.ps1
+```
+
+Override the interpreter with `PYTHON_BIN=/path/to/python scripts/setup_env.sh` or `-PythonBin C:\Path\To\python.exe` when invoking the Windows script.
