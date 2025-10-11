@@ -48,3 +48,19 @@ powershell -ExecutionPolicy Bypass -File scripts/setup_env.ps1
 ```
 
 Override the interpreter with `PYTHON_BIN=/path/to/python scripts/setup_env.sh` or `-PythonBin C:\Path\To\python.exe` when invoking the Windows script.
+
+Both scripts install `requirements.txt`. GPU acceleration relies on `cupy` (install the CUDA-matched wheel manually if you need the parallel CuPy backend).
+
+Core Python dependencies:
+- numpy
+- scipy
+- sympy
+- matplotlib
+- mpi4py
+
+Optional additions:
+- pytest (to run the test suite)
+- cupy-cudaXX (enable `CudaCupyParallelPolicy` on NVIDIA GPUs)
+- stacs/tacs (needed for the aeroelastic examples; install from their respective projects)
+
+OpenMP-style shared-memory policies run on Python threads; no extra Python package is required, but building the C++ extension with OpenMP support and configuring `mpicxx` with `-fopenmp` may improve performance.
