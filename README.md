@@ -30,3 +30,35 @@ Module for uncertainty quantification and optimization under uncertainty applica
 ---
 
 Komahan Boopathy
+
+## Development Environment
+
+Linux/macOS:
+
+```bash
+scripts/setup_env.sh
+source .venv/bin/activate
+```
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup_env.ps1
+.\.venv\Scripts\Activate.ps1
+```
+
+Both scripts install `requirements.txt`. GPU acceleration relies on `cupy` (install the CUDA-matched wheel manually if you need the parallel CuPy backend).
+
+Core Python dependencies:
+- numpy
+- scipy
+- sympy
+- matplotlib
+- mpi4py
+
+Optional additions:
+- pytest (to run the test suite)
+- cupy-cudaXX (enable `CudaCupyParallelPolicy` on NVIDIA GPUs)
+- stacs/tacs (needed for the aeroelastic examples; install from their respective projects)
+
+OpenMP-style shared-memory policies run on Python threads; no extra Python package is required, but building the C++ extension with OpenMP support and configuring `mpicxx` with `-fopenmp` may improve performance.
