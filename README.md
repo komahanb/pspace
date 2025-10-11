@@ -30,3 +30,14 @@ Module for uncertainty quantification and optimization under uncertainty applica
 ---
 
 Komahan Boopathy
+
+## Development Environment
+
+Use the helper script to create an isolated virtual environment and install all dependencies:
+
+```bash
+scripts/setup_env.sh
+source .venv/bin/activate
+```
+
+Override the Python interpreter with `PYTHON_BIN=/path/to/python scripts/setup_env.sh` if you need a specific version.
