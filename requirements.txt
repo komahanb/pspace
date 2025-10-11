@@ -2,3 +2,5 @@ numpy
 matplotlib
 scipy
 mpi4py
+sympy
+pytest
