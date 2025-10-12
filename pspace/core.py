@@ -610,6 +610,14 @@ class CoordinateSystem(CoordinateSystemInterface):
         self._analytic_mirror = None
         self._sparsity_enabled = True
 
+    def SetGeometry(self, geometry):
+        self.geometry = geometry
+
+    def represent(self, degree=1, color='gray', alpha=0.4):
+        if not hasattr(self, "geometry") or self.geometry is None:
+            raise ValueError("Geometry not set. Use SetGeometry().")
+        self.geometry.represent(self, degree, color, alpha)
+
     @property
     def coordinates(self):
         return self._coordinates
