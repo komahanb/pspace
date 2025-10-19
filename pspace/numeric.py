@@ -13,6 +13,7 @@
 #=====================================================================#
 
 # External modules
+import math
 import sympy as sp
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
@@ -20,6 +21,19 @@ np.set_printoptions(precision=3, suppress=True)
 from collections import Counter
 from enum        import Enum
 from itertools   import product
+
+#---------------------------------------------------------------------#
+# Helpers
+#---------------------------------------------------------------------#
+
+def _to_python_scalar(value):
+    """
+    Convert NumPy scalar types to native Python scalars for downstream
+    libraries (e.g., SymPy) that expect built-in numeric types.
+    """
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 # Local modules
 from .stochastic_utils import (
@@ -193,7 +207,7 @@ class OrthoPolyFunction:
                     Pn = npleg.Legendre.basis(d)
                     poly = Pn.convert(kind=nppoly.Polynomial)
                     coeffs_power = np.array(poly.coef, dtype=float)
-                    s = np.sqrt((2*d+1)/2.0)  # orthonormal scale
+                    s = math.sqrt((2 * d + 1) / 2.0)  # orthonormal scale
                     coeffs_power *= s
                     expansions.append((cid, coeffs_power))
                 else:
@@ -432,7 +446,7 @@ class NormalCoordinate(Coordinate):
     def quadrature_to_physical(self, xscalar):
         """Map quadrature x -> physical y"""
         mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
-        return mu + sigma * np.sqrt(2) * xscalar
+        return mu + sigma * math.sqrt(2.0) * xscalar
 
     def standard_to_physical(self, zscalar):
         """Map standard z -> physical y"""
@@ -445,7 +459,7 @@ class NormalCoordinate(Coordinate):
     def gaussian_quadrature(self, degree):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.hermite.hermgauss(npts)
-        w    = w / np.sqrt(np.pi)
+        w    = w / math.sqrt(math.pi)
         return x, w
 
 class UniformCoordinate(Coordinate):
@@ -700,18 +714,20 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         Returns : {q_index: {'Y':{cid:y}, 'Z':{cid:z}, 'W':w}}
         """
         cids  = list(self.coordinates.keys())
-        one_d = {cid: self.coordinates[cid].getQuadraturePointsWeights(
-                    int(degrees.get(cid, 0))) for cid in cids}
+        one_d = {
+            cid: self.coordinates[cid].getQuadraturePointsWeights(int(degrees.get(cid, 0)))
+            for cid in cids
+        }
         sizes = {cid: len(one_d[cid]['wq']) for cid in cids}
 
         qmap, ctr = {}, 0
         for i_tuple in product(*[range(sizes[cid]) for cid in cids]):
             y, z, w = {}, {}, 1.0
             for cid, i in zip(cids, i_tuple):
-                y[cid] = one_d[cid]['yq'][i]
-                z[cid] = one_d[cid]['zq'][i]
-                w     *= one_d[cid]['wq'][i]
-            qmap[ctr] = {'Y': y, 'Z': z, 'W': w}
+                y[cid] = _to_python_scalar(one_d[cid]['yq'][i])
+                z[cid] = _to_python_scalar(one_d[cid]['zq'][i])
+                w     *= _to_python_scalar(one_d[cid]['wq'][i])
+            qmap[ctr] = {'Y': y, 'Z': z, 'W': _to_python_scalar(w)}
             ctr      += 1
 
         self.print_quadrature(qmap)

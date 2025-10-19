@@ -64,7 +64,7 @@ def unit_laguerre(z, d):
     """
     Orthonormal Laguerre polynomial ψ_d(z).
     """
-    return laguerre(z, d) / np.sqrt(1.0)   # weight already normalized
+    return laguerre(z, d)   # weight already normalized
 
 def _hermite(z, d):
     """
@@ -85,7 +85,7 @@ def _unit_hermite(z,d):
     """
     Returns units hermite polynomial of degree n evaluated at z
     """
-    return _hermite(z,d)/np.sqrt(math.factorial(d))
+    return _hermite(z,d) / math.sqrt(math.factorial(d))
 
 def hermite(z, d):
     """
@@ -100,7 +100,7 @@ def unit_hermite(z, d):
     """
     Orthonormal Hermite polynomial ψ_d(z).
     """
-    return hermite(z, d) / np.sqrt(math.factorial(d))
+    return hermite(z, d) / math.sqrt(math.factorial(d))
 
 def rlegendre(z, d):
     if d == 0:
@@ -124,7 +124,7 @@ def _legendre(z, d):
     return ((-1)**d)*p
 
 def _unit_legendre(z,d):
-    return _legendre(z,d)*np.sqrt(2*d+1)
+    return _legendre(z,d) * math.sqrt(2*d + 1)
 
 import numpy as np
 
@@ -147,7 +147,7 @@ def unit_legendre(z, d):
     L^2-orthonormal shifted Legendre polynomial on [0,1]:
       ψ_d(z) = sqrt(2d+1) * P_d^*(z).
     """
-    return np.sqrt(2*d + 1) * legendre(z, d)
+    return math.sqrt(2*d + 1) * legendre(z, d)
 
 
 #=====================================================================#

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -206,9 +207,9 @@ def test_mpi4py_parallel_policy_comm_self(monkeypatch):
     base = build_numeric_coordinate_system(BasisFunctionType.TENSOR_DEGREE)
     poly = make_polynomial(base)
 
-    try:
-        from mpi4py import MPI  # type: ignore
-    except ImportError:
+    use_real_mpi = os.environ.get("PSPACE_TEST_MPI4PY", "").lower() in {"1", "true", "yes"}
+
+    if not use_real_mpi:
         class DummyComm:
             def Get_size(self):
                 return 1
@@ -225,9 +226,10 @@ def test_mpi4py_parallel_policy_comm_self(monkeypatch):
             self.ranks = list(range(self.world_size))
 
         monkeypatch.setattr(MPI4PyParallelPolicy, "setup", fake_setup, raising=False)
-
         policy = MPI4PyParallelPolicy(mpi_comm=DummyComm())
     else:
+        from mpi4py import MPI  # type: ignore
+
         policy = MPI4PyParallelPolicy(mpi_comm=MPI.COMM_SELF)
 
     wrapper = ParallelCoordinateSystem(base, policy=policy)
