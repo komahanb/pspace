@@ -378,30 +378,22 @@ class AnalyticCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     # ------------------------------------------------------------------ #
     # Decomposition / Reconstruction                                    #
     # ------------------------------------------------------------------ #
-    @staticmethod
-    def _normalize_mode(mode: InnerProductMode | str | bool | None) -> InnerProductMode:
-        if mode is None:
-            return InnerProductMode.ANALYTIC
-        if isinstance(mode, bool):
-            return InnerProductMode.ANALYTIC if mode else InnerProductMode.NUMERICAL
-        if isinstance(mode, InnerProductMode):
-            return mode
-        if isinstance(mode, str):
-            return InnerProductMode(mode.lower())
-        raise ValueError(f"Unsupported inner product mode for analytic backend: {mode!r}")
-
     def decompose(
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> dict[int, float]:
         if sparse is None:
             sparse = self.numeric.sparsity_enabled
 
-        normalized = self._normalize_mode(mode)
-        if normalized is not InnerProductMode.ANALYTIC:
+        if mode is None:
+            mode = InnerProductMode.ANALYTIC
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if mode is not InnerProductMode.ANALYTIC:
             raise ValueError("Analytic CoordinateSystem supports only analytic decomposition.")
         return self._vector_analytic.compute(function, sparse=sparse)
 
@@ -410,14 +402,18 @@ class AnalyticCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         if sparse is None:
             sparse = self.numeric.sparsity_enabled
 
-        normalized = self._normalize_mode(mode)
-        if normalized is not InnerProductMode.ANALYTIC:
+        if mode is None:
+            mode = InnerProductMode.ANALYTIC
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if mode is not InnerProductMode.ANALYTIC:
             raise ValueError("Analytic CoordinateSystem supports only analytic decomposition.")
         return self._matrix_analytic.compute(function, sparse=sparse, symmetric=symmetric)
 
@@ -430,7 +426,7 @@ class AnalyticCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",

@@ -34,18 +34,6 @@ def _ensure_sparse_fill(
     return coeffs
 
 
-def _normalize_mode(mode: InnerProductMode | str | bool | None) -> InnerProductMode:
-    if mode is None:
-        return InnerProductMode.NUMERICAL
-    if isinstance(mode, bool):
-        return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
-    if isinstance(mode, InnerProductMode):
-        return mode
-    if isinstance(mode, str):
-        return InnerProductMode(mode.lower())
-    raise ValueError(f"Unsupported inner product mode: {mode}")
-
-
 class ParallelPolicy(ABC):
     """
     Strategy object describing how to execute vector/matrix assembly in parallel.
@@ -66,7 +54,7 @@ class ParallelPolicy(ABC):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -78,7 +66,7 @@ class ParallelPolicy(ABC):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -148,7 +136,7 @@ class DistributedBasisParallel(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -161,7 +149,7 @@ class DistributedBasisParallel(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -188,7 +176,7 @@ class DistributedCoordinateParallel(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -201,7 +189,7 @@ class DistributedCoordinateParallel(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -241,7 +229,7 @@ class CompositeParallelPolicy(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -266,7 +254,7 @@ class CompositeParallelPolicy(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -342,7 +330,7 @@ class MPIParallelPolicy(ParallelPolicy):
         operation: str,
         coordinate_system: CoordinateSystem,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         symmetric: bool | None = None,
     ) -> None:
@@ -363,7 +351,7 @@ class MPIParallelPolicy(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -376,7 +364,7 @@ class MPIParallelPolicy(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -434,7 +422,7 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         operation: str,
         coordinate_system: CoordinateSystem,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         symmetric: bool | None = None,
         total_items: int | None = None,
@@ -458,12 +446,16 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
-        normalized = _normalize_mode(mode)
-        if analytic or normalized is not InnerProductMode.NUMERICAL:
+        if mode is None:
+            mode = InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if analytic or mode is not InnerProductMode.NUMERICAL:
             self._record_schedule("vector", coordinate_system, sparse, mode, analytic)
             return thunk()
 
@@ -511,12 +503,16 @@ class SharedMemoryParallelPolicy(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
-        normalized = _normalize_mode(mode)
-        if analytic or normalized is not InnerProductMode.NUMERICAL:
+        if mode is None:
+            mode = InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if analytic or mode is not InnerProductMode.NUMERICAL:
             self._record_schedule("matrix", coordinate_system, sparse, mode, analytic, symmetric=symmetric)
             return thunk()
 
@@ -629,12 +625,16 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
-        normalized = _normalize_mode(mode)
-        if analytic or normalized is not InnerProductMode.NUMERICAL:
+        if mode is None:
+            mode = InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if analytic or mode is not InnerProductMode.NUMERICAL:
             return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
         if self._comm is None or self.world_size <= 1:
             return super().execute_vector(coordinate_system, function, sparse, mode, analytic, thunk)
@@ -679,12 +679,16 @@ class MPI4PyParallelPolicy(MPIParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
-        normalized = _normalize_mode(mode)
-        if analytic or normalized is not InnerProductMode.NUMERICAL:
+        if mode is None:
+            mode = InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if analytic or mode is not InnerProductMode.NUMERICAL:
             return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
         if self._comm is None or self.world_size <= 1:
             return super().execute_matrix(coordinate_system, function, sparse, symmetric, mode, analytic, thunk)
@@ -762,7 +766,7 @@ class CudaCupyParallelPolicy(ParallelPolicy):
         coordinate_system: CoordinateSystem,
         function: PolyFunction,
         sparse: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], Dict[int, Any]],
     ) -> Dict[int, Any]:
@@ -784,7 +788,7 @@ class CudaCupyParallelPolicy(ParallelPolicy):
         function: PolyFunction,
         sparse: bool,
         symmetric: bool,
-        mode: InnerProductMode | str | None,
+        mode: InnerProductMode | None,
         analytic: bool,
         thunk: Callable[[], np.ndarray],
     ) -> np.ndarray:
@@ -998,7 +1002,7 @@ class ParallelCoordinateSystem(CoordinateSystem):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> Dict[int, Any]:
         sflag = self.sparsity_enabled if sparse is None else sparse
@@ -1013,7 +1017,7 @@ class ParallelCoordinateSystem(CoordinateSystem):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         sflag = self.sparsity_enabled if sparse is None else sparse
@@ -1036,7 +1040,7 @@ class ParallelCoordinateSystem(CoordinateSystem):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",

@@ -102,7 +102,7 @@ class VerifyCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ):
         return self.numeric.decompose(function, sparse=sparse, mode=mode, analytic=analytic)
@@ -112,7 +112,7 @@ class VerifyCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         return self.numeric.decompose_matrix(
@@ -130,7 +130,7 @@ class VerifyCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",

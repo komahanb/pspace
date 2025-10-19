@@ -103,7 +103,7 @@ class OrthonormalCoordinateSystem(OrthonormalCoordinateSystemMixin, CoordinateSy
         poly: PolyFunction,
         *,
         sparse: bool | None = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> OrthoPolyFunction:
         coeffs = self.numeric.decompose(poly, sparse=sparse, mode=mode, analytic=analytic)
@@ -123,7 +123,7 @@ class OrthonormalCoordinateSystem(OrthonormalCoordinateSystemMixin, CoordinateSy
         self,
         function: OrthoPolyFunction,
         sparse: bool | None = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         **kwargs,
     ) -> Dict[int, float]:
@@ -150,7 +150,7 @@ class OrthonormalCoordinateSystem(OrthonormalCoordinateSystemMixin, CoordinateSy
         function: OrthoPolyFunction,
         sparse: bool | None = False,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         **kwargs,
     ):
@@ -168,7 +168,7 @@ class OrthonormalCoordinateSystem(OrthonormalCoordinateSystemMixin, CoordinateSy
         self,
         function: OrthoPolyFunction,
         sparse: bool | None = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         **kwargs,

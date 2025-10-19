@@ -311,7 +311,7 @@ class MonomialCoordinateSystemMixin(ABC):
         self,
         function: "PolyFunction",
         sparse: bool | None = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         **kwargs: Any,
     ) -> Dict[int, float]:
@@ -323,7 +323,7 @@ class MonomialCoordinateSystemMixin(ABC):
         function: "PolyFunction",
         sparse: bool | None = False,
         symmetric: bool = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         **kwargs: Any,
     ) -> np.ndarray:
@@ -334,7 +334,7 @@ class MonomialCoordinateSystemMixin(ABC):
         self,
         function: "PolyFunction",
         sparse: bool | None = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         precondition: bool = True,
         **kwargs: Any,
@@ -352,7 +352,7 @@ class OrthonormalCoordinateSystemMixin(ABC):
         self,
         function: "OrthoPolyFunction",
         sparse: bool | None = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         **kwargs: Any,
     ) -> Dict[int, float]:
@@ -364,7 +364,7 @@ class OrthonormalCoordinateSystemMixin(ABC):
         function: "OrthoPolyFunction",
         sparse: bool | None = False,
         symmetric: bool = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         **kwargs: Any,
     ) -> np.ndarray:
@@ -375,7 +375,7 @@ class OrthonormalCoordinateSystemMixin(ABC):
         self,
         function: "OrthoPolyFunction",
         sparse: bool | None = True,
-        mode: "InnerProductMode | str | None" = None,
+        mode: "InnerProductMode | None" = None,
         analytic: bool = False,
         precondition: bool = True,
         **kwargs: Any,

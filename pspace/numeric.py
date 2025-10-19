@@ -64,33 +64,10 @@ class VectorInnerProductOperator:
     def __init__(self, coordinate_system):
         self.cs = coordinate_system
 
-    @staticmethod
-    def _normalize_mode(mode):
-        if mode is None:
-            return InnerProductMode.NUMERICAL
-        if isinstance(mode, bool):
-            return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
-        if isinstance(mode, InnerProductMode):
-            return mode
-        if isinstance(mode, str):
-            return InnerProductMode(mode.lower())
-        raise ValueError(f"Unsupported inner product mode: {mode}")
-
-    def compute(self, function, sparse=True, mode=None):
-        mode = self._normalize_mode(mode)
-        if mode is InnerProductMode.NUMERICAL:
-            return self._compute_numerical(function, sparse=sparse)
-        if mode is InnerProductMode.SYMBOLIC:
-            raise ValueError(
-                "Symbolic inner products have moved to pspace.symbolic.CoordinateSystem. "
-                "Instantiate the symbolic mirror to evaluate this mode."
-            )
-        if mode is InnerProductMode.ANALYTIC:
-            raise ValueError(
-                "Analytic inner products have moved to pspace.analytic.CoordinateSystem. "
-                "Instantiate the analytic mirror to evaluate this mode."
-            )
-        raise ValueError(f"Unhandled inner product mode {mode}")
+    def compute(self, function, sparse=True, mode: InnerProductMode = InnerProductMode.NUMERICAL):
+        if mode is not InnerProductMode.NUMERICAL:
+            raise ValueError(f"Numeric vector inner products only support NUMERICAL mode, got {mode!r}")
+        return self._compute_numerical(function, sparse=sparse)
 
     def _compute_numerical(self, function, sparse=True):
         cs = self.cs
@@ -115,33 +92,16 @@ class MatrixInnerProductOperator:
     def __init__(self, coordinate_system):
         self.cs = coordinate_system
 
-    @staticmethod
-    def _normalize_mode(mode):
-        if mode is None:
-            return InnerProductMode.NUMERICAL
-        if isinstance(mode, bool):
-            return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
-        if isinstance(mode, InnerProductMode):
-            return mode
-        if isinstance(mode, str):
-            return InnerProductMode(mode.lower())
-        raise ValueError(f"Unsupported inner product mode: {mode}")
-
-    def compute(self, function, sparse=False, symmetric=True, mode=None):
-        mode = self._normalize_mode(mode)
-        if mode is InnerProductMode.NUMERICAL:
-            return self._compute_numerical(function, sparse=sparse, symmetric=symmetric)
-        if mode is InnerProductMode.SYMBOLIC:
-            raise ValueError(
-                "Symbolic inner products have moved to pspace.symbolic.CoordinateSystem. "
-                "Instantiate the symbolic mirror to evaluate this mode."
-            )
-        if mode is InnerProductMode.ANALYTIC:
-            raise ValueError(
-                "Analytic inner products have moved to pspace.analytic.CoordinateSystem. "
-                "Instantiate the analytic mirror to evaluate this mode."
-            )
-        raise ValueError(f"Unhandled inner product mode {mode}")
+    def compute(
+        self,
+        function,
+        sparse: bool = False,
+        symmetric: bool = True,
+        mode: InnerProductMode = InnerProductMode.NUMERICAL,
+    ):
+        if mode is not InnerProductMode.NUMERICAL:
+            raise ValueError(f"Numeric matrix inner products only support NUMERICAL mode, got {mode!r}")
+        return self._compute_numerical(function, sparse=sparse, symmetric=symmetric)
 
     def _compute_numerical(self, function, sparse=False, symmetric=True):
         cs = self.cs
@@ -410,7 +370,7 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         poly: PolyFunction,
         *,
         sparse: bool | None = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> OrthoPolyFunction:
         coeffs = self.decompose(
@@ -643,11 +603,13 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     # Decomposition
     #-----------------------------------------------------------------#
 
-    def decompose(self,
-                  function : PolyFunction,
-                  sparse   : bool = True,
-                  mode: InnerProductMode | str | None = None,
-                  analytic : bool = False):
+    def decompose(
+        self,
+        function: PolyFunction,
+        sparse: bool = True,
+        mode: InnerProductMode | None = None,
+        analytic: bool = False,
+    ):
         """
         Coefficients c_k = <f, ψ_k> in Y-frame.
 
@@ -664,20 +626,23 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         -------
         coeffs : dict {basis_id: coefficient}
         """
-        if mode is None:
-            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
-
         if sparse is None:
             sparse = self._sparsity_enabled
 
-        normalized = self._vector_inner_product._normalize_mode(mode)
-        if normalized is InnerProductMode.SYMBOLIC:
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if mode is InnerProductMode.SYMBOLIC:
             symbolic_cs = self._symbolic_coordinate_system()
-            return symbolic_cs.decompose(function, sparse=sparse, mode=normalized)
-        if normalized is InnerProductMode.ANALYTIC:
+            return symbolic_cs.decompose(function, sparse=sparse, mode=mode)
+        if mode is InnerProductMode.ANALYTIC:
             analytic_cs = self._analytic_coordinate_system()
-            return analytic_cs.decompose(function, sparse=sparse, mode=normalized)
-        return self._vector_inner_product.compute(function, sparse=sparse, mode=normalized)
+            return analytic_cs.decompose(function, sparse=sparse, mode=mode)
+        return self._vector_inner_product.compute(function, sparse=sparse, mode=mode)
 
     def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
         """
@@ -783,12 +748,14 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
             mask |= self.monomial_sparsity_mask(f_deg, symmetric=symmetric)
         return mask
 
-    def decompose_matrix(self,
-                         function,
-                         sparse=False,
-                         symmetric=True,
-                         mode: InnerProductMode | str | None = None,
-                         analytic: bool = False):
+    def decompose_matrix(
+        self,
+        function,
+        sparse=False,
+        symmetric=True,
+        mode: InnerProductMode | None = None,
+        analytic: bool = False,
+    ):
         """
         Assemble A_ij = ∫ psi_i(y) psi_j(y) f(y) w(y) dy (dense).
 
@@ -800,7 +767,7 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
             If True, restrict to admissible pairs.
         symmetric : bool
             If True, compute only i ≤ j and mirror.
-        mode : InnerProductMode | str | None
+        mode : InnerProductMode | None
             Backend for the integral evaluation.
         analytic : bool
             Backwards-compatible flag mapping to symbolic integration when True.
@@ -810,31 +777,32 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         A : np.ndarray
             Dense (nbasis x nbasis) coefficient matrix.
         """
-        if mode is None:
-            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
-
         if sparse is None:
             sparse = self._sparsity_enabled
 
-        normalized = self._matrix_inner_product._normalize_mode(mode)
-        if normalized is InnerProductMode.SYMBOLIC:
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC if analytic else InnerProductMode.NUMERICAL
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
+        if mode is InnerProductMode.SYMBOLIC:
             symbolic_cs = self._symbolic_coordinate_system()
             return symbolic_cs.decompose_matrix(
                 function,
                 sparse=sparse,
                 symmetric=symmetric,
-                mode=normalized,
+                mode=mode,
             )
-        if normalized is InnerProductMode.ANALYTIC:
+        if mode is InnerProductMode.ANALYTIC:
             analytic_cs = self._analytic_coordinate_system()
             return analytic_cs.decompose_matrix(
                 function,
                 sparse=sparse,
                 symmetric=symmetric,
-                mode=normalized,
+                mode=mode,
             )
         return self._matrix_inner_product.compute(
-            function, sparse=sparse, symmetric=symmetric, mode=normalized
+            function, sparse=sparse, symmetric=symmetric, mode=mode
         )
 
     def decompose_matrix_analytic(self, function, sparse: bool | None = None, symmetric=True):
@@ -1123,7 +1091,7 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
 
     def reconstruct(self, function: PolyFunction,
                     sparse: bool | None = None,
-                    mode: InnerProductMode | str | None = None,
+                    mode: InnerProductMode | None = None,
                     analytic: bool = False,
                     precondition: bool = True,
                     method: str = "cholesky",
@@ -1209,7 +1177,7 @@ class StateEquation:
     #-------------------------------------------------------------#
 
     def assemble(self,
-                 mode: InnerProductMode | str | None = None,
+                 mode: InnerProductMode | None = None,
                  analytic: bool = False,
                  sparse: bool | None = None,
                  symmetric=True):

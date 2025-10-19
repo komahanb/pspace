@@ -229,29 +229,21 @@ class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     # ------------------------------------------------------------------ #
     # Decomposition / Reconstruction                                    #
     # ------------------------------------------------------------------ #
-    @staticmethod
-    def _normalize_mode(mode: InnerProductMode | str | bool | None) -> InnerProductMode:
-        if mode is None:
-            return InnerProductMode.SYMBOLIC
-        if isinstance(mode, bool):
-            return InnerProductMode.SYMBOLIC if mode else InnerProductMode.NUMERICAL
-        if isinstance(mode, InnerProductMode):
-            return mode
-        if isinstance(mode, str):
-            return InnerProductMode(mode.lower())
-        raise ValueError(f"Unsupported inner product mode for symbolic backend: {mode!r}")
-
     def decompose(
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> dict[int, float]:
         if sparse is None:
             sparse = self.numeric.sparsity_enabled
 
-        mode = self._normalize_mode(mode)
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
         if mode is not InnerProductMode.SYMBOLIC:
             raise ValueError("Symbolic CoordinateSystem supports only symbolic decomposition.")
         return self._vector_symbolic.compute(function, sparse=sparse)
@@ -261,13 +253,17 @@ class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         if sparse is None:
             sparse = self.numeric.sparsity_enabled
 
-        mode = self._normalize_mode(mode)
+        if mode is None:
+            mode = InnerProductMode.SYMBOLIC
+        elif not isinstance(mode, InnerProductMode):
+            raise TypeError(f"mode must be an InnerProductMode or None, got {mode!r}")
+
         if mode is not InnerProductMode.SYMBOLIC:
             raise ValueError("Symbolic CoordinateSystem supports only symbolic decomposition.")
         return self._matrix_symbolic.compute(function, sparse=sparse, symmetric=symmetric)
@@ -281,7 +277,7 @@ class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",

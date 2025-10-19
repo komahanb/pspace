@@ -116,7 +116,7 @@ class SparsityCoordinateSystem(CoordinateSystem):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> Dict[int, Any]:
         return self._base.decompose(
@@ -131,7 +131,7 @@ class SparsityCoordinateSystem(CoordinateSystem):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         return self._base.decompose_matrix(
@@ -153,7 +153,7 @@ class SparsityCoordinateSystem(CoordinateSystem):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",

@@ -132,7 +132,7 @@ class ProfileCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ):
         return self._record_time(
@@ -145,7 +145,7 @@ class ProfileCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         function: PolyFunction,
         sparse: bool | None = None,
         symmetric: bool = True,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
     ) -> np.ndarray:
         return self._record_time(
@@ -166,7 +166,7 @@ class ProfileCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self,
         function: PolyFunction,
         sparse: bool | None = None,
-        mode: InnerProductMode | str | None = None,
+        mode: InnerProductMode | None = None,
         analytic: bool = False,
         precondition: bool = True,
         method: str = "cholesky",
