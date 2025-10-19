@@ -9,7 +9,7 @@ import argparse
 import time
 from importlib import import_module
 
-from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.profile import ProfileCoordinateSystem
 from pspace.parallel import (
     ParallelCoordinateSystem,

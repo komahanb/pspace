@@ -7,11 +7,8 @@ import numpy as np
 import sympy as sp
 
 from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-from .numeric import (
-    NumericCoordinateSystem,
-    InnerProductMode,
-    PolyFunction,
-)
+from .core import InnerProductMode, PolyFunction
+from .numeric import NumericCoordinateSystem
 
 
 class SymbolicVectorInnerProductOperator:

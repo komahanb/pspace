@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import numpy as np
 from collections import Counter
+from pspace.core import BasisFunctionType, PolyFunction, InnerProductMode
 from pspace.numeric import (
-    CoordinateFactory, NumericCoordinateSystem,
-    BasisFunctionType, PolyFunction, StateEquation, InnerProductMode
+    CoordinateFactory,
+    NumericCoordinateSystem,
+    StateEquation,
 )
 
 #---------------------------------------------------------------------#

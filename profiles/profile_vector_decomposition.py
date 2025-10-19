@@ -13,7 +13,7 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
-from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.profile import ProfileCoordinateSystem
 
 try:  # pragma: no cover - runtime convenience

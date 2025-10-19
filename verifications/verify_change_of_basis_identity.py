@@ -1,11 +1,8 @@
 import numpy as np
 from collections import Counter
 
-from pspace.numeric import (
-    CoordinateFactory,
-    BasisFunctionType,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory
 from pspace.verify import NumericCoordinateSystem
 
 """

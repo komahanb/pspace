@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Sequence
 
 from .interface import CoordinateSystem, OrthonormalCoordinateSystemMixin
-from .numeric import NumericCoordinateSystem, OrthoPolyFunction, PolyFunction, InnerProductMode
+from .core import OrthoPolyFunction, PolyFunction, InnerProductMode
+from .numeric import NumericCoordinateSystem
 
 
 class OrthonormalCoordinateSystem(OrthonormalCoordinateSystemMixin, CoordinateSystem):

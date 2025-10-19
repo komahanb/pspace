@@ -16,9 +16,8 @@ import numpy as np
 from timeit import default_timer as timer
 
 from pspace.validate import NumericCoordinateSystem
-from pspace.numeric import (CoordinateFactory,
-                         BasisFunctionType,
-                         PolyFunction)
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory
 
 from verifications.verify_utils import (random_coordinate,
                                         random_polynomial,

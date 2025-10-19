@@ -5,7 +5,7 @@ from typing import Any, Dict, Mapping, Sequence
 
 import numpy as np
 
-from .numeric import InnerProductMode, PolyFunction
+from .core import InnerProductMode, PolyFunction
 from .interface import CoordinateSystem
 
 
@@ -229,4 +229,3 @@ class SparsityCoordinateSystem(CoordinateSystem):
         return self._base.check_decomposition_matrix_numerical_symbolic(function, tol=tol, verbose=verbose)
 
 CoordinateSystem = SparsityCoordinateSystem
-

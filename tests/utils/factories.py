@@ -3,13 +3,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Iterable
 
-from pspace.numeric import (
-    BasisFunctionType,
-    CoordinateFactory,
-    NumericCoordinateSystem,
-    PolyFunction,
-    OrthoPolyFunction,
-)
+from pspace.core import BasisFunctionType, PolyFunction, OrthoPolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 from pspace.orthonormal import OrthonormalCoordinateSystem
 
 

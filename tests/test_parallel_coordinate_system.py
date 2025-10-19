@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
-from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.core import BasisFunctionType, InnerProductMode
 from pspace.parallel import (
     ParallelCoordinateSystem,
     ParallelPolicy,

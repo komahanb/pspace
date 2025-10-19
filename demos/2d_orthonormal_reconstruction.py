@@ -3,10 +3,8 @@ import matplotlib.pyplot as plt
 
 from collections import Counter
 
-from pspace.numeric import (
-    CoordinateFactory, NumericCoordinateSystem,
-    BasisFunctionType, PolyFunction
-)
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 
 
 # --- Your snippet ---

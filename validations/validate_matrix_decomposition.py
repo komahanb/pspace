@@ -15,9 +15,8 @@ import numpy as np
 
 # core imports
 from pspace.validate import NumericCoordinateSystem
-from pspace.numeric import (CoordinateFactory,
-                         BasisFunctionType,
-                         PolyFunction)
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory
 
 # local imports
 from verifications.verify_utils import (random_coordinate,

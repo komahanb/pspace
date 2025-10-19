@@ -12,12 +12,8 @@ from numpy.polynomial import legendre as leg
 from numpy.polynomial import laguerre as lag
 
 from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-from .numeric import (
-    NumericCoordinateSystem,
-    DistributionType,
-    InnerProductMode,
-    PolyFunction,
-)
+from .core import DistributionType, InnerProductMode, PolyFunction
+from .numeric import NumericCoordinateSystem
 
 
 # --------------------------------------------------------------------------- #

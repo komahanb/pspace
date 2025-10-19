@@ -35,6 +35,14 @@ def get_libraries():
     return lib_dirs, libs
 
 # Optional re-exports for convenience
+from .core import (  # noqa: E402
+    CoordinateType,
+    DistributionType,
+    BasisFunctionType,
+    InnerProductMode,
+    PolyFunction,
+    OrthoPolyFunction,
+)
 from .numeric import NumericCoordinateSystem  # noqa: E402
 from .symbolic import SymbolicCoordinateSystem  # noqa: E402
 from .analytic import AnalyticCoordinateSystem  # noqa: E402

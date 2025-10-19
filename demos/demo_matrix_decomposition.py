@@ -4,7 +4,8 @@ import numpy as np
 from collections import Counter
 
 # Import from your package
-from pspace.numeric import CoordinateFactory, NumericCoordinateSystem, BasisFunctionType, PolyFunction
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 
 def main():
 

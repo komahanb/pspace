@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
 
 import numpy as np
 
-from .numeric import InnerProductMode, PolyFunction
+from .core import InnerProductMode, PolyFunction
 from .interface import CoordinateSystem
 
 

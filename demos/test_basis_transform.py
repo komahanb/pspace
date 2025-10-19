@@ -9,7 +9,8 @@ pytest.skip("Basis transform demo requires manual validation; skipping in automa
 def test_polyfunction_roundtrip():
     import numpy as np
     from collections import Counter
-    from pspace.numeric import CoordinateFactory, NumericCoordinateSystem, BasisFunctionType, InnerProductMode, PolyFunction
+    from pspace.core import BasisFunctionType, InnerProductMode, PolyFunction
+    from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 
     cf = CoordinateFactory()
     cs = NumericCoordinateSystem(BasisFunctionType.TENSOR_DEGREE)

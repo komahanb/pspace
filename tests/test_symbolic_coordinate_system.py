@@ -9,12 +9,8 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from pspace.numeric import (
-    BasisFunctionType,
-    NumericCoordinateSystem,
-    InnerProductMode,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, InnerProductMode, PolyFunction
+from pspace.numeric import NumericCoordinateSystem
 from pspace.symbolic import SymbolicCoordinateSystem
 from tests.utils.factories import build_numeric_coordinate_system
 

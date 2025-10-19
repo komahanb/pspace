@@ -7,8 +7,7 @@ from typing import Any, Dict, Iterable, Mapping, Sequence, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .numeric import InnerProductMode, PolyFunction
-    from .numeric import OrthoPolyFunction  # type: ignore
+    from .core import InnerProductMode, PolyFunction, OrthoPolyFunction
 
 
 class CoordinateSystem(ABC):

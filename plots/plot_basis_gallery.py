@@ -9,7 +9,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pspace.numeric import BasisFunctionType, DistributionType
+from pspace.core import BasisFunctionType, DistributionType
 from pspace.plotter import NumericCoordinateSystem as PlottingNumericCoordinateSystem
 
 try:  # pragma: no cover

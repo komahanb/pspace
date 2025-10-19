@@ -6,10 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from pspace.numeric import (
-    BasisFunctionType,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, PolyFunction
 from pspace.orthonormal import OrthonormalCoordinateSystem
 from tests.utils.factories import (
     build_numeric_coordinate_system,

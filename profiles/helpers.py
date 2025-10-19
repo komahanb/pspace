@@ -5,12 +5,8 @@ from typing import List, Tuple
 
 import numpy as np
 
-from pspace.numeric import (
-    BasisFunctionType,
-    CoordinateFactory,
-    NumericCoordinateSystem,
-    PolyFunction,
-)
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 
 
 def rng(seed: int) -> np.random.Generator:

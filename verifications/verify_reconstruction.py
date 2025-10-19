@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import numpy as np
 from collections import Counter
-from pspace.numeric import (
-    CoordinateFactory, NumericCoordinateSystem,
-    BasisFunctionType, PolyFunction, OrthoPolyFunction,
-)
+from pspace.core import BasisFunctionType, PolyFunction, OrthoPolyFunction
+from pspace.numeric import CoordinateFactory, NumericCoordinateSystem
 
 # Coordinate system: 1D Normal (ψ = Hermite), φ = monomials
 cf = CoordinateFactory()

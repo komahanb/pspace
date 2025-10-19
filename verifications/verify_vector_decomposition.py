@@ -15,7 +15,7 @@ import pytest
 import random
 
 # core module imports
-from pspace.numeric import BasisFunctionType, InnerProductMode
+from pspace.core import BasisFunctionType, InnerProductMode
 
 # local module imports
 from .verify_utils import (

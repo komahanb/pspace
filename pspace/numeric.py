@@ -19,7 +19,6 @@ import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 
 from collections import Counter
-from enum        import Enum
 from itertools   import product
 
 #---------------------------------------------------------------------#
@@ -44,204 +43,17 @@ from .stochastic_utils import (
     safe_zero_degrees,
 )
 from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-
 from .orthogonal_polynomials import unit_hermite
 from .orthogonal_polynomials import unit_legendre
 from .orthogonal_polynomials import unit_laguerre
-
-#=====================================================================#
-# Enums
-#=====================================================================#
-
-class CoordinateType(Enum):
-    """
-    DOMAIN TYPES
-    """
-    PROBABILISTIC = 1
-    SPATIAL       = 2
-    TEMPORAL      = 3
-
-
-class DistributionType(Enum):
-    """
-    GEOMETRY: DENSITY DISTRIBUTION
-    """
-    NORMAL      = 0
-    UNIFORM     = 1
-    EXPONENTIAL = 2
-    POISSON     = 3
-    BINORMAL    = 4
-
-
-class BasisFunctionType(Enum):
-    """
-    VECTOR-SPACE CONSTRUCTION METHODS
-    """
-    TENSOR_DEGREE   = 0
-    TOTAL_DEGREE    = 1
-    ADAPTIVE_DEGREE = 2
-
-
-class InnerProductMode(Enum):
-    """
-    Available evaluation backends for inner products.
-    """
-    NUMERICAL = "numerical"
-    SYMBOLIC  = "symbolic"
-    ANALYTIC  = "analytic"
-
-class PolyFunction:
-    def __init__(self, terms, coordinates=None):
-        """
-        terms : list of (coeff, Counter) pairs
-        Example:
-            [
-              (3, Counter()),              # constant
-              (3, Counter({0:1})),         # 3*y0
-              (3, Counter({0:2, 1:1}))     # 3*y0^2 * y1
-            ]
-        """
-        self._terms = []
-        self._degrees = []          # list of Counters
-        self._max_degrees = Counter()
-        self._coords = coordinates
-
-        for t in terms:
-            if isinstance(t, tuple) and isinstance(t[1], Counter):
-                coeff, degs = t
-                self._terms.append((coeff, degs))
-                self._degrees.append(degs)
-                for k, v in degs.items():
-                    self._max_degrees[k] = max(self._max_degrees.get(k, 0), v)
-            else:
-                raise TypeError(f"Invalid term format: {t!r}")
-
-    @property
-    def terms(self):
-        return self._terms
-
-    @property
-    def degrees(self):
-        """List[Counter]: degree structure per monomial"""
-        return self._degrees
-
-    @property
-    def max_degrees(self):
-        """Counter: max degree per axis (union of monomials)"""
-        return self._max_degrees
-
-    @property
-    def coordinates(self):
-        return self._coords
-
-    def bind_coordinates(self, coordinates):
-        """Attach coordinate dictionary used for phi_y evaluation."""
-        self._coords = coordinates
-
-    def __call__(self, Y):
-        total = 0.0
-        coords = self._coords
-        for coeff, degs in self._terms:
-            mon = coeff
-            for cid, d in degs.items():
-                yval = Y[cid]
-                if coords is not None and cid in coords:
-                    mon *= coords[cid].phi_y(yval, d)
-                else:
-                    mon *= yval ** d
-            total += mon
-        return total
-
-    def __repr__(self):
-        return f"PolyFunction({self._terms})"
-
-class OrthoPolyFunction:
-    """
-    Polynomial function expressed in orthonormal basis (Legendre, Hermite, etc.)
-    Works with CoordinateSystem and its Coordinate axes.
-    """
-
-    def __init__(self, terms, coordinates):
-        """
-        Parameters
-        ----------
-        terms : list[(coeff: float, degs: Counter)]
-            List of terms (basis coefficient, degree counter per coordinate).
-        coordinates : dict[int, Coordinate]
-            Dictionary of coordinate objects {cid: Coordinate}.
-        """
-        self._terms = terms
-        self._coords = coordinates
-
-    def __call__(self, Y):
-        """
-        Evaluate function at point Y in computational coordinates.
-        Y : dict {cid: float}
-        """
-        total = 0.0
-        for coeff, degs in self._terms:
-            term_val = coeff
-            for cid, d in degs.items():
-                # Evaluate orthogonal basis polynomial at Y[cid]
-                term_val *= self._coords[cid].psi_y(Y[cid], d)
-            total += term_val
-        return total
-
-    def toPolyFunction(self):
-        """
-        Expand OrthoPolyFunction into monomial PolyFunction
-        using change-of-basis matrices (currently supports Legendre).
-        """
-        from numpy.polynomial import legendre as npleg
-        from numpy.polynomial import polynomial as nppoly
-        from .numeric import PolyFunction  # adjust import if needed
-
-        monomial_terms = {}
-
-        for coeff, degs in self._terms:
-            # Build tensor product expansion for each coordinate
-            expansions = []
-            for cid, d in degs.items():
-                coord = self._coords[cid]
-                if coord.distribution.name == "UNIFORM":  # Legendre basis
-                    Pn = npleg.Legendre.basis(d)
-                    poly = Pn.convert(kind=nppoly.Polynomial)
-                    coeffs_power = np.array(poly.coef, dtype=float)
-                    s = math.sqrt((2 * d + 1) / 2.0)  # orthonormal scale
-                    coeffs_power *= s
-                    expansions.append((cid, coeffs_power))
-                else:
-                    raise NotImplementedError("toPolyFunction only supports Legendre for now")
-
-            # Recursive tensor product accumulation
-            def recurse(idx, running_coeff, running_degs):
-                if idx == len(expansions):
-                    key = tuple(sorted(running_degs.items()))
-                    monomial_terms[key] = monomial_terms.get(key, 0.0) + coeff * running_coeff
-                    return
-                cid, coeffs_power = expansions[idx]
-                for p, val in enumerate(coeffs_power):
-                    if abs(val) < 1e-15:
-                        continue
-                    recurse(idx+1, running_coeff*val,
-                            running_degs + Counter({cid: p}))
-
-            recurse(0, 1.0, Counter())
-
-        # Build PolyFunction terms
-        terms = [
-            (float(val), Counter(dict(key)))
-            for key, val in monomial_terms.items()
-            if abs(val) > 1e-15
-        ]
-        return PolyFunction(terms, coordinates=self._coords)
-
-    def coeffs(self):
-        """Return coefficients directly."""
-        return {tuple(sorted(d.items())): c for c, d in self._terms}
-
-    def __repr__(self):
-        return f"OrthoPolyFunction({len(self._terms)} terms, basis=orthonormal)"
+from .core import (
+    CoordinateType,
+    DistributionType,
+    BasisFunctionType,
+    InnerProductMode,
+    PolyFunction,
+    OrthoPolyFunction,
+)
 
 
 class VectorInnerProductOperator:

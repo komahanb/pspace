@@ -7,7 +7,8 @@ from collections import Counter
 
 import sympy as sp
 
-from pspace.numeric import CoordinateFactory, BasisFunctionType, PolyFunction
+from pspace.core import BasisFunctionType, PolyFunction
+from pspace.numeric import CoordinateFactory
 from pspace.verify import NumericCoordinateSystem
 
 #=====================================================================#

@@ -6,11 +6,8 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-from .numeric import (
-    NumericCoordinateSystem,
-    InnerProductMode,
-    PolyFunction,
-)
+from .core import InnerProductMode, PolyFunction
+from .numeric import NumericCoordinateSystem
 
 
 class VerifyCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
