@@ -35,4 +35,4 @@ python:
 	python setup.py build_ext --inplace
 
 clean:
-	rm *.so *.o
+	rm -f *.so *.o

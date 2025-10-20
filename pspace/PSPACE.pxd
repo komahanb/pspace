@@ -1,3 +1,4 @@
+# cython: language_level=3
 # Typdefs required for either real or complex mode
 include "PspaceTypedefs.pxi"
 

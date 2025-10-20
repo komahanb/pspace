@@ -1,26 +1,13 @@
 # distutils: language = c++
+# cython: language_level=3
+from libc.stddef cimport size_t
+
 from PSPACE cimport *
 
-# Import numpy
-cimport numpy as np
 import numpy as np
-np.import_array()
-
-# Import C methods for python
-from cpython cimport PyObject, Py_INCREF, Py_DECREF
+numpy = np
 
 include "PspaceDefs.pxi"
-
-cdef inplace_array_1d(int nptype, int dim1, void *data_ptr):
-    '''
-    Return a numpy version of the array
-    '''
-    cdef int size = 1
-    cdef np.npy_intp shape[1]
-    cdef np.ndarray ndarray
-    shape[0] = <np.npy_intp>dim1
-    ndarray = np.PyArray_SimpleNewFromData(size, shape, nptype, data_ptr)
-    return ndarray
 
 cdef class PyAbstractParameter:
     def __cinit__(self):
@@ -52,18 +39,24 @@ cdef class PyParameterContainer:
         return
 
     def addParameter(self, PyAbstractParameter param):
-        self.ptr.addParameter(param.ptr)
-        return
+       self.ptr.addParameter(param.ptr)
+       return
 
-    def basis(self, int k, np.ndarray[scalar, ndim=1, mode='c'] z):
-        return self.ptr.basis(k, <scalar*> z.data)
+    def basis(self, int k, object z):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
+        z_arr, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(z, dtype=_np.double)
+        cdef size_t z_ptr = z_ptr_obj
+        return self.ptr.basis(k, <scalar*> z_ptr)
     def quadrature(self, int q):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
         nparams = self.getNumParameters()
-        cdef np.ndarray yq = None
-        cdef np.ndarray zq = None
-        yq = np.zeros(nparams, dtype=dtype)
-        zq = np.zeros(nparams, dtype=dtype)
-        wq = self.ptr.quadrature(q, <scalar*> zq.data, <scalar*> yq.data)
+        zq, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=_np.double), dtype=_np.double)
+        yq, y_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=_np.double), dtype=_np.double)
+        cdef size_t z_ptr = z_ptr_obj
+        cdef size_t y_ptr = y_ptr_obj
+        wq = self.ptr.quadrature(q, <scalar*> z_ptr, <scalar*> y_ptr)
         return wq, zq, yq
 
     def getNumBasisTerms(self):
@@ -74,24 +67,36 @@ cdef class PyParameterContainer:
         return self.ptr.getNumQuadraturePoints()
 
     def getBasisParamDeg(self, int k):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
         nparams = self.getNumParameters()
-        cdef np.ndarray degs = None
-        degs = np.zeros(nparams, dtype=np.intc)
-        self.ptr.getBasisParamDeg(k, <int*> degs.data)
+        degs, deg_ptr_obj = _ptr_utils.ensure_int_pointer(_np.zeros(nparams, dtype=_np.intc), dtype=_np.intc)
+        cdef size_t deg_ptr = deg_ptr_obj
+        self.ptr.getBasisParamDeg(k, <int*> deg_ptr)
         return degs
     def getBasisParamMaxDeg(self):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
         nparams = self.getNumParameters()
-        cdef np.ndarray pmax = None
-        pmax = np.zeros(nparams, dtype=np.intc)
-        self.ptr.getBasisParamMaxDeg(<int*> pmax.data)
+        pmax, pmax_ptr_obj = _ptr_utils.ensure_int_pointer(_np.zeros(nparams, dtype=_np.intc), dtype=_np.intc)
+        cdef size_t pmax_ptr = pmax_ptr_obj
+        self.ptr.getBasisParamMaxDeg(<int*> pmax_ptr)
         return pmax
 
     def initialize(self):
         self.ptr.initialize()
         return
-    def initializeBasis(self, np.ndarray[int, ndim=1, mode='c'] pmax):
-        self.ptr.initializeBasis(<int*> pmax.data)
+    def initializeBasis(self, object pmax):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
+        pmax_arr, pmax_ptr_obj = _ptr_utils.ensure_int_pointer(pmax, dtype=_np.intc)
+        cdef size_t pmax_ptr = pmax_ptr_obj
+        self.ptr.initializeBasis(<int*> pmax_ptr)
         return
-    def initializeQuadrature(self, np.ndarray[int, ndim=1, mode='c'] nqpts):
-        self.ptr.initializeQuadrature(<int*> nqpts.data)
+    def initializeQuadrature(self, object nqpts):
+        import numpy as _np
+        import pspace._pointer_utils as _ptr_utils
+        nqpts_arr, nq_ptr_obj = _ptr_utils.ensure_int_pointer(nqpts, dtype=_np.intc)
+        cdef size_t nq_ptr = nq_ptr_obj
+        self.ptr.initializeQuadrature(<int*> nq_ptr)
         return
