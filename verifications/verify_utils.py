@@ -61,7 +61,7 @@ def random_coordinate(cf, cid, max_deg=4):
 
 def random_polynomial(cs, max_deg=2, max_cross_terms=3):
     coords = list(cs.coordinates.keys())
-    symbols = {cid: cs.coordinates[cid].symbol for cid in coords}
+    symbols = {cid: sp.Symbol(cs.coordinates[cid].name) for cid in coords}
     fdeg = Counter()
     terms = []
 

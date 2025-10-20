@@ -10,6 +10,71 @@ if TYPE_CHECKING:  # pragma: no cover
     from .core import InnerProductMode, PolyFunction, OrthoPolyFunction
 
 
+class CoordinateAxis(ABC):
+    def __init__(
+        self,
+        *,
+        coord_id: int,
+        name: str,
+        coord_type: Any,
+        distribution: Any,
+        degree: int,
+        dist_coords: Mapping[str, Any],
+    ) -> None:
+        self.id           = coord_id
+        self.name         = name
+        self.type         = coord_type
+        self.distribution = distribution
+        self.degree       = degree
+        self.dist_coords  = dict(dist_coords)
+
+    @abstractmethod
+    def domain(self) -> tuple[Any, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def physical_to_standard(self, yscalar: Any) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def quadrature_to_physical(self, xscalar: Any) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def standard_to_physical(self, zscalar: Any) -> Any:
+        raise NotImplementedError
+
+    def quadrature_to_standard(self, xscalar: Any) -> Any:
+        return self.physical_to_standard(self.quadrature_to_physical(xscalar))
+
+    @abstractmethod
+    def psi_z(self, zscalar: Any, degree: int) -> Any:
+        raise NotImplementedError
+
+    def psi_y(self, yscalar: Any, degree: int) -> Any:
+        zscalar = self.physical_to_standard(yscalar)
+        return self.psi_z(zscalar, degree)
+
+    def psi_x(self, xscalar: Any, degree: int) -> Any:
+        zscalar = self.quadrature_to_standard(xscalar)
+        return self.psi_z(zscalar, degree)
+
+    def phi_y(self, yscalar: Any, degree: int) -> Any:
+        return yscalar ** degree
+
+    def weight(self) -> Any:
+        raise NotImplementedError
+
+    def gaussian_quadrature(self, degree: int):
+        raise NotImplementedError
+
+    def getQuadraturePointsWeights(self, degree: int):
+        x, w = self.gaussian_quadrature(degree)
+        z    = self.quadrature_to_standard(x)
+        y    = np.array([self.standard_to_physical(zz) for zz in z])
+        return {"yq": y, "zq": z, "wq": w}
+
+
 class CoordinateSystem(ABC):
     """Abstract interface mirrored by numeric, plotting, and profiling layers."""
 
@@ -22,7 +87,7 @@ class CoordinateSystem(ABC):
     # ------------------------------------------------------------------
     @property
     @abstractmethod
-    def coordinates(self) -> Mapping[int, Any]:
+    def coordinates(self) -> Mapping[int, "CoordinateAxis"]:
         raise NotImplementedError
 
     @property

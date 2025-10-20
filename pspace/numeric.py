@@ -14,12 +14,12 @@
 
 # External modules
 import math
-import sympy as sp
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 
 from collections import Counter
 from itertools   import product
+from typing      import Any
 
 #---------------------------------------------------------------------#
 # Helpers
@@ -36,16 +36,12 @@ def _to_python_scalar(value):
 
 # Local modules
 from .stochastic_utils import (
-    minnum_quadrature_points,
     generate_basis_tensor_degree,
     generate_basis_total_degree,
     sum_degrees,
     safe_zero_degrees,
 )
-from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-from .orthogonal_polynomials import unit_hermite
-from .orthogonal_polynomials import unit_legendre
-from .orthogonal_polynomials import unit_laguerre
+from .interface import CoordinateAxis, CoordinateSystem, MonomialCoordinateSystemMixin
 from .core import (
     CoordinateType,
     DistributionType,
@@ -53,6 +49,10 @@ from .core import (
     InnerProductMode,
     PolyFunction,
     OrthoPolyFunction,
+)
+from .distributions import (
+    NUMERIC_DISTRIBUTIONS,
+    NumericDistribution,
 )
 
 
@@ -118,185 +118,46 @@ class MatrixInnerProductOperator:
 
         return A
 
-#=====================================================================#
-# Coordinate Base Class
-#=====================================================================#
+class NumericCoordinateAxis(CoordinateAxis):
+    def __init__(
+        self,
+        *,
+        coord_id: int,
+        name: str,
+        coord_type: Any,
+        degree: int,
+        distribution: NumericDistribution,
+    ) -> None:
+        super().__init__(
+            coord_id     = coord_id,
+            name         = name,
+            coord_type   = coord_type,
+            distribution = distribution.kind,
+            degree       = degree,
+            dist_coords  = distribution.params,
+        )
+        self._distribution = distribution
 
-class Coordinate(object):
-    def __init__(self, coord_data):
-        self.id           = coord_data['coord_id']
-        self.name         = coord_data['coord_name']
-        self.type         = coord_data['coord_type']
-        self.distribution = coord_data['dist_type']
-        self.degree       = coord_data['monomial_degree']
-        self.symbol       = sp.Symbol(self.name)   # y
-        self.rho          = None                   # rho(y)
-
-    def __str__(self):
-        return str(self.__class__.__name__) + " " + str(self.__dict__) + "\n"
+    def domain(self):
+        return self._distribution.domain()
 
     def weight(self):
-        """Return symbolic weight function ρ(y) attached to this coordinate."""
-        return self.rho
-
-    #-----------------------------------------------------------------#
-    # VARIABLE TRANSFORMATIONS
-    #-----------------------------------------------------------------#
+        return self._distribution.weight()
 
     def physical_to_standard(self, yscalar):
-        """Map physical y -> standard z"""
-        raise NotImplementedError
+        return self._distribution.physical_to_standard(yscalar)
 
     def quadrature_to_physical(self, xscalar):
-        """Map quadrature x -> physical y"""
-        raise NotImplementedError
+        return self._distribution.quadrature_to_physical(xscalar)
 
     def standard_to_physical(self, zscalar):
-        """Map standard z -> physical y"""
-        raise NotImplementedError
-
-    def quadrature_to_standard(self, xscalar):
-        """Map quadrature x -> standard z"""
-        return self.physical_to_standard(self.quadrature_to_physical(xscalar))
-
-    #-----------------------------------------------------------------#
-    # BASIS EVALUATIONS
-    #-----------------------------------------------------------------#
+        return self._distribution.standard_to_physical(zscalar)
 
     def psi_z(self, zscalar, degree):
-        raise NotImplementedError
-
-    def psi_y(self, yscalar, degree):
-        z = self.physical_to_standard(yscalar)
-        return self.psi_z(z, degree)
-
-    def psi_x(self, xscalar, degree):
-        z = self.quadrature_to_standard(xscalar)
-        return self.psi_z(z, degree)
-
-    def phi_y(self, yscalar, degree):
-        """Evaluate monomial basis φ_d(y) = y^d in physical coordinates."""
-        return yscalar ** degree
-
-    #-----------------------------------------------------------------#
-    # subclass provides a 1D Gauss rule for the needed degree
-    #-----------------------------------------------------------------#
+        return self._distribution.psi_z(zscalar, degree)
 
     def gaussian_quadrature(self, degree):
-        """
-        Return native Gauss rule (x_nodes, w_nodes) sized for `degree`.
-        Subclass chooses the correct family and normalization.
-        """
-        raise NotImplementedError
-
-    def getQuadraturePointsWeights(self, degree):
-        x, w = self.gaussian_quadrature(degree)
-        z    = self.quadrature_to_standard(x)
-        y    = np.array([self.standard_to_physical(zz) for zz in z])
-        return {'yq': y, 'zq': z, 'wq': w}
-
-#=====================================================================#
-# Coordinate Implementations
-#=====================================================================#
-
-class NormalCoordinate(Coordinate):
-    def __init__(self, pdata):
-        super().__init__(pdata)
-        mu               = sp.sympify(pdata['dist_coords']['mu'])
-        sigma            = sp.sympify(pdata['dist_coords']['sigma'])
-        self.dist_coords = {'mu': mu, 'sigma': sigma}
-        self.rho         = sp.exp(-(self.symbol - mu)**2 / (2*sigma**2)) / (sp.sqrt(2*sp.pi) * sigma)
-
-    def domain(self):
-        return -sp.oo, sp.oo
-
-    def physical_to_standard(self, yscalar):
-        """Map physical y -> standard z"""
-        mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
-        return (yscalar - mu) / sigma
-
-    def quadrature_to_physical(self, xscalar):
-        """Map quadrature x -> physical y"""
-        mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
-        return mu + sigma * math.sqrt(2.0) * xscalar
-
-    def standard_to_physical(self, zscalar):
-        """Map standard z -> physical y"""
-        mu, sigma = self.dist_coords['mu'], self.dist_coords['sigma']
-        return mu + sigma * zscalar
-
-    def psi_z(self, z, degree):
-        return unit_hermite(z, degree)
-
-    def gaussian_quadrature(self, degree):
-        npts = minnum_quadrature_points(degree)
-        x, w = np.polynomial.hermite.hermgauss(npts)
-        w    = w / math.sqrt(math.pi)
-        return x, w
-
-class UniformCoordinate(Coordinate):
-    def __init__(self, pdata):
-        super().__init__(pdata)
-        a                = sp.sympify(pdata['dist_coords']['a'])
-        b                = sp.sympify(pdata['dist_coords']['b'])
-        self.dist_coords = {'a': a, 'b': b}
-        self.rho         = sp.Rational(1, b - a)
-
-    def domain(self):
-        return self.dist_coords['a'], self.dist_coords['b']
-
-    def physical_to_standard(self, yscalar):
-        a, b = self.dist_coords['a'], self.dist_coords['b']
-        return (yscalar - a) / (b - a)
-
-    def quadrature_to_physical(self, xscalar):
-        a, b = self.dist_coords['a'], self.dist_coords['b']
-        return (b - a) * xscalar + a
-
-    def standard_to_physical(self, zscalar):
-        a, b = self.dist_coords['a'], self.dist_coords['b']
-        return (b - a) * zscalar + a
-
-    def psi_z(self, z, degree):
-        return unit_legendre(z, degree)
-
-    def gaussian_quadrature(self, degree):
-        npts       = minnum_quadrature_points(degree)
-        xi, w      = np.polynomial.legendre.leggauss(npts)  # on [-1,1]
-        x_shifted  = 0.5 * (xi + 1.0)                       # map to [0,1]
-        w_shifted  = 0.5 * w
-        return x_shifted, w_shifted
-
-class ExponentialCoordinate(Coordinate):
-    def __init__(self, pdata):
-        super().__init__(pdata)
-        mu               = sp.sympify(pdata['dist_coords']['mu'])
-        beta             = sp.sympify(pdata['dist_coords']['beta'])
-        self.dist_coords = {'mu': mu, 'beta': beta}
-        self.rho         = sp.exp(-(self.symbol - mu)/beta) / beta
-
-    def domain(self):
-        return self.dist_coords['mu'], sp.oo
-
-    def physical_to_standard(self, yscalar):
-        mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
-        return (yscalar - mu) / beta
-
-    def quadrature_to_physical(self, xscalar):
-        mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
-        return mu + beta * xscalar
-
-    def standard_to_physical(self, zscalar):
-        mu, beta = self.dist_coords['mu'], self.dist_coords['beta']
-        return mu + beta * zscalar
-
-    def psi_z(self, z, degree):
-        return unit_laguerre(z, degree)
-
-    def gaussian_quadrature(self, degree):
-        npts = minnum_quadrature_points(degree)
-        x, w = np.polynomial.laguerre.laggauss(npts)
-        return x, w
+        return self._distribution.gaussian_quadrature(degree)
 
 #=====================================================================#
 # Coordinate Factory
@@ -313,34 +174,37 @@ class CoordinateFactory:
         return pid
 
     def createNormalCoordinate(self, coord_id, coord_name, dist_coords, max_monomial_dof):
-        pdata                    = {}
-        pdata['coord_id']        = coord_id
-        pdata['coord_name']      = coord_name
-        pdata['coord_type']      = CoordinateType.PROBABILISTIC
-        pdata['dist_type']       = DistributionType.NORMAL
-        pdata['dist_coords']     = dist_coords
-        pdata['monomial_degree'] = max_monomial_dof
-        return NormalCoordinate(pdata)
+        distribution_cls = NUMERIC_DISTRIBUTIONS[DistributionType.NORMAL]
+        distribution     = distribution_cls(**dist_coords)
+        return NumericCoordinateAxis(
+            coord_id     = coord_id,
+            name         = coord_name,
+            coord_type   = CoordinateType.PROBABILISTIC,
+            degree       = max_monomial_dof,
+            distribution = distribution,
+        )
 
     def createUniformCoordinate(self, coord_id, coord_name, dist_coords, max_monomial_dof):
-        pdata                    = {}
-        pdata['coord_id']        = coord_id
-        pdata['coord_name']      = coord_name
-        pdata['coord_type']      = CoordinateType.PROBABILISTIC
-        pdata['dist_type']       = DistributionType.UNIFORM
-        pdata['dist_coords']     = dist_coords
-        pdata['monomial_degree'] = max_monomial_dof
-        return UniformCoordinate(pdata)
+        distribution_cls = NUMERIC_DISTRIBUTIONS[DistributionType.UNIFORM]
+        distribution     = distribution_cls(**dist_coords)
+        return NumericCoordinateAxis(
+            coord_id     = coord_id,
+            name         = coord_name,
+            coord_type   = CoordinateType.PROBABILISTIC,
+            degree       = max_monomial_dof,
+            distribution = distribution,
+        )
 
     def createExponentialCoordinate(self, coord_id, coord_name, dist_coords, max_monomial_dof):
-        pdata                    = {}
-        pdata['coord_id']        = coord_id
-        pdata['coord_name']      = coord_name
-        pdata['coord_type']      = CoordinateType.PROBABILISTIC
-        pdata['dist_type']       = DistributionType.EXPONENTIAL
-        pdata['dist_coords']     = dist_coords
-        pdata['monomial_degree'] = max_monomial_dof
-        return ExponentialCoordinate(pdata)
+        distribution_cls = NUMERIC_DISTRIBUTIONS[DistributionType.EXPONENTIAL]
+        distribution     = distribution_cls(**dist_coords)
+        return NumericCoordinateAxis(
+            coord_id     = coord_id,
+            name         = coord_name,
+            coord_type   = CoordinateType.PROBABILISTIC,
+            degree       = max_monomial_dof,
+            distribution = distribution,
+        )
 
 #=====================================================================#
 # Coordinate System
@@ -453,6 +317,8 @@ class NumericCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         return {cid: coord.degree for cid, coord in self.coordinates.items()}
 
     def addCoordinateAxis(self, coordinate):
+        if not isinstance(coordinate, CoordinateAxis):
+            raise TypeError("coordinate must implement CoordinateAxis")
         self._coordinates[coordinate.id] = coordinate
 
     def initialize(self):

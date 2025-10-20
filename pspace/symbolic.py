@@ -6,9 +6,53 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import sympy as sp
 
-from .interface import CoordinateSystem, MonomialCoordinateSystemMixin
-from .core import InnerProductMode, PolyFunction
+from .interface import CoordinateAxis, CoordinateSystem, MonomialCoordinateSystemMixin
+from .core import DistributionType, InnerProductMode, PolyFunction
 from .numeric import NumericCoordinateSystem
+from .distributions import SYMBOLIC_DISTRIBUTIONS, SymbolicDistribution
+
+
+class SymbolicCoordinateAxis(CoordinateAxis):
+    def __init__(
+        self,
+        *,
+        coord_id: int,
+        name: str,
+        coord_type: Any,
+        degree: int,
+        distribution: SymbolicDistribution,
+    ) -> None:
+        super().__init__(
+            coord_id     = coord_id,
+            name         = name,
+            coord_type   = coord_type,
+            distribution = distribution.kind,
+            degree       = degree,
+            dist_coords  = distribution.params,
+        )
+        self._distribution = distribution
+        self.symbol        = sp.Symbol(self.name)
+
+    def domain(self):
+        return self._distribution.domain()
+
+    def weight(self) -> sp.Expr:
+        return self._distribution.weight(self.symbol)
+
+    def physical_to_standard(self, yscalar: Any) -> sp.Expr:
+        return self._distribution.physical_to_standard(sp.sympify(yscalar))
+
+    def quadrature_to_physical(self, xscalar: Any) -> sp.Expr:
+        return self._distribution.quadrature_to_physical(sp.sympify(xscalar))
+
+    def standard_to_physical(self, zscalar: Any) -> sp.Expr:
+        return self._distribution.standard_to_physical(sp.sympify(zscalar))
+
+    def psi_z(self, zscalar: Any, degree: int) -> sp.Expr:
+        return self._distribution.psi_z(sp.sympify(zscalar), degree)
+
+    def gaussian_quadrature(self, degree: int):
+        return self._distribution.gaussian_quadrature(degree)
 
 
 class SymbolicVectorInnerProductOperator:
@@ -23,7 +67,9 @@ class SymbolicVectorInnerProductOperator:
         function.bind_coordinates(coords)
 
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
-        weight = sp.Mul(*[coord.weight() for coord in coords.values()]) if coords else sp.Integer(1)
+        weight  = sp.Integer(1)
+        for cid, coord in coords.items():
+            weight *= coord.weight()
         f_expr = function(symbols)
 
         if sparse:
@@ -36,13 +82,13 @@ class SymbolicVectorInnerProductOperator:
             psi_expr = sp.Integer(1)
             for cid, deg in cs.basis[k].items():
                 coord = coords[cid]
-                z = coord.physical_to_standard(coord.symbol)
+                z = coord.physical_to_standard(symbols[cid])
                 psi_expr *= coord.psi_z(z, deg)
 
             integrand = sp.simplify(f_expr * psi_expr * weight)
             val = integrand
             for cid, coord in coords.items():
-                y = coord.symbol
+                y = symbols[cid]
                 a, b = coord.domain()
                 val = sp.integrate(val, (y, a, b))
 
@@ -85,7 +131,9 @@ class SymbolicMatrixInnerProductOperator:
                 mask = {(i, j) for i in cs.basis for j in cs.basis}
 
         symbols = {cid: coord.symbol for cid, coord in coords.items()}
-        weight = sp.Mul(*[coord.weight() for coord in coords.values()]) if coords else sp.Integer(1)
+        weight  = sp.Integer(1)
+        for cid, coord in coords.items():
+            weight *= coord.weight()
 
         f_expr = sp.Integer(0)
         for coeff, degs in function.terms:
@@ -101,7 +149,7 @@ class SymbolicMatrixInnerProductOperator:
                 expr = sp.Integer(1)
                 for cid, deg in cs.basis[index].items():
                     coord = coords[cid]
-                    z = coord.physical_to_standard(coord.symbol)
+                    z     = coord.physical_to_standard(symbols[cid])
                     expr *= coord.psi_z(z, deg)
                 psi_cache[index] = sp.simplify(expr)
             return psi_cache[index]
@@ -110,7 +158,7 @@ class SymbolicMatrixInnerProductOperator:
             integrand = sp.simplify(f_expr * psi_expr(i) * psi_expr(j) * weight)
             val = integrand
             for cid, coord in coords.items():
-                y = coord.symbol
+                y = symbols[cid]
                 a, b = coord.domain()
                 val = sp.integrate(val, (y, a, b))
 
@@ -138,13 +186,25 @@ class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
         self.numeric = numeric or NumericCoordinateSystem(basis_type, verbose=verbose)
         self._vector_symbolic = SymbolicVectorInnerProductOperator(self)
         self._matrix_symbolic = SymbolicMatrixInnerProductOperator(self)
+        self._symbolic_coords: dict[int, SymbolicCoordinateAxis] | None = None
 
     # ------------------------------------------------------------------ #
     # Shared state                                                       #
     # ------------------------------------------------------------------ #
     @property
     def coordinates(self):
-        return self.numeric.coordinates
+        if self._symbolic_coords is None or len(self._symbolic_coords) != len(self.numeric.coordinates):
+            self._symbolic_coords = {
+                cid: SymbolicCoordinateAxis(
+                    coord_id     = coord.id,
+                    name         = coord.name,
+                    coord_type   = coord.type,
+                    degree       = coord.degree,
+                    distribution = SYMBOLIC_DISTRIBUTIONS[coord.distribution](**coord.dist_coords),
+                )
+                for cid, coord in self.numeric.coordinates.items()
+            }
+        return self._symbolic_coords
 
     @property
     def basis(self):
@@ -162,9 +222,11 @@ class SymbolicCoordinateSystem(CoordinateSystem, MonomialCoordinateSystemMixin):
     # ------------------------------------------------------------------ #
     def addCoordinateAxis(self, coordinate: Any) -> None:
         self.numeric.addCoordinateAxis(coordinate)
+        self._symbolic_coords = None
 
     def initialize(self) -> None:
         self.numeric.initialize()
+        self._symbolic_coords = None
 
     def getNumBasisFunctions(self) -> int:
         return self.numeric.getNumBasisFunctions()
