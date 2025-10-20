@@ -1,250 +1,236 @@
+#=====================================================================#
+# File to test jacobian matrix sparsity patterns
+#=====================================================================#
+# Author : Komahan Boopathy (komahan.boopathy@gmail.com)
+#=====================================================================#
+
+# system/os modules
 import sys
+
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+import os
+outdir  = "tests/baseline"
+os.makedirs(outdir, exist_ok = True)
+
+# third party modules
 import numpy as np
 from collections import Counter
-from timeit import default_timer as timer
 
-from pspace.core import ParameterFactory, ParameterContainer
+# local modules
+from pspace.core import CoordinateFactory
+from pspace.core import CoordinateSystem, BasisFunctionType
+
 from pspace.plotter import plot_jacobian
 
-## def sparsity(a, b):
-##     """
-##     Nonzero entries occur when the parameterwise(variablewise) degree
-##     of function 'b' matches or exceeds the degree of the basis vector
-##     'a'.
-##     """
-##     akeys = a.keys()
-##     smap = {}
-##     for akey in akeys:
-##         if b[akey] - a[akey] <= 0:
-##             smap[akey] = True
-##         else:
-##             smap[akey] = False
-##     return smap
+def check_hermite_functions():
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, False)
+    cf = CoordinateFactory()
 
-def sparse(dmapi, dmapj, dmapf):
-    ## print ''
-    ## print ''
-    ## print 'map i ', dmapi
-    ## print 'map j ', dmapj
-    ## print 'map f ', dmapf
-    smap = {}
-    #print "keys", dmapi.keys()
-    for key in dmapi.keys():
-        #print 'key', key, "diff", abs(dmapi[key] - dmapj[key]), dmapf[key]
-        if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
-            smap[key] = True
-        else:
-            smap[key] = False    
-    return smap
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 3)
+    cs.addCoordinateAxis(y0)
 
-def getSymmetricNonZeroIndices(pc, dmapf):
-    nz = {}
-    N = pc.getNumStochasticBasisTerms()
-    for i in range(N):
-        dmapi = pc.basistermwise_parameter_degrees[i]        
-        for j in range(i,N):
-            dmapj = pc.basistermwise_parameter_degrees[j]
-            smap = sparse(dmapi, dmapj, dmapf)
-            if False not in smap.values():
-                dmap = Counter()
-                dmap.update(dmapi)
-                dmap.update(dmapj)
-                dmap.update(dmapf)
-                nqpts_map = pc.getNumQuadraturePointsFromDegree(dmap)
-                nz[(i,j)] = nqpts_map
-    return nz
+    cs.initialize()
 
-def getSparseJacobian(pc, f, dmapf):
-    nzs = getSymmetricNonZeroIndices(pc, dmapf)
-    N = pc.getNumStochasticBasisTerms()
-    A = np.zeros((N, N))
-    for index, nqpts in nzs.items():
-        pc.initializeQuadrature(nqpts)
-        pids = pc.getParameters().keys()
-        i = index[0]
-        j = index[1]
-        for q in pc.quadrature_map.keys():
-            val = w(q)*psiz(i,q)*psiz(j,q)*f(q)
-            A[i, j] += val
-            A[j, i] += val
-    return A
+    # decompose a vector to obtain coefficients
+    func = lambda q : (y(q,0)**4 * y(q,1)) + (y(q,0) * y(q,2)) + (y(q,2)**3)
 
-def getJacobian(f, dmapf):
-    """
-    """    
-    # Test getting ND quadrature points
-    N = pc.getNumStochasticBasisTerms()
-    A = np.zeros((N, N))
+    dfunc = lambda z: 1.0 + z[0]**2; fdegs  = Counter({0:3})
+    coeffs = cs.decompose(dfunc, fdegs)
+    print(coeffs)
 
-    for i in range(N):
-        dmapi = pc.basistermwise_parameter_degrees[i]
-        
-        for j in range(N):
-            dmapj = pc.basistermwise_parameter_degrees[j]
+if __name__ == "__main__":
+    # Build a coordinate system
+    cf = CoordinateFactory()
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
 
-            dmap = Counter()
-            dmap.update(dmapi)
-            dmap.update(dmapj)
-            dmap.update(dmapf)
-                        
-            # add up the degree of both participating functions psizi
-            # and psizj to determine the total degree of integrand
-            nqpts_map = pc.getNumQuadraturePointsFromDegree(dmap)
-            pc.initializeQuadrature(nqpts_map)
-            # print dmap, nqpts_map
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.83, sigma=1.513), 4)
+    y1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y1', dict(a=-2.197, b=0.538), 1)
 
-            # Loop quadrature points
-            pids = pc.getParameters().keys()
-            for q in pc.quadrature_map.keys():
-                A[i,j] += w(q)*psiz(i,q)*psiz(j,q)*f(q)
-    return A
+    cs.addCoordinateAxis(y0)
+    cs.addCoordinateAxis(y1)
 
-if __name__ == '__main__':
-    """    
-    """
-    start = timer()
-    
-    # Create "Parameter" using "Parameter Factory" object
-    pfactory = ParameterFactory()
-    c = pfactory.createNormalParameter('c', dict(mu=-4.0, sigma=0.50), 4)
-    k = pfactory.createExponentialParameter('k', dict(mu=6.0, beta=1.0), 5)
-    m = pfactory.createUniformParameter('m', dict(a=-5.0, b=4.0), 6)
-    d = pfactory.createUniformParameter('d', dict(a=-5.0, b=4.0), 3)
+    cs.initialize()
 
-    # Add "Parameter" into "ParameterContainer"
-    pc = ParameterContainer()
-    pc.addParameter(c)
-    pc.addParameter(k)
-    pc.addParameter(m)
-    pc.addParameter(d)
-    
-    pc.initialize()
+    # Function: f(y) = 1 + y0^2 + y1
+    dfunc = lambda y:  y[0]**2*y[1]**2 + y[0]*y[1]**2 + 2*y[1] + 1.0
+    fdegs = Counter({0:2, 1:2})
 
-    suffix = 'eee'
-    
-    # rename for readability
-    w    = lambda q    : pc.W(q)
-    psiz = lambda i, q : pc.evalOrthoNormalBasis(i,q)
+    ok, diffs = cs.check_decomposition_consistency(dfunc, fdegs, tol=1e-8, verbose=True)
 
-    def fy(q):
+    stop
+
+
+    # Build a simple 1D Gaussian coordinate system
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, verbose=False)
+    cf = CoordinateFactory()
+
+    #y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu=0.0, sigma=1.0), 4)
+    #y0 = cf.createExponentialCoordinate(cf.newCoordinateID(), 'y0', dict(mu = +6.0, beta = 1.0), 3)
+    y0 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y0', dict(a = -5.0, b = 4.0), 3)
+
+    cs.addCoordinateAxis(y0)
+    cs.initialize()
+
+    # f(y) = 1 + y^2  (degrees: up to 2 on axis 0)
+    dfunc = lambda Y: 1.0 - Y[0]**0
+    fdegs = Counter({0:0})
+    coeffs = cs.decompose(dfunc, fdegs)
+    print(coeffs) # coefficients in the Y-frame basis
+
+    import sympy as sp
+    coeffs = cs.decompose_analytic(dfunc, fdegs)
+    #print(coeffs) # coefficients in the Y-frame basis
+    #print(coeffs)
+    print({k: sp.simplify(v) for k, v in coeffs.items()})
+
+    nbasis = cs.getNumBasisFunctions()
+    A = np.zeros((nbasis, nbasis))
+    for ii in range(nbasis):
+        for jj in range(nbasis):
+            A[ii,jj] = cs.inner_product_basis(ii, jj) #, f_eval, f_deg)
+    print(A)
+
+    stop
+
+    check_hermite_functions()
+    stop
+
+    cs = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE, False)
+    cf = CoordinateFactory()
+
+    #y0 = cf.createNormalCoordinate(0, 'y0', dict(mu=0.0, sigma=1.0), max_monomial_dof=1)
+    #y1 = cf.createUniformCoordinate(1, 'y1', dict(a=-1, b=1),        max_monomial_dof=1)
+
+    y0 = cf.createNormalCoordinate(cf.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 0)
+    #y1 = cf.createExponentialCoordinate(cf.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 1)
+    #y2 = cf.createUniformCoordinate(cf.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 1)
+
+    cs.addCoordinateAxis(y0)
+    #cs.addCoordinateAxis(y1)
+    #cs.addCoordinateAxis(y2)
+
+    cs.initialize()
+
+    # decompose a vector to obtain coefficients
+    f = lambda z: z[0]
+    fdeg  = Counter({0:0})
+    coeffs = cs.decompose(f, f)
+    print(coeffs)
+
+    stop
+
+    # form the mass matrix <psi_i, psi_j>
+
+
+    print(A, np.linalg.eigvals(A))
+
+    # inner product of two basis entries with f
+    #val = cs.inner_product_basis(i_id=1, j_id=0, f_eval=f_eval, f_deg=f_deg)
+    #print(val)
+
+    stop
+
+    # Domain Definition(ADAPTIVE, FIXED={TENSOR, COMPLETE})
+    cfactory = CoordinateFactory()
+
+    # With adaptive enrichment we can keep the complexity (basis set
+    # size) tied to the intrinsic structure of the function to be
+    # decomposed in the probabilistic domain, not the worst-case
+    # degree cutoffs like 4, q5, 6
+
+    # Random coordinates
+    y0 = cfactory.createNormalCoordinate(cfactory.newCoordinateID(), 'y0', dict(mu = -4.0, sigma = 0.5), 3)
+    #y1 = cfactory.createExponentialCoordinate(cfactory.newCoordinateID(), 'y1', dict(mu = +6.0, beta = 1.0), 3)
+    #y2 = cfactory.createUniformCoordinate(cfactory.newCoordinateID(), 'y2', dict(a = -5.0, b = 4.0), 3)
+
+    print(y0)
+    #print(y1)
+    #print(y2)
+
+    # Deterministic coordinates (uniform distribution & monomial degree = 0)
+    # x1 = cfactory.createUniformCoordinate('x1', dict(a=-2.0, b=2.0), 0)     # space
+    # x2 = cfactory.createUniformCoordinate('x2', dict(a=-2.0, b=2.0), 0)
+    # x3 = cfactory.createUniformCoordinate('x3', dict(a=-2.0, b=2.0), 0)
+    # t  = cfactory.createUniformCoordinate('t',  dict(a=0.0, b=1.0), 0)      # time
+
+    # Add "Coordinate" into "CoordinateSystem: create Axes in the Domain
+    csystem = CoordinateSystem(BasisFunctionType.TENSOR_DEGREE)
+
+    csystem.addCoordinateAxis(y0)
+    #csystem.addCoordinateAxis(y1)
+    #csystem.addCoordinateAxis(y2)
+
+    csystem.initialize()
+
+    print(csystem)
+
+    for i in range(csystem.getNumBasisFunctions()):
+        print(csystem.evaluateBasis([0.0, 0.0, 0.0], csystem.basis[i]))
+
+    # check inner_product(psi_i, psi_j)
+    # check decompose(function)
+
+    stop
+
+    class Function:
+        def __init__(self, func, dmap, name):
+            self.func = func
+            self.name = name
+            self.dmap = dmap
+            return
+
+    # find a better way to do this
+    def y(q, degree):
         ymap = pc.Y(q)
-        paramids = ymap.keys()
-        ans = 1.0
-        for paramid in paramids:
-            ans = ans*ymap[paramid]
-        return ans
-    
-    def gy(q,pid):
-        ymap = pc.Y(q)
-        return ymap[pid]
+        return ymap[degree]
 
-    # Default map for number of quadrature points
+    def generate_baseline(F : Function):
+        A = pc.getJacobian(F.func, F.dmap)
+        np.save(os.path.join(outdir, f"matrix-full-assembly-{F.name}.npy"), A)
+        np.savetxt(os.path.join(outdir, f"matrix-full-assembly-{F.name}.dat"), A, fmt='%f', delimiter=' ')
+
+        A = pc.getSparseJacobian(F.func, F.dmap)
+        np.save(os.path.join(outdir, f"matrix-sparse-assembly-{F.name}.npy"), A)
+        np.savetxt(os.path.join(outdir, f"matrix-sparse-assembly-{F.name}.dat"), A, fmt='%f', delimiter=' ')
+
+
+    # identity: y0^0 * y1^0 * y2^0
+    func = lambda q : y(q,0) * y(q,1) * y(q,2)
     dmap = Counter()
+    dmap[0] = 0; dmap[1] = 0; dmap[2] = 0;
+    constant_function = Function(func, dmap, "identity")
+    generate_baseline(constant_function)
 
-    #  y_1^4
-    func = lambda q :  gy(q,1)*gy(q,1)*gy(q,1)*gy(q,1)
-    dmap[0] = 0; dmap[1] = 4; dmap[2] = 0
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
-    
-    # Nonzero constant
-    func = lambda q : 1.0
-    dmap[0] = 0 ;  dmap[1] = 0; dmap[2] = 0
-    #A = getJacobian(func, dmap)
-    A = getSparseJacobian(pc, func, dmap)
-    plot_jacobian(A, 'sparsity-identity-' + suffix + '.pdf')
 
-    # Linear in y_1
-    func = lambda q : gy(q,0)
-    dmap[0] = 1; dmap[1] = 0; dmap[2] = 0
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y1-' + suffix + '.pdf')
+    # identity: 2.0 * y0^0 * y1^0 * y2^0
+    func = lambda q : 2.0 * y(q,0) * y(q,1) * y(q,2)
+    dmap = Counter()
+    dmap[0] = 0; dmap[1] = 0; dmap[2] = 0;
+    constant_function = Function(func, dmap, "constant")
+    generate_baseline(constant_function)
 
-    # Linear in y_2
-    func = lambda q : gy(q,1)
-    dmap[0] = 0; dmap[1] = 1; dmap[2] = 0
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y2-' + suffix + '.pdf')
-
-    # Linear in y_3
-    func = lambda q : gy(q,2)
-    dmap[0] = 0; dmap[1] = 0; dmap[2] = 1
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y3-' + suffix + '.pdf')
-
-    # y_1 +  y_2 + y_3
-    func = lambda q : gy(q,0) + gy(q,1) + gy(q,2)
+    # linear : define: y0^1 + y1^1 + y2^1
+    dmap = Counter()
     dmap[0] = 1; dmap[1] = 1; dmap[2] = 1
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y1+y2+y3-' + suffix + '.pdf')
+    func = lambda q : y(q,0) + y(q,1) + y(q,2)
+    linear_function = Function(func, dmap, "linear")
+    generate_baseline(linear_function)
 
-    # y_1 *  y_2
-    func = lambda q : gy(q,0) * gy(q,1)
-    dmap[0] = 1; dmap[1] = 1; dmap[2] = 0
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y1y2-' + suffix + '.pdf')
+    # quadratic : define: y0^2 + y1^2 + y2^2
+    dmap = Counter()
+    dmap[0] = 2; dmap[1] = 2; dmap[2] = 2
+    func = lambda q : y(q,0)**2 + y(q,1)**2 + y(q,2)**2
+    quadratic_function = Function(func, dmap, "quadratic")
+    generate_baseline(quadratic_function)
 
-    # y_2 *  y_3
-    func = lambda q : gy(q,1) * gy(q,2)
-    dmap[0] = 0; dmap[1] = 1; dmap[2] = 1
-    #A = getJacobian(func, dmap)
-    A = getSparseJacobian(pc, func, dmap)
-    plot_jacobian(A, 'sparsity-y2y3-' + suffix + '.pdf')
+    # polynomial: y0^4 * y1 + y0 * y2 + y2^3
+    dmap = Counter()
+    dmap[0] = 4  # degree in y0
+    dmap[1] = 1  # degree in y1
+    dmap[2] = 3  # degree in y2
 
-    # y_1 *  y_3
-    func = lambda q : gy(q,0) * gy(q,2)
-    dmap[0] = 1; dmap[1] = 0; dmap[2] = 1
-    #A = getJacobian(func, dmap)
-    A = getSparseJacobian(pc, func, dmap)
-    plot_jacobian(A, 'sparsity-y1y3-' + suffix + '.pdf')
-
-    #  y_1^2
-    func = lambda q : gy(q,0)*gy(q,0)
-    dmap[0] = 2; dmap[1] = 0; dmap[2] = 0
-    #A = getJacobian(func, dmap)
-    A = getSparseJacobian(pc, func, dmap)
-    plot_jacobian(A, 'sparsity-y1^2-' + suffix + '.pdf')
-
-    #  y_2^2
-    func = lambda q : gy(q,1)*gy(q,1)
-    dmap[0] = 0; dmap[1] = 2; dmap[2] = 0
-    #A = getJacobian(func, dmap)
-    A = getSparseJacobian(pc, func, dmap)
-    plot_jacobian(A, 'sparsity-y2^2-' + suffix + '.pdf')
-
-    #  y_3^2
-    func = lambda q : gy(q,2)*gy(q,2)
-    dmap[0] = 0; dmap[1] = 0; dmap[2] = 2
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y3^2-' + suffix + '.pdf')
-
-    #  y_3^4
-    func = lambda q : gy(q,2)*gy(q,2)*gy(q,2) + gy(q,2)*gy(q,2)*gy(q,2)*gy(q,2)
-    dmap[0] = 0; dmap[1] = 0; dmap[2] = 4
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y3^4-' + suffix + '.pdf')
-        
-    # y_1 * y_2 * y_3*y_4
-    func = lambda q : gy(q,0) * gy(q,1) * gy(q,2) * gy(q,3)
-    dmap[0] = 1; dmap[1] = 1; dmap[2] = 1; dmap[3] = 1
-    print 'first'
-    A = getSparseJacobian(pc, func, dmap)
-    print 'second'
-    A = getSparseJacobian(pc, func, dmap)
-    print 'third'
-    A = getSparseJacobian(pc, func, dmap)
-    #A = getJacobian(func, dmap)
-    plot_jacobian(A, 'sparsity-y1y2y3y4-' + suffix + '.pdf')    
-    end = timer()
-    print "elapsed time:", end - start
+    func = lambda q : (y(q,0)**4 * y(q,1)) + (y(q,0) * y(q,2)) + (y(q,2)**3)
+    poly_function = Function(func, dmap, "quintic")
+    generate_baseline(poly_function)

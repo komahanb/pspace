@@ -1,113 +1,183 @@
-from __future__ import print_function
-
 import numpy as np
+
 from collections import Counter
+from itertools import product
+import math
 
-## def get_tensor_quadrature_index(k, param_nqpts_map):
-##     pidx = {}
-##     pids  = param_nqpts_map.keys()
-##     nqpts = param_nqpts_map.values()
+def sum_degrees(*counters):
+    """Per-axis sum of Counter degrees."""
+    out = Counter()
+    for c in counters:
+        if c is None:
+            continue
+        out.update(c)  # Counter adds per-key
+    return out
 
+def safe_zero_degrees(coord_ids):
+    """Counter with zeros for all coord ids."""
+    return Counter({cid: 0 for cid in coord_ids})
 
-##     if k < nqpt[0]:
-##         return [k,0,0]
-##     elif nqpt[0] - k:
-##         return [
-    
-##     for (pid,nqpt) in zip(pids,nqpts):
-##         print pid, nqpt
-##         if k < nqpt:mod(nqpt-k,k) 
-##         pidx[pid] = mod(
-        
-##     return 
+def generate_basis_adaptive(f_indices, m):
+    """Adaptive basis: closure of f's monomials under m-fold products."""
+    if m == 0:
+        return {(0,) * len(f_indices[0])}
+    combos = product(f_indices, repeat=m)
+    return {tuple(sum(idx[i] for idx in combo) for i in range(len(combo[0])))
+            for combo in combos}
 
-def sparse(dmapi, dmapj, dmapf):
-    smap = {}
-    for key in dmapi.keys():
-        if abs(dmapi[key] - dmapj[key]) <= dmapf[key]:
-            smap[key] = True
-        else:
-            smap[key] = False    
-    return smap
-
-def nqpts(pdeg):
+def minnum_quadrature_points(degree):
     """
     Return the number of quadrature points necessary to integrate the
     monomial of degree deg.
     """
-    return max(pdeg/2+1,1)  #1 + pdeg/2 #max(deg/2+1,1)
+    return math.ceil((degree+1)/2)
 
-def tensor_indices(phdmap):
+def generate_basis_tensor_degree(max_degree_params):
     """
-    Get basis functions indices based on tensor product
+    Construct a tensor-product index map for basis functions.
+
+    Parameters
+    ----------
+    max_degree_params : dict
+        Map {param_id : max_degree}, where max_degree is the highest
+        polynomial degree to include for that parameter.
+
+    Returns
+    -------
+    term_polynomial_degree : dict
+        Map {basis_index : Counter({pid: degree, ...})}.
+        Each entry gives the parameterwise polynomial degrees
+        for that basis term.
     """
-    pids  = phdmap.keys() # parameter IDs
-    pdegs = phdmap.values() # parameter degrees
+    pids  = list(max_degree_params.keys())    # parameter IDs
+    pdegs = list(max_degree_params.values())  # max degrees (exclusive upper bound)
 
-    # Exclude deterministic terms
-    total_tensor_basis_terms = np.prod(pdegs)
-    num_vars = len(pdegs)
+    total_tensor_basis_terms = int(np.prod(pdegs))
 
-    # Initialize map with empty values corresponding to each key
-    idx = {}
-    for key in range(total_tensor_basis_terms):
-        idx[key] = []
+    basis = {}
+    k = 0
+    for degrees in product(*[range(d+1) for d in pdegs]):
+        basis[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
+        k += 1
 
-    # Add actual values into the map
-    if num_vars == 1:
-        ctr = 0
-        for k0 in range(pdegs[0]):
-            idx[k0].append(Counter({pids[0]:k0})) # add one element tuple to map
-            ctr += 1
-    elif num_vars == 2:
-        ctr = 0
-        for k0 in range(pdegs[0]):
-            for k1 in range(pdegs[1]):
-                idx[k0+k1].append(Counter({pids[0]:k0,
-                                           pids[1]:k1})) # add two element tuple to map
-                ctr += 1
-    elif num_vars == 3:
-        ctr = 0
-        for k0 in range(pdegs[0]):
-            for k1 in range(pdegs[1]):
-                for k2 in range(pdegs[2]):
-                    idx[k0+k1+k2].append(Counter({pids[0]:k0,
-                                                  pids[1]:k1,
-                                                  pids[2]:k2})) # add three element tuple to map
-                    ctr += 1
-    elif num_vars == 4:
-        ctr = 0
-        for k0 in range(pdegs[0]):
-            for k1 in range(pdegs[1]):
-                for k2 in range(pdegs[2]):
-                    for k3 in range(pdegs[3]):
-                        idx[k0+k1+k2+k3].append(Counter({pids[0]:k0,
-                                                         pids[1]:k1,
-                                                         pids[2]:k2,
-                                                         pids[3]:k3})) # add four element tuple to map
-                        ctr += 1 
-    elif num_vars == 5:
-        ctr = 0
-        for k0 in range(pdegs[0]):
-            for k1 in range(pdegs[1]):
-                for k2 in range(pdegs[2]):
-                    for k3 in range(pdegs[3]):
-                        for k4 in range(pdegs[4]):
-                            idx[k0+k1+k2+k3+k4].append(Counter({pids[0]:k0,
-                                                                pids[1]:k1,
-                                                                pids[2]:k2,
-                                                                pids[3]:k3,
-                                                                pids[4]:k4})) # add five element tuple to map
-                            ctr += 1
-    else:
-        print('fix implementation for more elements in tuple')
-        raise
+    return basis
 
-    # Make a flat list
-    flat_list = [item for sublist in idx.values() for item in sublist]
+def generate_basis_total_degree(max_degree_params):
+    """
+    Construct a total-degree index map for basis functions.
 
-    # Convert to map
-    term_polynomial_degree = {}
-    for k in range(total_tensor_basis_terms):
-        term_polynomial_degree[k] = flat_list[k]
-    return term_polynomial_degree
+    Parameters
+    ----------
+    max_degree_params : dict
+        Map {param_id : max_degree}, where max_degree is the highest
+        polynomial degree allowed *per dimension*.
+
+    Returns
+    -------
+    basis : dict
+        Map {basis_index : Counter({pid: degree, ...})}.
+        Each entry gives the parameterwise polynomial degrees
+        for that basis term, with sum(degrees) <= max(total_degrees).
+    """
+    pids  = list(max_degree_params.keys())
+    pdegs = list(max_degree_params.values())
+
+    max_total_degree = max(pdegs)
+
+    basis = {}
+    k = 0
+    for degrees in product(*[range(d+1) for d in pdegs]):
+        if sum(degrees) <= max_total_degree:
+            basis[k] = Counter({pid: deg for pid, deg in zip(pids, degrees)})
+            k += 1
+
+    return basis
+
+def sum_degrees_union_vector(f_degrees, psi_k: Counter) -> Counter:
+    """
+    Compute required quadrature degree for product f(y)*ψ_k(y).
+
+    Parameters
+    ----------
+    f_degrees : Counter or list[Counter]
+        Degree structures of f. Each Counter is {axis: degree}.
+        Can be a single Counter (max degrees) or list of monomial degrees.
+    psi_k : Counter
+        Degree structure of basis function ψ_k.
+
+    Returns
+    -------
+    Counter
+        Max degree needed per axis to exactly integrate f * ψ_k.
+
+    Notes
+    -----
+    - For each axis d, the required degree is:
+          deg(d) = max over monomials [ f_deg(d) + psi_k(d) ]
+    - Ensures enough quadrature order for vector decomposition.
+
+    Example
+    -------
+    >>> f_degrees = [Counter({0:2, 1:1})]   # y0^2 * y1
+    >>> psi_k = Counter({1:2})              # y1^2
+    >>> sum_degrees_union_vector(f_degrees, psi_k)
+    Counter({0: 2, 1: 3})   # product ~ y0^2 * y1^3
+    """
+    degs = Counter()
+
+    # Normalize input
+    if isinstance(f_degrees, Counter):
+        f_degrees = [f_degrees]
+
+    for f_deg in f_degrees:
+        axes = set(f_deg) | set(psi_k)
+        for a in axes:
+            total = f_deg.get(a, 0) + psi_k.get(a, 0)
+            degs[a] = max(degs.get(a, 0), total)
+
+    return degs
+
+def sum_degrees_union_matrix(f_degrees, psi_i: Counter, psi_j: Counter) -> Counter:
+    """
+    Compute required quadrature degree for product f(y)*ψ_i(y)*ψ_j(y).
+
+    Parameters
+    ----------
+    f_degrees : Counter or list[Counter]
+        Degree structures of f. Each Counter is {axis: degree}.
+        Can be a single Counter (max degrees) or list of monomial degrees.
+    psi_i, psi_j : Counter
+        Degree structures of basis functions ψ_i and ψ_j.
+
+    Returns
+    -------
+    Counter
+        Max degree needed per axis to exactly integrate f * ψ_i * ψ_j.
+
+    Notes
+    -----
+    - For each axis d, the required degree is:
+          deg(d) = max over monomials [ f_deg(d) + psi_i(d) + psi_j(d) ]
+    - Ensures enough quadrature order for multivariate products.
+
+    Example
+    -------
+    >>> f_degrees = [Counter({0:2, 1:1})]   # y0^2 * y1
+    >>> psi_i = Counter({0:1})              # y0
+    >>> psi_j = Counter({1:2})              # y1^2
+    >>> sum_degrees_union(f_degrees, psi_i, psi_j)
+    Counter({0: 3, 1: 3})   # product ~ y0^3 * y1^3
+    """
+    degs = Counter()
+
+    # Normalize input
+    if isinstance(f_degrees, Counter):
+        f_degrees = [f_degrees]
+
+    for f_deg in f_degrees:
+        axes = set(f_deg) | set(psi_i) | set(psi_j)
+        for a in axes:
+            total = f_deg.get(a, 0) + psi_i.get(a, 0) + psi_j.get(a, 0)
+            degs[a] = max(degs.get(a, 0), total)
+
+    return degs
