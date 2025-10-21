@@ -2,7 +2,7 @@
 # Typdefs required for either real or complex mode
 from libcpp.complex cimport complex
 
-DEF USE_COMPLEX = False
+include "_config.pxi"
 
 IF USE_COMPLEX:
     ctypedef complex[double] scalar

@@ -1,15 +1,31 @@
 # distutils: language = c++
 # cython: language_level=3
 from libc.stddef cimport size_t
+from libcpp.complex cimport complex
+
+cdef extern from "<complex>" namespace "std":
+    double real(complex[double] z)
+    double imag(complex[double] z)
+
+from cpython.complex cimport PyComplex_FromDoubles
 
 from pspace.PSPACE cimport *
 
 import numpy as np
 numpy = np
 
-DEF USE_COMPLEX = False
+include "_config.pxi"
 
 cdef object PSPACE_NPY_SCALAR
+
+IF USE_COMPLEX:
+    cdef inline object _scalar_to_python(scalar value):
+        cdef double _real = real(value)
+        cdef double _imag = imag(value)
+        return PyComplex_FromDoubles(_real, _imag)
+ELSE:
+    cdef inline object _scalar_to_python(double value):
+        return value
 
 if USE_COMPLEX:
     PSPACE_NPY_SCALAR = np.complexfloating
@@ -21,7 +37,8 @@ cdef class PyAbstractParameter:
         self.ptr = NULL
         return
     def basis(self, scalar z, int d):
-        return self.ptr.basis(z,d)
+        cdef scalar result = self.ptr.basis(z,d)
+        return _scalar_to_python(result)
 
 cdef class PyParameterFactory:
     def __cinit__(self):
@@ -55,7 +72,8 @@ cdef class PyParameterContainer:
         dtype_local = _np.complex128 if USE_COMPLEX else _np.double
         z_arr, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(z, dtype=dtype_local)
         cdef size_t z_ptr = z_ptr_obj
-        return self.ptr.basis(k, <scalar*> z_ptr)
+        cdef scalar result = self.ptr.basis(k, <scalar*> z_ptr)
+        return _scalar_to_python(result)
     def quadrature(self, int q, bint with_weight=False):
         import numpy as _np
         import pspace._pointer_utils as _ptr_utils
@@ -65,9 +83,9 @@ cdef class PyParameterContainer:
         yq, y_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=dtype_local), dtype=dtype_local)
         cdef size_t z_ptr = z_ptr_obj
         cdef size_t y_ptr = y_ptr_obj
-        wq = self.ptr.quadrature(q, <scalar*> z_ptr, <scalar*> y_ptr)
+        cdef scalar wq = self.ptr.quadrature(q, <scalar*> z_ptr, <scalar*> y_ptr)
         if with_weight:
-            return wq, zq, yq
+            return _scalar_to_python(wq), zq, yq
         return zq, yq
 
     def getNumBasisTerms(self):

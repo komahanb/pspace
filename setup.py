@@ -35,12 +35,18 @@ use_complex = (
     or any("PSPACE_USE_COMPLEX" in arg for arg in sys.argv)
 )
 
+print(f"Building pspace.PSPACE (USE_COMPLEX={'on' if use_complex else 'off'})")
+
+config_path = os.path.join(os.path.dirname(__file__), "pspace", "_config.pxi")
+with open(config_path, "w", encoding="utf-8") as cfg:
+    cfg.write(f"DEF USE_COMPLEX = {1 if use_complex else 0}\n")
+
 define_macros = []
 if use_complex:
     define_macros.append(('USE_COMPLEX', None))
 
 compiler_directives = {"embedsignature": True, "binding": True}
-compile_time_env = {"USE_COMPLEX": use_complex}
+compile_time_env = {}
 
 exts = []
 for mod in ['PSPACE']:
@@ -59,4 +65,5 @@ setup(name='pspace',
       ext_modules=cythonize(exts,
                             include_path=inc_dirs,
                             compiler_directives=compiler_directives,
-                            compile_time_env=compile_time_env))
+                            compile_time_env=compile_time_env,
+                            force=True))
