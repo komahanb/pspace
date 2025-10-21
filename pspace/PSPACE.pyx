@@ -2,7 +2,7 @@
 # cython: language_level=3
 from libc.stddef cimport size_t
 
-from PSPACE cimport *
+from pspace.PSPACE cimport *
 
 import numpy as np
 numpy = np
@@ -56,7 +56,7 @@ cdef class PyParameterContainer:
         z_arr, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(z, dtype=dtype_local)
         cdef size_t z_ptr = z_ptr_obj
         return self.ptr.basis(k, <scalar*> z_ptr)
-    def quadrature(self, int q):
+    def quadrature(self, int q, bint with_weight=False):
         import numpy as _np
         import pspace._pointer_utils as _ptr_utils
         nparams = self.getNumParameters()
@@ -66,7 +66,9 @@ cdef class PyParameterContainer:
         cdef size_t z_ptr = z_ptr_obj
         cdef size_t y_ptr = y_ptr_obj
         wq = self.ptr.quadrature(q, <scalar*> z_ptr, <scalar*> y_ptr)
-        return wq, zq, yq
+        if with_weight:
+            return wq, zq, yq
+        return zq, yq
 
     def getNumBasisTerms(self):
         return self.ptr.getNumBasisTerms()
