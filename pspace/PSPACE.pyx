@@ -7,7 +7,14 @@ from PSPACE cimport *
 import numpy as np
 numpy = np
 
-include "PspaceDefs.pxi"
+DEF USE_COMPLEX = False
+
+cdef object PSPACE_NPY_SCALAR
+
+if USE_COMPLEX:
+    PSPACE_NPY_SCALAR = np.complexfloating
+else:
+    PSPACE_NPY_SCALAR = np.floating
 
 cdef class PyAbstractParameter:
     def __cinit__(self):
@@ -45,15 +52,17 @@ cdef class PyParameterContainer:
     def basis(self, int k, object z):
         import numpy as _np
         import pspace._pointer_utils as _ptr_utils
-        z_arr, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(z, dtype=_np.double)
+        dtype_local = _np.complex128 if USE_COMPLEX else _np.double
+        z_arr, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(z, dtype=dtype_local)
         cdef size_t z_ptr = z_ptr_obj
         return self.ptr.basis(k, <scalar*> z_ptr)
     def quadrature(self, int q):
         import numpy as _np
         import pspace._pointer_utils as _ptr_utils
         nparams = self.getNumParameters()
-        zq, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=_np.double), dtype=_np.double)
-        yq, y_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=_np.double), dtype=_np.double)
+        dtype_local = _np.complex128 if USE_COMPLEX else _np.double
+        zq, z_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=dtype_local), dtype=dtype_local)
+        yq, y_ptr_obj = _ptr_utils.ensure_scalar_pointer(_np.zeros(nparams, dtype=dtype_local), dtype=dtype_local)
         cdef size_t z_ptr = z_ptr_obj
         cdef size_t y_ptr = y_ptr_obj
         wq = self.ptr.quadrature(q, <scalar*> z_ptr, <scalar*> y_ptr)

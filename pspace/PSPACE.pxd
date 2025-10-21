@@ -1,6 +1,13 @@
 # cython: language_level=3
 # Typdefs required for either real or complex mode
-include "PspaceTypedefs.pxi"
+from libcpp.complex cimport complex
+
+DEF USE_COMPLEX = False
+
+IF USE_COMPLEX:
+    ctypedef complex[double] scalar
+ELSE:
+    ctypedef double scalar
 
 cdef extern from "AbstractParameter.h":
     cdef cppclass AbstractParameter:

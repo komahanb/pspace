@@ -1,38 +1,51 @@
-CFLAGS = -O3 -fPIC -I../include #-DUSE_COMPLEX #Wall -fPIC -g 
+CXX            := mpicxx
+BUILD          ?= release
+USE_COMPLEX    ?= 0
 
-default:
-	mpicxx ${CFLAGS} -funroll-loops -c ArrayList.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c OrthogonalPolynomials.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c GaussianQuadrature.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c AbstractParameter.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c NormalParameter.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c UniformParameter.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c ExponentialParameter.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c ParameterFactory.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c BasisHelper.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c QuadratureHelper.cpp
-	mpicxx ${CFLAGS} -funroll-loops -c ParameterContainer.cpp
+SOURCES := \
+	ArrayList.cpp \
+	OrthogonalPolynomials.cpp \
+	GaussianQuadrature.cpp \
+	AbstractParameter.cpp \
+	NormalParameter.cpp \
+	UniformParameter.cpp \
+	ExponentialParameter.cpp \
+	ParameterFactory.cpp \
+	BasisHelper.cpp \
+	QuadratureHelper.cpp \
+	ParameterContainer.cpp
 
-	# Create dynamic library
-	ar rcs libpspace.a  ArrayList.o OrthogonalPolynomials.o \
-	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
-	ExponentialParameter.o ParameterFactory.o \
-	BasisHelper.o QuadratureHelper.o \
-	ParameterContainer.o 
+OBJECTS := $(SOURCES:.cpp=.o)
 
-	# Create shared object
-	mpicxx -shared -Wall -fPIC -O3 -funroll-loops \
-	ArrayList.o OrthogonalPolynomials.o \
-	GaussianQuadrature.o AbstractParameter.o NormalParameter.o UniformParameter.o \
-	ExponentialParameter.o ParameterFactory.o \
-	BasisHelper.o QuadratureHelper.o \
-	ParameterContainer.o -o libpspace.so
+BASE_FLAGS := -fPIC -I../include -funroll-loops
 
-	# Create executable
-	mpicxx -I. -L. ${CFLAGS} main.cpp -o a.out -lpspace
+ifeq ($(BUILD),debug)
+OPT_FLAGS := -O0 -g
+else
+OPT_FLAGS := -O3
+endif
 
-python:
-	python setup.py build_ext --inplace
+CXXFLAGS := $(BASE_FLAGS) $(OPT_FLAGS)
+
+ifeq ($(USE_COMPLEX),1)
+CXXFLAGS += -DUSE_COMPLEX
+endif
+
+.PHONY: default clean
+
+default: libpspace.so libpspace.a a.out
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+libpspace.a: $(OBJECTS)
+	ar rcs $@ $^
+
+libpspace.so: $(OBJECTS)
+	$(CXX) -shared $(CXXFLAGS) $^ -o $@
+
+a.out: libpspace.a main.cpp
+	$(CXX) $(CXXFLAGS) -I. -L. main.cpp -o $@ -lpspace
 
 clean:
-	rm -f *.so *.o
+	rm -f *.so *.o a.out
