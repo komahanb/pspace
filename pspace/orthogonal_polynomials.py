@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from scipy import misc as sp
+from scipy.special import comb
 
 def tensor_indices(nterms):
     """
@@ -90,7 +90,7 @@ def legendre(z, d):
     """
     p = 0.0
     for k in range(d+1):
-        dp = sp.comb(d,k)*sp.comb(d+k,k)*(-z)**k
+        dp = comb(d, k)*comb(d + k, k)*(-z)**k
         p = p + dp
     return ((-1)**d)*p
 

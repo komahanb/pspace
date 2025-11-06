@@ -299,7 +299,7 @@ class UniformParameter(Parameter):
 
 class HashableDict(dict):
     def __hash__(self):
-        return hash(tuple(sorted(self.iteritems())))
+        return hash(tuple(sorted(self.items())))
     
 class ParameterFactory:
     """
@@ -539,11 +539,11 @@ class ParameterContainer:
 
         ## TODO generalize and store things if necessary
         
-        params = param_nqpts_map.keys()
-        nqpts  = param_nqpts_map.values()
+        params = list(param_nqpts_map.keys())
+        nqpts  = list(param_nqpts_map.values())
         
         # exclude deterministic terms?
-        total_quadrature_points = np.prod(nqpts)
+        total_quadrature_points = int(np.prod(nqpts))
         num_vars = len(params)
     
         # Initialize map with empty values corresponding to each key
