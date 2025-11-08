@@ -1,8 +1,8 @@
 include ${HOME}/git/tacs/Makefile.in
 include ${HOME}/git/tacs/TACS_Common.mk
 
-include ${HOME}/git/tmr/Makefile.in
-include ${HOME}/git/tmr/TMR_Common.mk
+#include ${HOME}/git/tmr/Makefile.in
+#include ${HOME}/git/tmr/TMR_Common.mk
 
 PSPACE_INCLUDE = -I${HOME}/git/pspace/cpp/ -I/usr/include/python2.7
 
@@ -17,8 +17,10 @@ OBJS = TACSStochasticElement.o TACSKSFunction.o TACSStochasticFunction.o \
 TACSStochasticVarianceFunction.o TACSStochasticFMeanFunction.o \
 TACSStochasticFFMeanFunction.o TACSKSStochasticFMeanFunction.o \
 TACSKSStochasticFFMeanFunction.o TACSKineticEnergy.o TACSPotentialEnergy.o \
-TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o \
-TACSMutableElement3D.o
+TACSDisplacement.o TACSVelocity.o TACSKSStochasticFunction.o smd.o
+
+
+#TACSMutableElement3D.o
 
 library: ${OBJS}
 	ar rcs libstacs.a ${OBJS}
