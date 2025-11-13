@@ -6,7 +6,7 @@ where q is the state and f is the force and k is the stiffness.
 
 The function of interest is potential energy evaluated as
               F:= E = 1/2 q*k*q
-              
+
 The exact derivative dF/dk = -1/2 q*q
 
 Author: Komahan Boopathy
@@ -17,8 +17,8 @@ import numpy as np
 from collections import Counter
 from spring import Spring
 
-from core import ParameterFactory, ParameterContainer
-from stochastic_utils import tensor_indices, nqpts, sparse
+from pspace.core import ParameterFactory, ParameterContainer
+from pspace.stochastic_utils import tensor_indices, nqpts, sparse
 
 class  StochasticSpring:
     def __init__(self, dspr, pc):
@@ -29,15 +29,15 @@ class  StochasticSpring:
         self.nterms = self.pc.getNumStochasticBasisTerms()
         self.nsdof = self.nddof*self.nterms
         return
-        
+
     def solve(self, u, f):
         """
         Fake the linear solve like newton solve with zero initial
         guess
         """
-        # Project f and create F    
+        # Project f and create F
         F = np.zeros((self.nsdof), dtype = self.dtype)
-        
+
         for k in range(self.nterms):
 
             # Determine num quadrature point required for k-th
@@ -47,7 +47,7 @@ class  StochasticSpring:
                     self.pc.basistermwise_parameter_degrees[k]
                     )
                 )
-            
+
             # Loop through quadrature points
             fktmp = 0.0
             for q in self.pc.quadrature_map.keys():
@@ -76,20 +76,20 @@ class  StochasticSpring:
         # (constant terms)
         dmapf = Counter()
         for pid in self.pc.parameter_map.keys():
-            dmapf[pid] = 1        
+            dmapf[pid] = 1
 
         J = np.zeros((self.nsdof,self.nsdof), dtype = self.dtype)
-        for i in range(self.nterms):            
+        for i in range(self.nterms):
             imap = self.pc.basistermwise_parameter_degrees[i]
-            
-            for j in range(self.nterms):                
+
+            for j in range(self.nterms):
                 jmap = self.pc.basistermwise_parameter_degrees[j]
-                smap = sparse(imap, jmap, dmapf)                
-                if False not in smap.values():                    
+                smap = sparse(imap, jmap, dmapf)
+                if False not in smap.values():
                     dmap = Counter()
                     dmap.update(imap)
                     dmap.update(jmap)
-                    dmap.update(dmapf)                    
+                    dmap.update(dmapf)
                     nqpts_map = self.pc.getNumQuadraturePointsFromDegree(dmap)
 
                     # Initialize quadrature with number of gauss points
@@ -97,37 +97,37 @@ class  StochasticSpring:
                     self.pc.initializeQuadrature(nqpts_map)
 
                     jtmp = np.zeros((self.nddof, self.nddof), dtype = self.dtype)
-                                    
+
                     # Quadrature Loop
                     for q in self.pc.quadrature_map.keys():
-                        
+
                         # Quadrature node and weight
                         yq = self.pc.Y(q,'name')
                         wq = self.pc.W(q)
 
                         # Set the paramter values into the element
                         dspr.setStiffness(yq['K'])
-  
+
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
                         uq = np.zeros((self.nddof), dtype = self.dtype)
                         for k in range(self.nterms):
                             psiky = self.pc.evalOrthoNormalBasis(k,q)
                             uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
-                            
+
                         # Fetch the deterministic element jacobian matrix
                         Aq = self.dspr.dRdq(uq)
-                                    
+
                         # Project the determinic element jacobian onto the
                         # stochastic basis and place in the global matrix
                         psiziw = wq*self.pc.evalOrthoNormalBasis(i,q)
-                        psizjw = self.pc.evalOrthoNormalBasis(j,q)                        
+                        psizjw = self.pc.evalOrthoNormalBasis(j,q)
                         jtmp[:,:] += Aq*psiziw*psizjw
 
                     # Place the entry into jacobian (transposed)
                     J[i*self.nddof:(i+1)*self.nddof, j*self.nddof:(j+1)*self.nddof] += jtmp[:, :]
 
-        # Solve the linear system 
+        # Solve the linear system
         U = U - np.linalg.solve(J.T, F)
 
         return U
@@ -136,7 +136,7 @@ class  StochasticSpring:
 
         # Project f and create F
         dFdQ = np.zeros((self.nsdof), dtype = self.dtype)
-        
+
         for i in range(self.nterms):
 
             # Determine num quadrature point required for k-th
@@ -146,7 +146,7 @@ class  StochasticSpring:
                     self.pc.basistermwise_parameter_degrees[i]
                     )
                 )
-            
+
             # Loop through quadrature points
             fitmp = 0.0
             for q in self.pc.quadrature_map.keys():
@@ -163,7 +163,7 @@ class  StochasticSpring:
                 for k in range(self.nterms):
                     psiky = self.pc.evalOrthoNormalBasis(k,q)
                     uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
-                            
+
                 # Evaluate function
                 dfdqq = dspr.dFdq(uq)
 
@@ -179,20 +179,20 @@ class  StochasticSpring:
         # (constant terms)
         dmapf = Counter()
         for pid in self.pc.parameter_map.keys():
-            dmapf[pid] = 1        
+            dmapf[pid] = 1
 
         J = np.zeros((self.nsdof,self.nsdof), dtype = self.dtype)
-        for i in range(self.nterms):            
+        for i in range(self.nterms):
             imap = self.pc.basistermwise_parameter_degrees[i]
-            
-            for j in range(self.nterms):                
+
+            for j in range(self.nterms):
                 jmap = self.pc.basistermwise_parameter_degrees[j]
-                smap = sparse(imap, jmap, dmapf)                
-                if False not in smap.values():                    
+                smap = sparse(imap, jmap, dmapf)
+                if False not in smap.values():
                     dmap = Counter()
                     dmap.update(imap)
                     dmap.update(jmap)
-                    dmap.update(dmapf)                    
+                    dmap.update(dmapf)
                     nqpts_map = self.pc.getNumQuadraturePointsFromDegree(dmap)
 
                     # Initialize quadrature with number of gauss points
@@ -200,31 +200,31 @@ class  StochasticSpring:
                     self.pc.initializeQuadrature(nqpts_map)
 
                     jtmp = np.zeros((self.nddof, self.nddof), dtype = self.dtype)
-                                    
+
                     # Quadrature Loop
                     for q in self.pc.quadrature_map.keys():
-                        
+
                         # Quadrature node and weight
                         yq = self.pc.Y(q,'name')
                         wq = self.pc.W(q)
 
                         # Set the paramter values into the element
                         dspr.setStiffness(yq['K'])
-  
+
                         # Create space for fetching deterministic
                         # jacobian, and state vectors that go as input
                         uq = np.zeros((self.nddof), dtype = self.dtype)
                         for k in range(self.nterms):
                             psiky = self.pc.evalOrthoNormalBasis(k,q)
                             uq[:] += U[k*self.nddof:(k+1)*self.nddof]*psiky
-                            
+
                         # Fetch the deterministic element jacobian matrix
                         Aq = self.dspr.dRdq(uq)
-                                    
+
                         # Project the determinic element jacobian onto the
                         # stochastic basis and place in the global matrix
                         psiziw = wq*self.pc.evalOrthoNormalBasis(i,q)
-                        psizjw = self.pc.evalOrthoNormalBasis(j,q)                        
+                        psizjw = self.pc.evalOrthoNormalBasis(j,q)
                         jtmp[:,:] += Aq*psiziw*psizjw
 
                     # Place the entry into jacobian (transposed)
@@ -289,16 +289,16 @@ for i in range(sspr.nterms):
             pc.basistermwise_parameter_degrees[i]
             )
         )
-    
+
     # Quadrature Loop
-    for q in pc.quadrature_map.keys():                        
+    for q in pc.quadrature_map.keys():
         # Quadrature node and weight
         yq = pc.Y(q,'name')
         wq = pc.W(q)
-    
+
         # Set the paramter values into the element
         dspr.setStiffness(yq['K'])
-      
+
         # Create space for fetching deterministic
         # jacobian, and state vectors that go as input
         uq = np.zeros((1), dtype = dtype) # dspr.nddof
@@ -309,12 +309,12 @@ for i in range(sspr.nterms):
         fq    = dspr.F(uq)
         dfdxq = dspr.dFdk(uq)
         dRdxq = dspr.dRdk(uq)
-        
-        # Form u for this quadrature point 'y'    
+
+        # Form u for this quadrature point 'y'
         # Project the determinic element jacobian onto the
         # stochastic basis and place in the global matrix
         psiziw = wq*pc.evalOrthoNormalBasis(i,q)
-        
+
         # F(q,q(y))*psi(y)*rho(y)
         E[i] += fq*psiziw
         dFdX[i] += dfdxq*psiziw
@@ -323,7 +323,7 @@ for i in range(sspr.nterms):
 fmean = E[0]
 fvar  = np.sum(E[1:]**2)
 fstd  = np.sqrt(fvar)
-# print("E[f]    :", E[0], "V[f]     :", fvar, "S[f] :", fstd) 
+# print("E[f]    :", E[0], "V[f]     :", fvar, "S[f] :", fstd)
 
 EdRdX = dRdX[0]
 VdRdX = np.sum(dRdX[1:]**2)
@@ -353,7 +353,7 @@ for i in range(nterms):
             pc.basistermwise_parameter_degrees[i]
             )
         )
-    
+
     # Loop through quadrature points
     dfdxi = 0.0
     e2ffprimetmp = 0.0
@@ -373,11 +373,11 @@ for i in range(nterms):
             psiky = pc.evalOrthoNormalBasis(k,q)
             uq[:] += U[k*nddof:(k+1)*nddof]*psiky
             lamq[:] += lam[k*nddof:(k+1)*nddof]*psiky
-                    
+
         # Evaluate function
         dfdxq = dspr.getAdjointDeriv(uq, lamq)
         fq    = dspr.F(uq)
-        
+
         # Project the determinic initial conditions onto the
         # stochastic basis
         psiziw = wq*pc.evalOrthoNormalBasis(i,q)

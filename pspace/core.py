@@ -9,11 +9,18 @@ from collections import Counter
 from enum import Enum
 
 # Local modules
-from stochastic_utils import tensor_indices, nqpts, sparse
-from orthogonal_polynomials import unit_hermite as Hhat
-from orthogonal_polynomials import unit_legendre as Phat
-from orthogonal_polynomials import unit_laguerre as Lhat
-from plotter import plot_jacobian, plot_vector
+from .stochastic_utils import tensor_indices, nqpts, sparse
+from .orthogonal_polynomials import unit_hermite as Hhat
+from .orthogonal_polynomials import unit_legendre as Phat
+from .orthogonal_polynomials import unit_laguerre as Lhat
+try:
+    from .plotter import plot_jacobian, plot_vector
+except Exception:  # pragma: no cover - plotting optional
+    def plot_jacobian(*args, **kwargs):
+        raise RuntimeError("plotting requires matplotlib support")
+
+    def plot_vector(*args, **kwargs):
+        raise RuntimeError("plotting requires matplotlib support")
 
 def index(ii):
     return ii
@@ -292,7 +299,7 @@ class UniformParameter(Parameter):
 
 class HashableDict(dict):
     def __hash__(self):
-        return hash(tuple(sorted(self.iteritems())))
+        return hash(tuple(sorted(self.items())))
     
 class ParameterFactory:
     """
@@ -532,11 +539,11 @@ class ParameterContainer:
 
         ## TODO generalize and store things if necessary
         
-        params = param_nqpts_map.keys()
-        nqpts  = param_nqpts_map.values()
+        params = list(param_nqpts_map.keys())
+        nqpts  = list(param_nqpts_map.values())
         
         # exclude deterministic terms?
-        total_quadrature_points = np.prod(nqpts)
+        total_quadrature_points = int(np.prod(nqpts))
         num_vars = len(params)
     
         # Initialize map with empty values corresponding to each key

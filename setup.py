@@ -30,6 +30,24 @@ lib_dirs.extend(get_global_dir(['lib']))
 runtime_lib_dirs.extend(lib_dirs)
 libs.extend(['pspace'])
 
+use_complex = (
+    os.environ.get("PSPACE_COMPLEX") == "1"
+    or any("PSPACE_USE_COMPLEX" in arg for arg in sys.argv)
+)
+
+print(f"Building pspace.PSPACE (USE_COMPLEX={'on' if use_complex else 'off'})")
+
+config_path = os.path.join(os.path.dirname(__file__), "pspace", "_config.pxi")
+with open(config_path, "w", encoding="utf-8") as cfg:
+    cfg.write(f"DEF USE_COMPLEX = {1 if use_complex else 0}\n")
+
+define_macros = []
+if use_complex:
+    define_macros.append(('USE_COMPLEX', None))
+
+compiler_directives = {"embedsignature": True, "binding": True}
+compile_time_env = {}
+
 exts = []
 for mod in ['PSPACE']:
     exts.append(Ext('pspace.%s'%(mod), sources=['pspace/%s.pyx'%(mod)],
@@ -37,11 +55,15 @@ for mod in ['PSPACE']:
                     libraries=libs,
                     library_dirs=lib_dirs,
                     runtime_library_dirs=runtime_lib_dirs,
-                    cython_directives={"embedsignature": True, "binding": True}))
+                    define_macros=define_macros))
 
 setup(name='pspace',
       version=1.0,
       description='Probabilistic space package for uncertainty quantification and optimization under uncertainty',
       author='Komahan Boopathy',
       author_email='komibuddy@gmail.com',
-      ext_modules=cythonize(exts, include_path=inc_dirs))
+      ext_modules=cythonize(exts,
+                            include_path=inc_dirs,
+                            compiler_directives=compiler_directives,
+                            compile_time_env=compile_time_env,
+                            force=True))

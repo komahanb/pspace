@@ -2,9 +2,12 @@ PYTHON = python3
 LEGACY_CYTHON_VERSION ?= 0.29.36
 LEGACY_PYTHON_SITE ?= $(CURDIR)/python_legacy
 
-default:
-	./build.sh
+.PHONY: default release debug complex complex_debug interface complex_interface
 
+default: release
+
+release:
+	./build.sh
 
 .PHONY: legacy_cython
 legacy_cython:
@@ -17,4 +20,3 @@ interface: legacy_cython
 .PHONY: complex_interface
 complex_interface: legacy_cython
 	PYTHONPATH=$(LEGACY_PYTHON_SITE)$${PYTHONPATH:+:$$PYTHONPATH} ${PYTHON} setup.py build_ext --inplace --define PSPACE_USE_COMPLEX
-

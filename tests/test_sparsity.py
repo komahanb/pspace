@@ -3,8 +3,11 @@ from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 import numpy as np
+import pytest
 from collections import Counter
 from timeit import default_timer as timer
+
+pytest.importorskip("matplotlib")
 
 from pspace.core import ParameterFactory, ParameterContainer
 from pspace.plotter import plot_jacobian
@@ -238,13 +241,13 @@ if __name__ == '__main__':
     # y_1 * y_2 * y_3*y_4
     func = lambda q : gy(q,0) * gy(q,1) * gy(q,2) * gy(q,3)
     dmap[0] = 1; dmap[1] = 1; dmap[2] = 1; dmap[3] = 1
-    print 'first'
+    print('first')
     A = getSparseJacobian(pc, func, dmap)
-    print 'second'
+    print('second')
     A = getSparseJacobian(pc, func, dmap)
-    print 'third'
+    print('third')
     A = getSparseJacobian(pc, func, dmap)
     #A = getJacobian(func, dmap)
     plot_jacobian(A, 'sparsity-y1y2y3y4-' + suffix + '.pdf')    
     end = timer()
-    print "elapsed time:", end - start
+    print("elapsed time:", end - start)

@@ -10,7 +10,7 @@ legend=True
 dmax=2
 if dmax > 0:
     legend = False
-    
+
 def getJacobian(pc):
     M = pc.getNumQuadraturePoints()
     N = pc.getNumBasisTerms()
@@ -20,7 +20,7 @@ def getJacobian(pc):
         for i in range(N):
             psiziq = pc.basis(i, zq)
             for j in range(N):
-                psizjq = pc.basis(j, zq)                
+                psizjq = pc.basis(j, zq)
                 A[i,j] += wq*psiziq*psizjq*(yq[0]+yq[1]+yq[2])
     return A
 
@@ -49,7 +49,7 @@ class SpringMassDamper(elements.pyElement):
     def __init__(self, num_disps, num_nodes, m, c, k):
         self.m = m
         self.c = c
-        self.k = k    
+        self.k = k
 
     def getInitConditions(self, index, X, v, dv, ddv):
         '''Define the initial conditions'''
@@ -60,7 +60,7 @@ class SpringMassDamper(elements.pyElement):
     def addResidual(self, index, time, X, v, dv, ddv, res):
         '''Add the residual of the governing equations'''
         res[0] += self.m*ddv[0] + self.c*dv[0] + self.k*v[0]
-        return    
+        return
 
     def addJacobian(self, index, time, alpha, beta, gamma, X, v, dv, ddv, res, mat):
         '''Add the Jacobian of the governing equations'''
@@ -81,13 +81,13 @@ class ForcingElement(elements.pyElement):
     def addResidual(self, index, time, X, v, dv, ddv, res):
         '''Add the residual of the governing equations'''
         res[0] += self.amplitude*np.sin(self.omega*time)
-        return    
+        return
 
     def addJacobian(self, index, time, alpha, beta, gamma, X, v, dv, ddv, res, mat):
         '''Add the Jacobian of the governing equations'''
         self.addResidual(index, time, X, v, dv, ddv, res)
         return
-    
+
 def createAssembler(m=5.0, c=0.5, k=5.0, u0=-0.5, udot0=1.0, pc=None):
     num_disps = 1
     num_nodes = 1
@@ -104,8 +104,8 @@ def createAssembler(m=5.0, c=0.5, k=5.0, u0=-0.5, udot0=1.0, pc=None):
 
     ndof_per_node = 1*pc.getNumBasisTerms()
     num_owned_nodes = 1
-    num_elems = 1        
-    
+    num_elems = 1
+
     # Add user-defined element to TACS
     comm = MPI.COMM_WORLD
     assembler = TACS.Assembler.create(comm, ndof_per_node, num_owned_nodes, num_elems)
@@ -121,7 +121,7 @@ def createAssembler(m=5.0, c=0.5, k=5.0, u0=-0.5, udot0=1.0, pc=None):
     aux = TACS.AuxElements()
     aux.addElement(0, sforce)
     assembler.setAuxElements(aux)
-    
+
     assembler.initialize()
 
     return assembler
@@ -143,17 +143,17 @@ def sgmmoments(bdf, num_steps, nterms):
         u = uvec.getArray()
         udot = udotvec.getArray()
         uddot = uddotvec.getArray()
-        
+
         # Compute moments
         time[k] = t
         umean[k] = u[0]
         udotmean[k] = udot[0]
         uddotmean[k] = uddot[0]
         for i in range(1,nterms):
-            uvar[k] += u[i]**2 
+            uvar[k] += u[i]**2
             udotvar[k] += udot[i]**2
             uddotvar[k] += uddot[i]**2
-        
+
     return time, umean, udotmean, uddotmean, uvar, udotvar, uddotvar
 
 pfactory = PSPACE.PyParameterFactory()
@@ -210,14 +210,14 @@ nterms = pc.getNumBasisTerms()
 
 time, umean, udotmean, uddotmean, uvar, udotvar, uddotvar = sgmmoments(integrator, num_steps, nterms)
 
-    
+
 # Compute moments
 
 ###################################################################
 # plot results
 ###################################################################
 
-# Configure 
+# Configure
 plt.rcParams['xtick.direction'] = 'out'
 plt.rcParams['ytick.direction'] = 'out'
 
@@ -251,16 +251,16 @@ mew = 2.0
 lalpha    = 0.9
 rev_alpha = 0.9/1.5
 
-# These are the "Tableau 20" colors as RGB.    
-tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),    
-             (44, 160, 44), (152, 223, 138), (214, 39, 40), (25, 152, 150),    
-             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
-             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]    
-  
-# Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
-for i in range(len(tableau20)):    
-    r, g, b = tableau20[i]    
+# These are the "Tableau 20" colors as RGB.
+tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),
+             (44, 160, 44), (152, 223, 138), (214, 39, 40), (25, 152, 150),
+             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
+             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
+             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
+
+# Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.
+for i in range(len(tableau20)):
+    r, g, b = tableau20[i]
     tableau20[i] = (r / 255., g / 255., b / 255.)
 
 # Define colors

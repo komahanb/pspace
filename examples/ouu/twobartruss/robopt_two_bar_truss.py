@@ -28,13 +28,13 @@ parser.add_argument('--algorithm', type=str, default='SLSQP', help='SLSQP/ALGENC
 args = parser.parse_args()
 
 def getCollocationPoints(ymean):
-    
+
     # Create random parameters
     pfactory = ParameterFactory()
     a1 = pfactory.createNormalParameter('a1', dict(mu=ymean[0], sigma=0.00), 1)
     a2 = pfactory.createNormalParameter('a2', dict(mu=ymean[1], sigma=0.00), 1)
     h  = pfactory.createNormalParameter('h' , dict(mu=ymean[2], sigma=0.10), 1)
-    
+
     # Add random parameters into a container and initialize
     pc = ParameterContainer()
     pc.addParameter(a1)
@@ -45,7 +45,7 @@ def getCollocationPoints(ymean):
     # Number of collocation points (quadrature points) along each
     # parameter dimension
     qmap = pc.getQuadraturePointsWeights({0:5, 1:5, 2:5})
-        
+
     return qmap
 
 # Create the rosenbrock function class
@@ -60,7 +60,7 @@ class TwoBarTrussOpt:
         self.k  = k
         self.w1 = w1
         self.w2 = w2
-        
+
         # The design history file
         self.x_hist = []
 
@@ -72,16 +72,16 @@ class TwoBarTrussOpt:
         # Space for current function and gradient values
         self.fvals = np.zeros(self.ncon+1)
         self.dfdxvals = np.zeros((self.ncon+1)*self.nvars)
-        
+
         return
-   
+
     def evalObjCon(self, x):
         '''
         Evaluate the objective and constraint
         '''
         # Checking whether DVs have gone negative
         assert(np.all(x>0.0) == 1)
-        
+
         # Set the fail flag
         fail = 0
 
@@ -96,8 +96,8 @@ class TwoBarTrussOpt:
 
         # Store function values
         fobj = self.w1*fexp + self.w2*fstd
-        print "fmean, fvar", fexp, fvar
-        
+        print("fmean, fvar", fexp, fvar)
+
         # Store the constraint values
         con = [0.0]*self.ncon
         con[0] = g1exp + self.k*g1std
@@ -105,7 +105,7 @@ class TwoBarTrussOpt:
         con[2] = g3exp + self.k*g3std
 
         self.fvals = [[fexp, fstd], con]
-        
+
         # Return the values
         return fobj, con, fail
 
@@ -114,10 +114,10 @@ class TwoBarTrussOpt:
         Evaluate the objective and constraint gradient
         '''
         assert(np.all(x>0.0)==1)
-        
+
         # Set the fail flag
         fail = 0
-                     
+
         # Set the objective gradient
         dfexp , dfvar , dfstd  = self.problem.getTrussWeightMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
         dg1exp, dg1bar, dg1std = self.problem.getBucklingFirstBarMomentsDeriv(a1=x[0], a2=x[1], h=x[2])
@@ -132,11 +132,11 @@ class TwoBarTrussOpt:
         A[0,0:self.nvars] = dg1exp + self.k*dg1std
         A[1,0:self.nvars] = dg2exp + self.k*dg2std
         A[2,0:self.nvars] = dg3exp + self.k*dg3std
-        
+
         return g, A, fail
 
 def optimize(k, w1, w2):
-    
+
     # Physical problem
     rho = 0.2836  # lb/in^3
     L   = 5.0     # in
@@ -150,18 +150,18 @@ def optimize(k, w1, w2):
     # Optimization Problem
     optproblem = TwoBarTrussOpt(MPI.COMM_WORLD, struss, k, w1, w2)
     opt_prob = Optimization(args.logfile, optproblem.evalObjCon)
-    
+
     # Add functions
     opt_prob.addObj('weight')
     opt_prob.addCon('buckling-bar1', type='i')
     opt_prob.addCon('failure-bar1' , type='i')
     opt_prob.addCon('failure-bar2' , type='i')
-    
+
     # Add variables
     opt_prob.addVar('area-1', type='c', value= 1.5, lower= 1.5, upper= 1.5)
     opt_prob.addVar('area-2', type='c', value= 1.5, lower= 1.5, upper= 1.5)
     opt_prob.addVar('height', type='c', value= 4.0, lower= 4.0, upper= 10.0)
-    
+
     # Optimization algorithm
     if args.algorithm == 'ALGENCAN':
         opt = ALGENCAN()
@@ -171,36 +171,36 @@ def optimize(k, w1, w2):
     else:
         opt = SLSQP(pll_type='POA')
         opt.setOption('MAXIT',999)
-    
+
     opt(opt_prob,
         sens_type=optproblem.evalObjConGradient,
         disp_opts=True,
         store_hst=True,
         hot_start=False)
-    
-    if optproblem.comm.Get_rank() ==0:   
-        print opt_prob.solution(0)
+
+    if optproblem.comm.Get_rank() ==0:
+        print(opt_prob.solution(0))
         opt_prob.write2file(disp_sols=True)
         x = optproblem.x_hist[-1]
         f = optproblem.fvals[0]
-        print 'x', x
-        print 'f', f
+        print('x', x)
+        print('f', f)
 
     return x, f
-    
+
 if __name__ == "__main__":
 
-    print "running robust optimization "
+    print("running robust optimization ")
 
     from plot_truss import plot_truss
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
     import matplotlib.cm as cmx
-    
-    # Configure 
+
+    # Configure
     plt.rcParams['xtick.direction'] = 'out'
     plt.rcParams['ytick.direction'] = 'out'
-    
+
     # Optionally set font to Computer Modern to avoid common missing
     # font errors
     params = {
@@ -210,7 +210,7 @@ if __name__ == "__main__":
       'ytick.labelsize': 20,
       'text.usetex': True}
     plt.rcParams.update(params)
-    
+
     # Latex math
     plt.rcParams['text.latex.preamble'] = [r'\usepackage{sfmath}']
     #plt.rcParams['font.family'] = 'sans-serif'
@@ -219,30 +219,30 @@ if __name__ == "__main__":
     plt.rcParams['font.weight'] = 'bold'
     plt.rcParams['lines.linewidth'] = 4
     plt.rcParams['lines.color'] = 'r'
-    
+
     # Make sure everything is within the frame
     plt.rcParams.update({'figure.autolayout': True})
-    
+
     # Set marker size
     markerSize = 7.0 #11.0
     mew = 2.0
-    
+
     # bar chart settings
     lalpha    = 0.9
     rev_alpha = 0.9/1.5
-    
-    # These are the "Tableau 20" colors as RGB.    
-    tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),    
-                 (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
-                 (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
-                 (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
-                 (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]    
-    
-    # Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
-    for i in range(len(tableau20)):    
-        r, g, b = tableau20[i]    
+
+    # These are the "Tableau 20" colors as RGB.
+    tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),
+                 (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),
+                 (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
+                 (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
+                 (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
+
+    # Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.
+    for i in range(len(tableau20)):
+        r, g, b = tableau20[i]
         tableau20[i] = (r / 255., g / 255., b / 255.)
-    
+
     fig = plt.figure(facecolor='w')
     conn = [[0,1], [1,2]]
     k = 2.0
@@ -259,15 +259,15 @@ if __name__ == "__main__":
             n1 = bar[0]
             n2 = bar[1]
             if ctr == 0:
-                plt.plot([xpos[2*n1], xpos[2*n2]], 
+                plt.plot([xpos[2*n1], xpos[2*n2]],
                          [xpos[2*n1+1], xpos[2*n2+1]],
                          '-ko', linewidth=vars[ctr])
             else:
-                plt.plot([xpos[2*n1], xpos[2*n2]], 
+                plt.plot([xpos[2*n1], xpos[2*n2]],
                          [xpos[2*n1+1], xpos[2*n2+1]],
                          '-ko', linewidth=vars[ctr],
                          label = 'E[f] = %3.2f' % f[0] + ', S[f] = %3.2f' % f[1] + ', H = %3.2f' % x[2] + ', $\\alpha$ = %3.2f' % w,
-                         color=tableau20[2*kctr])                
+                         color=tableau20[2*kctr])
             ctr += 1
     plt.axis('equal')
     plt.legend(loc='best')
