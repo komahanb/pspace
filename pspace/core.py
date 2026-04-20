@@ -115,6 +115,29 @@ class PolyFunction:
             total += mon
         return total
 
+    def derivative(self, cid):
+        """
+        Differentiate with respect to coordinate axis `cid`.
+
+        For each monomial  coeff * prod_k(y_k^d_k):
+          d/dy_i = coeff * d_i * y_i^(d_i-1) * prod_{k≠i}(y_k^d_k)
+
+        Returns a new PolyFunction (zero constant if no terms survive).
+        Pure arithmetic on stored coefficients and degree counters — no sympy.
+        """
+        new_terms = []
+        for coeff, degs in self._terms:
+            d = degs.get(cid, 0)
+            if d > 0:
+                new_degs = Counter(degs)
+                new_degs[cid] -= 1
+                if new_degs[cid] == 0:
+                    del new_degs[cid]
+                new_terms.append((coeff * d, new_degs))
+        if not new_terms:
+            return PolyFunction([(0.0, Counter())])
+        return PolyFunction(new_terms)
+
     def __repr__(self):
         return f"PolyFunction({self._terms})"
 
