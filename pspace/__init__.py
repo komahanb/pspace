@@ -10,6 +10,9 @@ PolyFunction          : polynomial f(y) as list of (coeff, Counter{axis:degree})
 OrthoPolyFunction     : polynomial expressed in the orthonormal PCE basis
 StateEquation         : assemble, precondition, and solve a linear system in the PCE basis
 DistributionType      : NORMAL | UNIFORM | EXPONENTIAL (enum, for introspection)
+PointSampler          : abstract sampler interface — iterate (point, weight) pairs
+QuadratureSampler     : tensor-product Gauss quadrature sampler
+MonteCarloSampler     : pseudo-random Monte Carlo sampler
 """
 
 from .core import (
@@ -21,6 +24,9 @@ from .core import (
     PolyFunction,
     OrthoPolyFunction,
     StateEquation,
+    PointSampler,
+    QuadratureSampler,
+    MonteCarloSampler,
 )
 
 __all__ = [
@@ -32,4 +38,7 @@ __all__ = [
     "PolyFunction",
     "OrthoPolyFunction",
     "StateEquation",
+    "PointSampler",
+    "QuadratureSampler",
+    "MonteCarloSampler",
 ]

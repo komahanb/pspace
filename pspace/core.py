@@ -18,6 +18,7 @@ import sympy as sp
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 
+from abc         import ABC, abstractmethod
 from collections import Counter
 from enum        import Enum
 from itertools   import product
@@ -66,6 +67,104 @@ class BasisFunctionType(Enum):
     TENSOR_DEGREE   = 0
     TOTAL_DEGREE    = 1
     ADAPTIVE_DEGREE = 2
+
+#=====================================================================#
+# PointSampler hierarchy
+#=====================================================================#
+
+class PointSampler(ABC):
+    """
+    Abstract interface for sampling the parameter space.
+
+    Iteration protocol:  for point, weight in sampler: ...
+      point  : dict {cid: float}  — parameter values
+      weight : float              — integration weight (sum to 1)
+
+    Concrete implementations:
+      QuadratureSampler  — tensor-product Gauss rule, exact for polynomials
+      MonteCarloSampler  — pseudo-random draws, uniform weight 1/N
+    """
+
+    @abstractmethod
+    def __iter__(self):
+        """Yield (point: dict{cid: float}, weight: float) pairs."""
+
+    @property
+    @abstractmethod
+    def n_points(self):
+        """Total number of sample points."""
+
+    def integrate(self, fn):
+        """
+        Compute E[fn] = Σ fn(point) * weight over all samples.
+        fn : callable({cid: float}) -> float
+        """
+        total = 0.0
+        for point, weight in self:
+            total += fn(point) * weight
+        return total
+
+
+class QuadratureSampler(PointSampler):
+    """
+    Tensor-product Gauss quadrature sampler.
+    Points and weights are exact for polynomials up to degree 2*npts-1 per axis.
+
+    Parameters
+    ----------
+    cs     : CoordinateSystem
+    degree : int
+        Polynomial degree to integrate exactly (per axis).
+    """
+
+    def __init__(self, cs, degree):
+        deg_counter = Counter({cid: degree for cid in cs.param_ids})
+        self._qmap  = cs.build_quadrature(deg_counter)
+
+    def __iter__(self):
+        for q in self._qmap.values():
+            yield {cid: float(v) for cid, v in q['Y'].items()}, float(q['W'])
+
+    @property
+    def n_points(self):
+        return len(self._qmap)
+
+
+class MonteCarloSampler(PointSampler):
+    """
+    Pseudo-random Monte Carlo sampler.
+    Each point carries equal weight 1/N; E[f] ≈ (1/N) Σ f(p_i).
+
+    Parameters
+    ----------
+    cs       : CoordinateSystem
+    n        : int
+        Number of random samples.
+    rng_seed : int
+        Seed for reproducibility.
+    """
+
+    def __init__(self, cs, n, rng_seed=42):
+        rng           = np.random.default_rng(rng_seed)
+        self._samples = cs.mc_samples(n, rng)   # {cid: ndarray(n)}
+        self._cids    = list(self._samples.keys())
+        self._n       = n
+        self._weight  = 1.0 / n
+
+    def __iter__(self):
+        for i in range(self._n):
+            point = {cid: float(self._samples[cid][i]) for cid in self._cids}
+            yield point, self._weight
+
+    @property
+    def n_points(self):
+        return self._n
+
+    @property
+    def raw_samples(self):
+        """Raw sample arrays {cid: ndarray} for vectorized physics evaluation."""
+        return self._samples
+
 
 class PolyFunction:
     def __init__(self, terms):
@@ -593,6 +692,35 @@ class CoordinateSystem:
             cs_new.addCoordinateAxis(nc)
         cs_new.initialize()
         return cs_new
+
+    def get_sampler(self, implementation, **kwargs):
+        """
+        Factory method returning a PointSampler for this CoordinateSystem.
+
+        Parameters
+        ----------
+        implementation : str
+            'quadrature'   — QuadratureSampler (Gauss tensor-product rule)
+            'monte-carlo'  — MonteCarloSampler  (pseudo-random draws)
+        **kwargs
+            quadrature : degree (int, default 4)
+            monte-carlo: n (int, default 10_000), rng_seed (int, default 42)
+
+        Returns
+        -------
+        PointSampler instance
+        """
+        if implementation == 'quadrature':
+            return QuadratureSampler(self, degree=kwargs.get('degree', 4))
+        elif implementation == 'monte-carlo':
+            return MonteCarloSampler(self,
+                                     n=kwargs.get('n', 10_000),
+                                     rng_seed=kwargs.get('rng_seed', 42))
+        else:
+            raise ValueError(
+                f"Unknown sampler '{implementation}'. "
+                f"Choose 'quadrature' or 'monte-carlo'."
+            )
 
     #-----------------------------------------------------------------#
     # Quadrature
