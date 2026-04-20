@@ -100,7 +100,7 @@ def unit_hermite(z, d):
     """
     Orthonormal Hermite polynomial ψ_d(z).
     """
-    return hermite(z, d) / np.sqrt(np.math.factorial(d))
+    return hermite(z, d) / np.sqrt(math.factorial(d))
 
 def rlegendre(z, d):
     if d == 0:
