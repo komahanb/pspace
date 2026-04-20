@@ -1,35 +1,35 @@
-import os
+"""
+pspace — Polynomial Chaos Expansion library
+============================================
+Public API
+----------
+CoordinateFactory     : create Normal, Uniform, or Exponential coordinate axes
+CoordinateSystem      : assemble multi-dimensional probability space with chosen basis
+BasisFunctionType     : TENSOR_DEGREE | TOTAL_DEGREE
+PolyFunction          : polynomial f(y) as list of (coeff, Counter{axis:degree}) terms
+OrthoPolyFunction     : polynomial expressed in the orthonormal PCE basis
+StateEquation         : assemble, precondition, and solve a linear system in the PCE basis
+DistributionType      : NORMAL | UNIFORM | EXPONENTIAL (enum, for introspection)
+"""
 
-def get_cython_include():
-    '''
-    Get the include directory for the Cython .pxd files in PSPACE
-    '''
-    return [os.path.abspath(os.path.dirname(__file__))]
+from .core import (
+    CoordinateFactory,
+    CoordinateSystem,
+    BasisFunctionType,
+    DistributionType,
+    CoordinateType,
+    PolyFunction,
+    OrthoPolyFunction,
+    StateEquation,
+)
 
-def get_include():
-    '''
-    Get the include directory for the Cython .pxd files in PSPACE
-    '''
-    root_path, tail = os.path.split(os.path.abspath(os.path.dirname(__file__)))
-
-    rel_inc_dirs = ['src/include']
-
-    inc_dirs = []
-    for path in rel_inc_dirs:
-    	inc_dirs.append(os.path.join(root_path, path))
-
-    return inc_dirs
-
-def get_libraries():
-    '''
-    Get the library directories
-    '''
-    root_path, tail = os.path.split(os.path.abspath(os.path.dirname(__file__)))
-
-    rel_lib_dirs = ['lib']
-    libs = ['pspace']
-    lib_dirs = []
-    for path in rel_lib_dirs:
-    	lib_dirs.append(os.path.join(root_path, path))
-
-    return lib_dirs, libs
+__all__ = [
+    "CoordinateFactory",
+    "CoordinateSystem",
+    "BasisFunctionType",
+    "DistributionType",
+    "CoordinateType",
+    "PolyFunction",
+    "OrthoPolyFunction",
+    "StateEquation",
+]
