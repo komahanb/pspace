@@ -297,6 +297,22 @@ class Coordinate(object):
         y    = np.array([self.standard_to_physical(zz) for zz in z])
         return {'yq': y, 'zq': z, 'wq': w}
 
+    #-----------------------------------------------------------------#
+    # Distribution moments  (subclass implements)
+    #-----------------------------------------------------------------#
+
+    def mean(self):
+        """Return the mean (expected value) of this coordinate's distribution."""
+        raise NotImplementedError
+
+    def variance(self):
+        """Return the variance of this coordinate's distribution."""
+        raise NotImplementedError
+
+    def mc_samples(self, n, rng):
+        """Draw n random samples from this coordinate's distribution."""
+        raise NotImplementedError
+
 #=====================================================================#
 # Coordinate Implementations
 #=====================================================================#
@@ -336,6 +352,16 @@ class NormalCoordinate(Coordinate):
         w    = w / np.sqrt(np.pi)
         return x, w
 
+    def mean(self):
+        return float(self.dist_coords['mu'])
+
+    def variance(self):
+        sigma = float(self.dist_coords['sigma'])
+        return sigma ** 2
+
+    def mc_samples(self, n, rng):
+        return rng.normal(self.mean(), float(self.dist_coords['sigma']), n)
+
 class UniformCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
@@ -369,6 +395,18 @@ class UniformCoordinate(Coordinate):
         w_shifted  = 0.5 * w
         return x_shifted, w_shifted
 
+    def mean(self):
+        a, b = float(self.dist_coords['a']), float(self.dist_coords['b'])
+        return (a + b) / 2.0
+
+    def variance(self):
+        a, b = float(self.dist_coords['a']), float(self.dist_coords['b'])
+        return (b - a) ** 2 / 12.0
+
+    def mc_samples(self, n, rng):
+        a, b = float(self.dist_coords['a']), float(self.dist_coords['b'])
+        return rng.uniform(a, b, n)
+
 class ExponentialCoordinate(Coordinate):
     def __init__(self, pdata):
         super().__init__(pdata)
@@ -399,6 +437,18 @@ class ExponentialCoordinate(Coordinate):
         npts = minnum_quadrature_points(degree)
         x, w = np.polynomial.laguerre.laggauss(npts)
         return x, w
+
+    def mean(self):
+        mu, beta = float(self.dist_coords['mu']), float(self.dist_coords['beta'])
+        return mu + beta
+
+    def variance(self):
+        beta = float(self.dist_coords['beta'])
+        return beta ** 2
+
+    def mc_samples(self, n, rng):
+        mu, beta = float(self.dist_coords['mu']), float(self.dist_coords['beta'])
+        return mu + rng.exponential(beta, n)
 
 #=====================================================================#
 # Coordinate Factory
@@ -492,6 +542,57 @@ class CoordinateSystem:
             self.basis = generate_basis_total_degree(max_deg_map)
         else:
             raise NotImplementedError("ADAPTIVE_DEGREE path not implemented")
+
+    #-----------------------------------------------------------------#
+    # Distribution statistics derived from coordinates
+    #-----------------------------------------------------------------#
+
+    @property
+    def param_ids(self):
+        """Ordered list of coordinate IDs."""
+        return list(self.coordinates.keys())
+
+    def mean_point(self):
+        """Return {cid: mean} for all coordinate axes."""
+        return {cid: coord.mean() for cid, coord in self.coordinates.items()}
+
+    def covariance_matrix(self):
+        """
+        Return diagonal parameter covariance matrix (n_params x n_params).
+        Off-diagonal terms are zero (independent parameters assumed).
+        """
+        variances = [coord.variance() for coord in self.coordinates.values()]
+        return np.diag(variances)
+
+    def mc_samples(self, n, rng):
+        """Draw n Monte Carlo samples for all coordinate axes."""
+        return {cid: coord.mc_samples(n, rng)
+                for cid, coord in self.coordinates.items()}
+
+    def make_cs(self, degree, basis_type=None):
+        """
+        Return a new CoordinateSystem with the same distributions but
+        `degree` as the expansion order. Useful for SGM at higher orders.
+        Coordinate IDs are preserved so existing PolyFunctions remain valid.
+        """
+        basis_type = basis_type or self.basis_construction
+        cf         = CoordinateFactory()
+        cs_new     = CoordinateSystem(basis_type)
+        for coord in self.coordinates.values():
+            dist = {k: float(v) for k, v in coord.dist_coords.items()}
+            cid  = cf.newCoordinateID()   # preserves insertion order (0,1,2,...)
+            dist_type = coord.distribution
+            if dist_type == DistributionType.UNIFORM:
+                nc = cf.createUniformCoordinate(cid, coord.name, dist, degree)
+            elif dist_type == DistributionType.NORMAL:
+                nc = cf.createNormalCoordinate(cid, coord.name, dist, degree)
+            elif dist_type == DistributionType.EXPONENTIAL:
+                nc = cf.createExponentialCoordinate(cid, coord.name, dist, degree)
+            else:
+                raise NotImplementedError(f"make_cs: unsupported distribution {dist_type}")
+            cs_new.addCoordinateAxis(nc)
+        cs_new.initialize()
+        return cs_new
 
     #-----------------------------------------------------------------#
     # Quadrature
