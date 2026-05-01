@@ -657,14 +657,26 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
 
 class CandidatePoolExhaustedStopping(StoppingCriterion):
     """
-    Stop only when the candidate pool is empty (default behaviour).
+    Stop when the **source** of the enrichment loop is exhausted.
 
-    This is the most permissive criterion: the loop runs until the strategy
-    has nothing more to add or the pool is exhausted.
+    * **grow** mode — stops when the candidate pool is empty (nothing left
+      to add to the active set).
+    * **decay** mode — stops when the active set is empty (nothing left to
+      evict back to the pool).
+
+    ``make_adaptive_cs`` injects the direction via :meth:`_set_direction`
+    before the loop starts; the default (grow) is always safe.
     """
 
+    def __init__(self):
+        self._direction = 'grow'
+
+    def _set_direction(self, direction: str) -> None:
+        self._direction = direction
+
     def should_stop(self, active, pool, cs_ref, iteration) -> bool:
-        return not pool
+        source = pool if self._direction == 'grow' else active
+        return not source
 
 
 class MaxIterationsStopping(StoppingCriterion):

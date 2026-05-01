@@ -891,6 +891,10 @@ class CoordinateSystem:
         if starting is None:
             starting = MeanOnlyStarting()
 
+        # Let direction-aware stopping criteria know which mode we're in
+        if hasattr(stopping, '_set_direction'):
+            stopping._set_direction(strategy.direction)
+
         # Full reference CS at the strategy's max_degree
         cs_ref = self.make_cs(strategy.max_degree)
 
@@ -913,7 +917,10 @@ class CoordinateSystem:
         strategy.validate_initial_set(active, cs_ref)
 
         iteration = 0
-        while pool:
+        # In grow mode the pool is consumed into active; loop while pool non-empty.
+        # In decay mode active is consumed back into pool; loop while active non-empty.
+        _source = lambda: pool if strategy.direction == 'grow' else active
+        while _source():
             if stopping.should_stop(active, pool, cs_ref, iteration):
                 break
 

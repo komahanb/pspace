@@ -917,66 +917,63 @@ class TestDecayMode:
 
     def test_decay_shrinks_basis(self, cs2):
         """
-        Decay mode must produce fewer active modes than the starting set.
-
-        Setup: LevelStarting(2) puts levels 0-2 into active; pool holds the
-        remaining level-3 modes (non-empty so the loop fires).
-        Reversed LevelByLevel selects the lowest-degree modes from active
-        (treating active as the pool argument) and evicts them.
-        One iteration removes all level-0 modes (the mean), shrinking active.
+        Fully-enriched start (LevelStarting == max_degree) is the ideal
+        decay input — pool is empty but active is full.  The loop guard
+        is 'while active' in decay mode, so eviction fires correctly.
         """
-        n_start = cs2.make_cs(2).getNumBasisFunctions()  # levels 0-2
+        n_full = cs2.make_cs(3).getNumBasisFunctions()
         cs_pruned = cs2.make_adaptive_cs(
             LevelByLevelStrategy(3).reverse(),
-            starting=LevelStarting(2),          # levels 0-2 in active; 3 in pool
-            stopping=MaxIterationsStopping(1),  # one eviction batch
+            starting=LevelStarting(3),          # ideal: start fully enriched
+            stopping=MaxIterationsStopping(1),  # remove one level
         )
-        assert cs_pruned.getNumBasisFunctions() < n_start
+        assert cs_pruned.getNumBasisFunctions() < n_full
 
     def test_decay_full_eviction_empties_active(self, cs2):
         """
-        When pool is seeded with level-3 modes and we run PoolExhausted in
-        decay mode, the reversed strategy progressively moves all active modes
-        back to pool — active eventually empties.
+        Running decay to PoolExhausted (which never fires on a growing pool)
+        is handled by the 'while active' guard: loop stops when active is empty.
         """
         cs_pruned = cs2.make_adaptive_cs(
             LevelByLevelStrategy(3).reverse(),
-            starting=LevelStarting(2),          # levels 0-2 active; level-3 in pool
+            starting=LevelStarting(3),
             stopping=CandidatePoolExhaustedStopping(),
         )
-        # After full eviction active is empty (everything returned to pool)
         assert cs_pruned.getNumBasisFunctions() == 0
 
     def test_decay_mean_preserved_with_one_iteration(self, cs2):
         """
-        After one decay step from LevelStarting(2), only level-0 modes
-        (the mean) are evicted.  Check active shrinks but pool is non-empty.
+        Reversed LevelByLevel prunes bottom-up: it picks the MINIMUM level
+        from active (mathematical dual of picking minimum from pool in grow).
+        After 1 step from a fully-enriched degree-3 basis, the mean (level-0)
+        is evicted first.  Levels 1-3 remain.
         """
-        n_start = cs2.make_cs(2).getNumBasisFunctions()
+        n_full = cs2.make_cs(3).getNumBasisFunctions()
         cs_pruned = cs2.make_adaptive_cs(
             LevelByLevelStrategy(3).reverse(),
-            starting=LevelStarting(2),
-            stopping=MaxIterationsStopping(2),  # two eviction batches
+            starting=LevelStarting(3),
+            stopping=MaxIterationsStopping(1),
         )
-        # Two batches remove levels 0 and 1; higher levels remain
-        assert 0 < cs_pruned.getNumBasisFunctions() < n_start
+        # One step removes level-0 (mean only, 1 mode)
+        assert cs_pruned.getNumBasisFunctions() == n_full - 1
+        # Mean is gone
+        assert not any(sum(d.values()) == 0 for d in cs_pruned.basis.values())
 
     def test_all_three_strategies_support_reverse(self, cs2):
-        """All three concrete strategies gain decay mode via .reverse() for free."""
+        """All three concrete strategies gain decay mode via .reverse() for free.
+        LevelStarting(max_degree) is the ideal input: fully enriched active set."""
         variances = [c.variance() for c in cs2.coordinates.values()]
-        # max_degree=3 so pool has level-3 modes; LevelStarting(2) seeds
-        # active with levels 0-2 → pool is non-empty → decay loop fires
+        n_full = cs2.make_cs(2).getNumBasisFunctions()
         strategies = [
-            LevelByLevelStrategy(3).reverse(),
-            SensitivityDrivenStrategy(3, variances).reverse(),
-            DownwardClosedStrategy(3, batch_size=1).reverse(),
+            LevelByLevelStrategy(2).reverse(),
+            SensitivityDrivenStrategy(2, variances).reverse(),
+            DownwardClosedStrategy(2, batch_size=1).reverse(),
         ]
-        n_start = cs2.make_cs(2).getNumBasisFunctions()  # levels 0-2
         for s in strategies:
             cs_p = cs2.make_adaptive_cs(
                 s,
-                starting=LevelStarting(2),
+                starting=LevelStarting(2),      # fully enriched — ideal decay input
                 stopping=MaxIterationsStopping(1),
             )
-            assert cs_p.getNumBasisFunctions() < n_start, (
+            assert cs_p.getNumBasisFunctions() < n_full, (
                 f"{type(s._inner).__name__}.reverse(): decay did not reduce basis size")
