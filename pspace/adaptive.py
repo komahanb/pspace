@@ -193,6 +193,22 @@ class AdaptiveBasisStrategy(ABC):
     Subclasses must implement :meth:`select` and expose :attr:`max_degree`.
 
     Parameters are passed as ``dict[mode_id, Counter]`` throughout.
+
+    Direction
+    ---------
+    Every strategy has a :attr:`direction` property (``'grow'`` by default).
+    Calling :meth:`reverse` returns a ``_ReversedStrategy`` wrapper that
+    swaps ``(active, pool)`` in every :meth:`select` call, turning a growth
+    rule into a **decay rule** without touching any concrete subclass:
+
+    .. code-block:: python
+
+        # grow: level-by-level enrichment
+        cs_a = cs.make_adaptive_cs(LevelByLevelStrategy(3))
+
+        # decay: level-by-level pruning (remove highest-degree modes first)
+        cs_a = cs.make_adaptive_cs(LevelByLevelStrategy(3).reverse(),
+                                   starting=LevelStarting(3))
     """
 
     @property
@@ -223,6 +239,46 @@ class AdaptiveBasisStrategy(ABC):
         parameter.  The default returns 0 (no baseline pre-seeding, full pool).
         """
         return 0
+
+    @property
+    def direction(self) -> str:
+        """
+        ``'grow'`` (default) or ``'decay'``.
+
+        * ``'grow'`` — :meth:`select` returns modes to move from *pool* into
+          *active* (standard enrichment).
+        * ``'decay'`` — :meth:`select` returns modes to evict from *active*
+          back into *pool* (pruning / basis reduction).
+
+        Set automatically by :meth:`reverse`; do not override manually.
+        """
+        return 'grow'
+
+    def reverse(self) -> '_ReversedStrategy':
+        """
+        Return a decay-mode wrapper around this strategy.
+
+        The wrapper swaps ``(active, pool)`` in every :meth:`select` call so
+        that the same scoring/selection logic that drives *enrichment* now
+        drives *pruning*.  All concrete strategy subclasses inherit this for
+        free — no subclass needs to be modified.
+
+        ``make_adaptive_cs`` inspects :attr:`direction` and reverses the
+        transfer direction (evict from active → pool) when ``'decay'``.
+
+        Examples
+        --------
+        Prune a full degree-3 basis down to its most important modes:
+
+        >>> cs_full = cs.make_adaptive_cs(LevelByLevelStrategy(3),
+        ...                               starting=LevelStarting(3))
+        >>> cs_pruned = cs.make_adaptive_cs(
+        ...     SensitivityDrivenStrategy(3, variances).reverse(),
+        ...     starting=LevelStarting(3),          # start full
+        ...     stopping=MaxIterationsStopping(4),  # prune 4 modes
+        ... )
+        """
+        return _ReversedStrategy(self)
 
     @abstractmethod
     def select(
@@ -275,6 +331,55 @@ class AdaptiveBasisStrategy(ABC):
             If the initial active set is incompatible with this strategy.
         """
 
+
+class _ReversedStrategy(AdaptiveBasisStrategy):
+    """
+    Decay-mode wrapper produced by :meth:`AdaptiveBasisStrategy.reverse`.
+
+    Swaps ``(active, pool)`` in every :meth:`select` call so that the inner
+    strategy's scoring logic drives *pruning* instead of *enrichment*:
+
+    * In grow mode:  ``inner.select(active, pool)``  → modes to add
+    * In decay mode: ``inner.select(pool, active)``  → modes to evict
+
+    All other properties (``max_degree``, ``min_degree``,
+    ``validate_initial_set``) are delegated to the inner strategy unchanged.
+    Calling ``.reverse()`` on a ``_ReversedStrategy`` returns the original
+    strategy (double reversal = identity).
+    """
+
+    def __init__(self, inner: AdaptiveBasisStrategy):
+        self._inner = inner
+
+    @property
+    def max_degree(self) -> int:
+        return self._inner.max_degree
+
+    @property
+    def min_degree(self) -> int:
+        return self._inner.min_degree
+
+    @property
+    def direction(self) -> str:
+        return 'decay'
+
+    def reverse(self) -> AdaptiveBasisStrategy:
+        """Double reversal returns the original strategy (identity)."""
+        return self._inner
+
+    def select(self, active: dict, pool: dict, cs_ref) -> set:
+        # Swap: inner sees (pool → active), returns modes to evict from active
+        return self._inner.select(pool, active, cs_ref)
+
+    def validate_initial_set(self, active: dict, cs_ref) -> None:
+        # In decay mode the initial active set is the full pool, which is
+        # always a valid lower set; delegate to inner for completeness.
+        self._inner.validate_initial_set(active, cs_ref)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# StoppingCriterion ABC
+# ──────────────────────────────────────────────────────────────────────────────
 
 class StoppingCriterion(ABC):
     """

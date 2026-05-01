@@ -921,8 +921,12 @@ class CoordinateSystem:
             if not selected:
                 break
 
-            for mid in selected:
-                active[mid] = pool.pop(mid)
+            if strategy.direction == 'grow':
+                for mid in selected:
+                    active[mid] = pool.pop(mid)
+            else:  # decay — evict selected modes from active back to pool
+                for mid in selected:
+                    pool[mid] = active.pop(mid)
 
             # Notify RelativeGrowthStopping of this step's ratio
             if isinstance(stopping, RelativeGrowthStopping):
