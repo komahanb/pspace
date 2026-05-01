@@ -614,3 +614,117 @@ class TestCrossStrategyConsistency:
         assert len(all_modes) == cs_a.getNumBasisFunctions()
         level1 = cs_a.find_modes(total_degree=1)
         assert set(level1.keys()).issubset(set(all_modes.keys()))
+
+# Parametric coverage: all 36 (Starting x Strategy x Stopping) combinations
+
+class TestAllCombinations:
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, cs2):
+        self.cs   = cs2
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref2   = cs2.make_cs(2)
+        dc_seed   = set(cs_ref2.find_modes(total_degree=1).keys())
+
+        self.startings = [
+            ("MeanOnly",        MeanOnlyStarting()),
+            ("Level1",          LevelStarting(1)),
+            ("Sensitivity",     SensitivityStarting(variances)),
+            ("FixedModeSet-DC", FixedModeSetStarting(dc_seed)),
+        ]
+        self.strategies = [
+            ("LevelByLevel",   LevelByLevelStrategy(2)),
+            ("Sensitivity",    SensitivityDrivenStrategy(2, variances)),
+            ("DownwardClosed", DownwardClosedStrategy(2, batch_size=1)),
+        ]
+        self.stoppings = [
+            ("PoolExhausted", CandidatePoolExhaustedStopping()),
+            ("MaxIter2",      MaxIterationsStopping(2)),
+            ("RelGrowth",     RelativeGrowthStopping(tol=0.01)),
+        ]
+
+    def _all_combos(self):
+        for sl, sc in self.startings:
+            for tl, tc in self.strategies:
+                for ol in ("PoolExhausted", "MaxIter2", "RelGrowth"):
+                    oc = {
+                        "PoolExhausted": CandidatePoolExhaustedStopping(),
+                        "MaxIter2":      MaxIterationsStopping(2),
+                        "RelGrowth":     RelativeGrowthStopping(tol=0.01),
+                    }[ol]
+                    yield f"{sl}+{tl}+{ol}", sc, tc, oc
+
+    def test_all_36_no_exception(self):
+        for label, sc, tc, oc in self._all_combos():
+            try:
+                self.cs.make_adaptive_cs(tc, stopping=oc, starting=sc)
+            except Exception as e:
+                pytest.fail(f"Combo [{label}] raised {type(e).__name__}: {e}")
+
+    def test_all_36_return_adaptive_degree_type(self):
+        for label, sc, tc, oc in self._all_combos():
+            cs_a = self.cs.make_adaptive_cs(tc, stopping=oc, starting=sc)
+            assert cs_a.basis_construction == BasisFunctionType.ADAPTIVE_DEGREE, (
+                f"Combo [{label}]: wrong basis type")
+
+    def test_all_36_mean_mode_present(self):
+        for label, sc, tc, oc in self._all_combos():
+            cs_a = self.cs.make_adaptive_cs(tc, stopping=oc, starting=sc)
+            assert any(_total(degs) == 0 for degs in cs_a.basis.values()), (
+                f"Combo [{label}]: mean mode missing")
+
+    def test_all_36_contiguous_ids(self):
+        for label, sc, tc, oc in self._all_combos():
+            cs_a = self.cs.make_adaptive_cs(tc, stopping=oc, starting=sc)
+            n = cs_a.getNumBasisFunctions()
+            assert set(cs_a.basis.keys()) == set(range(n)), (
+                f"Combo [{label}]: non-contiguous IDs")
+
+    def test_all_36_find_modes_works(self):
+        for label, sc, tc, oc in self._all_combos():
+            cs_a = self.cs.make_adaptive_cs(tc, stopping=oc, starting=sc)
+            assert len(cs_a.find_modes()) == cs_a.getNumBasisFunctions(), (
+                f"Combo [{label}]: find_modes() count mismatch")
+
+
+class TestDownwardClosedGuard:
+
+    def test_non_dc_seed_raises_value_error(self, cs2):
+        cs_ref2   = cs2.make_cs(2)
+        level2_id = next(iter(cs_ref2.find_modes(total_degree=2).keys()))
+        bad_seed  = FixedModeSetStarting({level2_id})
+        with pytest.raises(ValueError, match="downward-closed"):
+            cs2.make_adaptive_cs(DownwardClosedStrategy(2, batch_size=1), starting=bad_seed)
+
+    def test_dc_seed_does_not_raise(self, cs2):
+        cs_ref2  = cs2.make_cs(2)
+        dc_seed  = set(cs_ref2.find_modes(total_degree=1).keys())
+        cs_a = cs2.make_adaptive_cs(
+            DownwardClosedStrategy(2, batch_size=1),
+            starting=FixedModeSetStarting(dc_seed),
+        )
+        assert cs_a.getNumBasisFunctions() > 0
+
+    def test_mean_only_never_raises_for_dc(self, cs2):
+        cs2.make_adaptive_cs(DownwardClosedStrategy(3, batch_size=1), starting=MeanOnlyStarting())
+
+    def test_level_starting_never_raises_for_dc(self, cs2):
+        for level in range(3):
+            cs2.make_adaptive_cs(DownwardClosedStrategy(3, batch_size=1), starting=LevelStarting(level))
+
+    def test_sensitivity_starting_never_raises_for_dc(self, cs2):
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs2.make_adaptive_cs(
+            DownwardClosedStrategy(3, batch_size=1),
+            starting=SensitivityStarting(variances),
+        )
+
+    def test_error_message_mentions_downward_closed(self, cs2):
+        cs_ref2   = cs2.make_cs(2)
+        level2_id = next(iter(cs_ref2.find_modes(total_degree=2).keys()))
+        with pytest.raises(ValueError) as exc_info:
+            cs2.make_adaptive_cs(
+                DownwardClosedStrategy(2, batch_size=1),
+                starting=FixedModeSetStarting({level2_id}),
+            )
+        assert "downward-closed" in str(exc_info.value).lower()

@@ -900,6 +900,10 @@ class CoordinateSystem:
         # Delegate initial active set to the starting criterion
         active = starting.initialize(pool, cs_ref)
 
+        # Give the strategy a chance to reject an incompatible initial set
+        # (e.g. DownwardClosedStrategy requires a downward-closed seed)
+        strategy.validate_initial_set(active, cs_ref)
+
         iteration = 0
         while pool:
             if stopping.should_stop(active, pool, cs_ref, iteration):

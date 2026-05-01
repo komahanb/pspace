@@ -226,6 +226,30 @@ class AdaptiveBasisStrategy(ABC):
             strategy has nothing more to add (the loop will terminate).
         """
 
+    def validate_initial_set(self, active: dict, cs_ref) -> None:
+        """
+        Validate the initial active set produced by the starting criterion.
+
+        Called by ``make_adaptive_cs`` once, immediately after
+        ``starting.initialize()``, before the enrichment loop begins.
+        The default implementation is a no-op; subclasses with structural
+        requirements on the active set (e.g. downward-closedness) should
+        override this to raise ``ValueError`` with a descriptive message
+        when the constraint is violated.
+
+        Parameters
+        ----------
+        active : dict[mode_id, Counter]
+            Initial active set as returned by ``starting.initialize()``.
+        cs_ref : CoordinateSystem
+            Full reference coordinate system.
+
+        Raises
+        ------
+        ValueError
+            If the initial active set is incompatible with this strategy.
+        """
+
 
 class StoppingCriterion(ABC):
     """
@@ -421,6 +445,45 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
                          key=lambda m: (-self._scorer(m, admissible[m],
                                                        active, cs_ref), m))
         return set(ranked[:self._batch_size])
+
+    def validate_initial_set(self, active: dict, cs_ref) -> None:
+        """
+        Verify the initial active set is downward-closed.
+
+        Raises
+        ------
+        ValueError
+            If any mode α in *active* has a predecessor α − e_i that is
+            absent from *active*.  A non-downward-closed seed will cause
+            the strategy to permanently block admissible candidates,
+            producing a mathematically unsound basis.
+
+        Note
+        ----
+        To fix a non-DC seed, use :class:`LevelStarting` or
+        :class:`MeanOnlyStarting` instead of :class:`FixedModeSetStarting`,
+        or ensure your fixed set is itself downward-closed.
+        """
+        def _key(d):
+            return tuple(sorted((k, v) for k, v in d.items() if v > 0))
+
+        active_keys = {_key(degs) for degs in active.values()}
+        for mid, degs in active.items():
+            for axis, d in degs.items():
+                if d > 0:
+                    reduced = Counter({k: v for k, v in degs.items() if v > 0})
+                    reduced[axis] -= 1
+                    if reduced[axis] == 0:
+                        del reduced[axis]
+                    if _key(reduced) not in active_keys:
+                        raise ValueError(
+                            f"DownwardClosedStrategy: initial active set is not "
+                            f"downward-closed.  Mode {mid} with degrees "
+                            f"{dict(degs)} is active, but its predecessor "
+                            f"{dict(reduced)} (axis {axis} decremented) is not.  "
+                            f"Use LevelStarting or MeanOnlyStarting, or supply a "
+                            f"downward-closed FixedModeSetStarting seed."
+                        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
