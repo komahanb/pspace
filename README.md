@@ -183,6 +183,74 @@ cs.make_cs(0).param_to_mode_map()   # {}  (no linear modes at degree 0)
 
 ---
 
+## Adaptive basis selection
+
+`make_adaptive_cs` grows a basis incrementally using a three-axis decomposition
+of the enrichment loop.  The candidate pool (operand) is the full reference
+basis; the three axes are operators that together impose a total ordering on it.
+
+```
+Operator:   Starting  ×  Strategy  ×  Stopping
+                       ↓
+Operand:    Candidate pool  (total-degree | tensor-product | ...)
+                       ↓
+Result:     Adaptive basis  — a prefix of the ordered sequence
+```
+
+### The three axes
+
+| Axis | Role | Implementations |
+|---|---|---|
+| **Starting** | Initial active set before enrichment | `MeanOnlyStarting`, `LevelStarting(level)`, `SensitivityStarting(variances)`, `FixedModeSetStarting(mode_ids)` |
+| **Strategy** | Selects which candidate(s) to add each step | `LevelByLevelStrategy`, `SensitivityDrivenStrategy`, `DownwardClosedStrategy` |
+| **Stopping** | Decides when to halt | `CandidatePoolExhaustedStopping`, `MaxIterationsStopping(n)`, `RelativeGrowthStopping(tol)` |
+
+### Completeness theorem
+
+Because each operator combination imposes a filtration
+
+```
+S_0 ⊂ S_1 ⊂ S_2 ⊂ ... ⊂ S_n  =  pool
+```
+
+running any combination to `CandidatePoolExhaustedStopping` must recover the
+full pool exactly.  This is tested for all 4 × 3 = 12 combinations of
+Starting × Strategy (see `TestCrossStrategyConsistency` in
+`tests/test_adaptive_basis.py`).
+
+The full basis (total-degree or tensor-product) is not one of the 36 named
+combinations — it is the **operand** itself, recovered as the degenerate case
+where the stopping criterion never fires early.
+
+### Quick start
+
+```python
+from pspace.adaptive import (
+    LevelByLevelStrategy, SensitivityDrivenStrategy, DownwardClosedStrategy,
+    MeanOnlyStarting, LevelStarting, SensitivityStarting,
+    CandidatePoolExhaustedStopping, MaxIterationsStopping,
+)
+
+variances = [c.variance() for c in cs.coordinates.values()]
+
+# ISQS: level-by-level up to degree 2
+cs_a = cs.make_adaptive_cs(LevelByLevelStrategy(max_degree=2))
+
+# Sensitivity-driven: warm-start from level 1, stop after 3 enrichment steps
+cs_a = cs.make_adaptive_cs(
+    SensitivityDrivenStrategy(max_degree=3, variances=variances),
+    stopping=MaxIterationsStopping(3),
+    starting=LevelStarting(1),
+)
+
+# Downward-closed (Smolyak-style), exhaustive
+cs_a = cs.make_adaptive_cs(
+    DownwardClosedStrategy(max_degree=3, batch_size=1),
+)
+```
+
+---
+
 ## API reference
 
 ### `CoordinateFactory`
@@ -209,6 +277,7 @@ cs.make_cs(0).param_to_mode_map()   # {}  (no linear modes at degree 0)
 | `check_orthonormality()` | Returns `‖G − I‖∞` for the Gram matrix |
 | `check_decomposition_numerical_symbolic(f)` | Cross-checks quadrature vs Sympy |
 | `make_cs(degree)` | Return a new `CoordinateSystem` restricted to the given total degree |
+| `make_adaptive_cs(strategy, stopping, starting)` | Grow a basis adaptively; returns `ADAPTIVE_DEGREE` CS |
 | `find_modes(param_degrees, total_degree, exact)` | Query multi-index basis set; returns `{mode_id: Counter}` for all matching modes |
 | `param_to_mode_map()` | `{local_param_index: mode_id}` — the unique pure-linear mode for each parameter |
 
@@ -248,6 +317,7 @@ tests/
   test_matrix_decomposition.py  — randomized A_ij = ⟨ψ_i, f, ψ_j⟩ tests
   test_sparsity_logic.py        — sparsity mask correctness
   test_basis_queries.py         — find_modes() and param_to_mode_map() tests
+  test_adaptive_basis.py        — adaptive basis selection framework tests
   test_utils.py                 — shared test helpers
 ```
 

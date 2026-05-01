@@ -602,6 +602,56 @@ class TestCrossStrategyConsistency:
             assert cs_a.getNumBasisFunctions() == n_ref, (
                 f"{type(s).__name__}: expected {n_ref}, got {cs_a.getNumBasisFunctions()}")
 
+    def test_exhaustion_completeness_all_12_combinations(self, cs2):
+        """
+        Completeness theorem (4 startings × 3 strategies × PoolExhausted):
+
+        For any starting criterion and any strategy, exhausting the candidate
+        pool must always reconstruct the full reference basis exactly.
+
+        Rationale
+        ---------
+        The adaptive loop imposes a total ordering on the pool — a filtration
+        S_0 ⊂ S_1 ⊂ ... ⊂ S_n.  Taking the union of all prefixes (i.e. running
+        to PoolExhausted) must recover the full pool.  This is the discrete
+        analogue of: integrating a decomposition recovers the original set.
+        If any combination fails this property, that combination produces a
+        sequence that cannot losslessly represent its operand.
+        """
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref    = cs2.make_cs(2)
+        n_ref     = cs_ref.getNumBasisFunctions()
+        pool_ids  = set(cs_ref.basis.keys())
+
+        dc_seed = set(cs_ref.find_modes(total_degree=1).keys())
+
+        startings = [
+            ("MeanOnly",        MeanOnlyStarting()),
+            ("Level1",          LevelStarting(1)),
+            ("Sensitivity",     SensitivityStarting(variances)),
+            ("FixedModeSet-DC", FixedModeSetStarting(dc_seed)),
+        ]
+        strategies = [
+            ("LevelByLevel",   LevelByLevelStrategy(2)),
+            ("Sensitivity",    SensitivityDrivenStrategy(2, variances, batch_size=1)),
+            ("DownwardClosed", DownwardClosedStrategy(2, batch_size=1)),
+        ]
+
+        for sl, sc in startings:
+            for tl, tc in strategies:
+                label = f"{sl}+{tl}+PoolExhausted"
+                cs_a  = cs2.make_adaptive_cs(
+                    tc,
+                    stopping=CandidatePoolExhaustedStopping(),
+                    starting=sc,
+                )
+                n_a = cs_a.getNumBasisFunctions()
+                assert n_a == n_ref, (
+                    f"Completeness failed for [{label}]: "
+                    f"got {n_a} modes, expected {n_ref}.  "
+                    f"The sequence does not losslessly represent its operand."
+                )
+
     def test_adaptive_cs_find_modes_consistent(self, cs2):
         """find_modes on adaptive CS should not raise and return subsets."""
         variances = [c.variance() for c in cs2.coordinates.values()]
