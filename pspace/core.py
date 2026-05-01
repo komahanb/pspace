@@ -639,8 +639,14 @@ class CoordinateSystem:
             self.basis = generate_basis_tensor_degree(max_deg_map)
         elif self.basis_construction == BasisFunctionType.TOTAL_DEGREE:
             self.basis = generate_basis_total_degree(max_deg_map)
-        else:
-            raise NotImplementedError("ADAPTIVE_DEGREE path not implemented")
+        elif self.basis_construction == BasisFunctionType.ADAPTIVE_DEGREE:
+            # Basis is set externally by make_adaptive_cs(); nothing to do here.
+            # If called before make_adaptive_cs() has populated self.basis,
+            # start with just the mean mode so the CS is at least valid.
+            if self.basis is None:
+                max_deg_map = self.getMonomialDegreeCoordinates()
+                full = generate_basis_total_degree(max_deg_map)
+                self.basis = {0: full[0]}   # mean mode only
 
     #-----------------------------------------------------------------#
     # Distribution statistics derived from coordinates
@@ -815,7 +821,110 @@ class CoordinateSystem:
         cs_new.initialize()
         return cs_new
 
-    def get_sampler(self, implementation, **kwargs):
+    def make_adaptive_cs(self, strategy, stopping=None, verbose=False):
+        """
+        Build a CoordinateSystem whose basis is grown adaptively.
+
+        Starting from the mean mode (level 0), the strategy is called
+        repeatedly to select modes from a candidate pool.  The loop
+        continues until the stopping criterion fires or the pool is
+        exhausted.  The returned CoordinateSystem has
+        ``BasisFunctionType.ADAPTIVE_DEGREE`` and a contiguous basis
+        whose mode IDs are renumbered 0, 1, 2, … in the same relative
+        order as in the reference (full total-degree) CS.
+
+        Parameters
+        ----------
+        strategy : AdaptiveBasisStrategy
+            Selects a subset of candidate modes to add at each iteration.
+        stopping : StoppingCriterion, optional
+            Returns ``True`` when the loop should terminate.
+            Defaults to :class:`CandidatePoolExhaustedStopping` (run until
+            the pool is exhausted).
+        verbose : bool, default False
+            Print a one-line summary at each enrichment step.
+
+        Returns
+        -------
+        CoordinateSystem
+            New CS with ``ADAPTIVE_DEGREE`` basis type and the grown basis.
+
+        Examples
+        --------
+        Level-by-level (reproduces ISQS up to degree 2):
+
+        >>> from pspace.adaptive import LevelByLevelStrategy, MaxIterationsStopping
+        >>> cs_a = cs.make_adaptive_cs(
+        ...     LevelByLevelStrategy(max_degree=3),
+        ...     stopping=MaxIterationsStopping(2),   # add levels 1 and 2
+        ...     verbose=True,
+        ... )
+
+        Sensitivity-driven (enrich highest-variance parameter first):
+
+        >>> from pspace.adaptive import SensitivityDrivenStrategy
+        >>> variances = [cs.coordinates[cid].variance()
+        ...              for cid in cs.coordinates]
+        >>> cs_a = cs.make_adaptive_cs(
+        ...     SensitivityDrivenStrategy(max_degree=3, variances=variances),
+        ... )
+
+        Downward-closed (sparse-grid / Smolyak admissibility):
+
+        >>> from pspace.adaptive import DownwardClosedStrategy
+        >>> cs_a = cs.make_adaptive_cs(
+        ...     DownwardClosedStrategy(max_degree=3, batch_size=1),
+        ... )
+        """
+        from .adaptive import CandidatePoolExhaustedStopping, RelativeGrowthStopping
+
+        if stopping is None:
+            stopping = CandidatePoolExhaustedStopping()
+
+        # Full reference CS at the strategy's max_degree
+        cs_ref = self.make_cs(strategy.max_degree)
+
+        # Active set starts with the mean mode (mode 0 in cs_ref)
+        active = {0: cs_ref.basis[0]}
+        pool   = {mid: degs for mid, degs in cs_ref.basis.items() if mid != 0}
+
+        iteration = 0
+        while pool:
+            if stopping.should_stop(active, pool, cs_ref, iteration):
+                break
+
+            selected = strategy.select(active, pool, cs_ref)
+            if not selected:
+                break
+
+            for mid in selected:
+                active[mid] = pool.pop(mid)
+
+            # Notify RelativeGrowthStopping of this step's ratio
+            if isinstance(stopping, RelativeGrowthStopping):
+                stopping.record(len(selected), len(active))
+
+            if verbose:
+                n_new   = len(selected)
+                n_act   = len(active)
+                max_lev = max(sum(d.values()) for d in active.values())
+                print(f"[adaptive] iter {iteration:3d}: "
+                      f"+{n_new} modes -> active={n_act}, max_level={max_lev}")
+
+            iteration += 1
+
+        # Renumber mode IDs to be contiguous (preserve relative order)
+        sorted_ids = sorted(active.keys())
+        new_basis  = {new_id: active[old_id]
+                      for new_id, old_id in enumerate(sorted_ids)}
+
+        # Build the returned CS: same axes, ADAPTIVE_DEGREE, custom basis
+        cs_out = self.make_cs(strategy.max_degree)
+        cs_out.basis_construction = BasisFunctionType.ADAPTIVE_DEGREE
+        cs_out.basis = new_basis
+        return cs_out
+
+
         """
         Factory method returning a PointSampler for this CoordinateSystem.
 

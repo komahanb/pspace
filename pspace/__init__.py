@@ -29,6 +29,17 @@ from .core import (
     MonteCarloSampler,
 )
 
+from .adaptive import (
+    AdaptiveBasisStrategy,
+    StoppingCriterion,
+    LevelByLevelStrategy,
+    SensitivityDrivenStrategy,
+    DownwardClosedStrategy,
+    CandidatePoolExhaustedStopping,
+    MaxIterationsStopping,
+    RelativeGrowthStopping,
+)
+
 __all__ = [
     "CoordinateFactory",
     "CoordinateSystem",
@@ -41,4 +52,13 @@ __all__ = [
     "PointSampler",
     "QuadratureSampler",
     "MonteCarloSampler",
+    # adaptive
+    "AdaptiveBasisStrategy",
+    "StoppingCriterion",
+    "LevelByLevelStrategy",
+    "SensitivityDrivenStrategy",
+    "DownwardClosedStrategy",
+    "CandidatePoolExhaustedStopping",
+    "MaxIterationsStopping",
+    "RelativeGrowthStopping",
 ]
