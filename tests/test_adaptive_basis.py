@@ -14,6 +14,11 @@ from pspace.core import (CoordinateFactory,
                          CoordinateSystem,
                          BasisFunctionType)
 from pspace.adaptive import (
+    StartingCriterion,
+    MeanOnlyStarting,
+    LevelStarting,
+    SensitivityStarting,
+    FixedModeSetStarting,
     LevelByLevelStrategy,
     SensitivityDrivenStrategy,
     DownwardClosedStrategy,
@@ -66,6 +71,187 @@ def _total(degs):
 def _active_levels(cs_a):
     """Return set of total degrees present in cs_a's basis."""
     return {_total(degs) for degs in cs_a.basis.values()}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Starting criteria: unit tests
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestStartingCriteria:
+
+    def test_mean_only_returns_one_mode(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool   = dict(cs_ref.basis)
+        active = MeanOnlyStarting().initialize(pool, cs_ref)
+        assert len(active) == 1
+        assert _total(next(iter(active.values()))) == 0
+
+    def test_mean_only_removes_from_pool(self, cs2):
+        cs_ref   = cs2.make_cs(3)
+        pool     = dict(cs_ref.basis)
+        n_before = len(pool)
+        active   = MeanOnlyStarting().initialize(pool, cs_ref)
+        assert len(pool) == n_before - 1
+        assert set(active.keys()).isdisjoint(pool.keys())
+
+    def test_level_starting_0_same_as_mean_only(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool1, pool2 = dict(cs_ref.basis), dict(cs_ref.basis)
+        a1 = MeanOnlyStarting().initialize(pool1, cs_ref)
+        a2 = LevelStarting(0).initialize(pool2, cs_ref)
+        assert len(a1) == len(a2)
+
+    def test_level_starting_1_contains_levels_0_and_1(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool   = dict(cs_ref.basis)
+        active = LevelStarting(1).initialize(pool, cs_ref)
+        levels = {_total(degs) for degs in active.values()}
+        assert 0 in levels
+        assert 1 in levels
+        assert 2 not in levels
+        # For 2 params: 1 mean + 2 linear = 3 modes
+        assert len(active) == 3
+
+    def test_level_starting_removes_from_pool(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool   = dict(cs_ref.basis)
+        active = LevelStarting(2).initialize(pool, cs_ref)
+        assert set(active.keys()).isdisjoint(pool.keys())
+        assert len(active) + len(pool) == len(cs_ref.basis)
+
+    def test_sensitivity_starting_mean_always_included(self, cs2):
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref    = cs2.make_cs(3)
+        pool      = dict(cs_ref.basis)
+        active    = SensitivityStarting(variances, top_k=1).initialize(pool, cs_ref)
+        assert any(_total(degs) == 0 for degs in active.values())
+
+    def test_sensitivity_starting_top1_seeds_dominant_param(self, cs2):
+        variances  = [c.variance() for c in cs2.coordinates.values()]
+        dominant_k = variances.index(max(variances))
+        cs_ref     = cs2.make_cs(3)
+        pool       = dict(cs_ref.basis)
+        active     = SensitivityStarting(variances, top_k=1).initialize(pool, cs_ref)
+        # Mean + 1 pure-linear mode for dominant parameter
+        assert len(active) == 2
+        linear_modes = [degs for degs in active.values() if _total(degs) == 1]
+        assert len(linear_modes) == 1
+        assert linear_modes[0].get(dominant_k, 0) == 1
+
+    def test_sensitivity_starting_top_all_seeds_all_linear(self, cs2):
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref    = cs2.make_cs(3)
+        pool      = dict(cs_ref.basis)
+        active    = SensitivityStarting(variances).initialize(pool, cs_ref)
+        # Mean + 2 pure-linear modes for 2 params
+        assert len(active) == 3
+
+    def test_fixed_mode_set_includes_mean(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool   = dict(cs_ref.basis)
+        # Request a level-2 mode (ID 5) without explicitly listing the mean
+        active = FixedModeSetStarting({5}).initialize(pool, cs_ref)
+        assert any(_total(degs) == 0 for degs in active.values())
+
+    def test_fixed_mode_set_includes_requested_modes(self, cs2):
+        cs_ref    = cs2.make_cs(3)
+        pool      = dict(cs_ref.basis)
+        wanted    = {1, 4, 7}   # some arbitrary mode IDs in a degree-3 basis
+        available = wanted & set(cs_ref.basis.keys())
+        active    = FixedModeSetStarting(available).initialize(pool, cs_ref)
+        assert available.issubset(set(active.keys()))
+
+    def test_fixed_mode_set_removes_from_pool(self, cs2):
+        cs_ref = cs2.make_cs(3)
+        pool   = dict(cs_ref.basis)
+        active = FixedModeSetStarting({1, 2, 3}).initialize(pool, cs_ref)
+        assert set(active.keys()).isdisjoint(pool.keys())
+
+    def test_starting_is_abc(self):
+        assert issubclass(MeanOnlyStarting,       StartingCriterion)
+        assert issubclass(LevelStarting,          StartingCriterion)
+        assert issubclass(SensitivityStarting,    StartingCriterion)
+        assert issubclass(FixedModeSetStarting,   StartingCriterion)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Starting criteria: integration with make_adaptive_cs
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestStartingCriterionIntegration:
+
+    def test_mean_only_default_matches_explicit(self, cs2):
+        """make_adaptive_cs() default == explicit MeanOnlyStarting."""
+        strat  = LevelByLevelStrategy(3)
+        cs_default  = cs2.make_adaptive_cs(strat)
+        cs_explicit = cs2.make_adaptive_cs(strat, starting=MeanOnlyStarting())
+        assert cs_default.getNumBasisFunctions() == cs_explicit.getNumBasisFunctions()
+
+    def test_level_starting_skips_initial_levels(self, cs2):
+        """Starting at level 1, MaxIterations(1) should reach level 2."""
+        cs_a = cs2.make_adaptive_cs(
+            LevelByLevelStrategy(3),
+            starting=LevelStarting(1),
+            stopping=MaxIterationsStopping(1),
+        )
+        assert 2 in _active_levels(cs_a)
+        assert 3 not in _active_levels(cs_a)
+
+    def test_level_starting_full_enrichment_agrees(self, cs2):
+        """Starting from any level, full enrichment must reach the same total."""
+        cs_ref = cs2.make_cs(3)
+        n_ref  = cs_ref.getNumBasisFunctions()
+        for start_level in range(3):
+            cs_a = cs2.make_adaptive_cs(
+                LevelByLevelStrategy(3),
+                starting=LevelStarting(start_level),
+            )
+            assert cs_a.getNumBasisFunctions() == n_ref, (
+                f"LevelStarting({start_level}): expected {n_ref}, "
+                f"got {cs_a.getNumBasisFunctions()}")
+
+    def test_sensitivity_starting_warm_start_full_enrichment(self, cs2):
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref    = cs2.make_cs(3)
+        cs_a = cs2.make_adaptive_cs(
+            SensitivityDrivenStrategy(3, variances),
+            starting=SensitivityStarting(variances),
+        )
+        assert cs_a.getNumBasisFunctions() == cs_ref.getNumBasisFunctions()
+
+    def test_fixed_mode_set_warm_start(self, cs2):
+        """Warm-starting from a fixed set and then enriching must cover all modes."""
+        cs_ref = cs2.make_cs(2)
+        # Seed with all level-1 modes (IDs 1,2 in a degree-2 ref CS)
+        level1_ids = set(cs_ref.find_modes(total_degree=1).keys())
+        cs_a = cs2.make_adaptive_cs(
+            LevelByLevelStrategy(2),
+            starting=FixedModeSetStarting(level1_ids),
+        )
+        assert cs_a.getNumBasisFunctions() == cs_ref.getNumBasisFunctions()
+
+    def test_all_startings_give_adaptive_degree_type(self, cs2):
+        variances  = [c.variance() for c in cs2.coordinates.values()]
+        strat      = LevelByLevelStrategy(2)
+        startings  = [
+            MeanOnlyStarting(),
+            LevelStarting(1),
+            SensitivityStarting(variances),
+            FixedModeSetStarting({1}),
+        ]
+        for sc in startings:
+            cs_a = cs2.make_adaptive_cs(strat, starting=sc)
+            assert cs_a.basis_construction == BasisFunctionType.ADAPTIVE_DEGREE, (
+                f"{type(sc).__name__} did not produce ADAPTIVE_DEGREE type")
+
+    def test_basis_always_contiguous_from_zero(self, cs2):
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        strat     = LevelByLevelStrategy(3)
+        for sc in [MeanOnlyStarting(), LevelStarting(1),
+                   SensitivityStarting(variances), FixedModeSetStarting({2, 3})]:
+            cs_a = cs2.make_adaptive_cs(strat, starting=sc)
+            assert set(cs_a.basis.keys()) == set(range(len(cs_a.basis))), (
+                f"{type(sc).__name__}: basis IDs not contiguous")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

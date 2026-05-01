@@ -30,6 +30,11 @@ from .core import (
 )
 
 from .adaptive import (
+    StartingCriterion,
+    MeanOnlyStarting,
+    LevelStarting,
+    SensitivityStarting,
+    FixedModeSetStarting,
     AdaptiveBasisStrategy,
     StoppingCriterion,
     LevelByLevelStrategy,
@@ -52,12 +57,19 @@ __all__ = [
     "PointSampler",
     "QuadratureSampler",
     "MonteCarloSampler",
-    # adaptive
+    # adaptive — starting
+    "StartingCriterion",
+    "MeanOnlyStarting",
+    "LevelStarting",
+    "SensitivityStarting",
+    "FixedModeSetStarting",
+    # adaptive — strategy
     "AdaptiveBasisStrategy",
-    "StoppingCriterion",
     "LevelByLevelStrategy",
     "SensitivityDrivenStrategy",
     "DownwardClosedStrategy",
+    # adaptive — stopping
+    "StoppingCriterion",
     "CandidatePoolExhaustedStopping",
     "MaxIterationsStopping",
     "RelativeGrowthStopping",

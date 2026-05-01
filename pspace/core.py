@@ -821,17 +821,16 @@ class CoordinateSystem:
         cs_new.initialize()
         return cs_new
 
-    def make_adaptive_cs(self, strategy, stopping=None, verbose=False):
+    def make_adaptive_cs(self, strategy, stopping=None, starting=None, verbose=False):
         """
         Build a CoordinateSystem whose basis is grown adaptively.
 
-        Starting from the mean mode (level 0), the strategy is called
-        repeatedly to select modes from a candidate pool.  The loop
-        continues until the stopping criterion fires or the pool is
-        exhausted.  The returned CoordinateSystem has
-        ``BasisFunctionType.ADAPTIVE_DEGREE`` and a contiguous basis
-        whose mode IDs are renumbered 0, 1, 2, … in the same relative
-        order as in the reference (full total-degree) CS.
+        The adaptive loop has three orthogonal axes of control:
+
+        * **starting** — determines the initial active set before enrichment
+          begins (default: mean mode only).
+        * **strategy** — selects which candidate modes to add at each step.
+        * **stopping** — decides when to terminate the loop.
 
         Parameters
         ----------
@@ -839,8 +838,10 @@ class CoordinateSystem:
             Selects a subset of candidate modes to add at each iteration.
         stopping : StoppingCriterion, optional
             Returns ``True`` when the loop should terminate.
-            Defaults to :class:`CandidatePoolExhaustedStopping` (run until
-            the pool is exhausted).
+            Defaults to :class:`CandidatePoolExhaustedStopping`.
+        starting : StartingCriterion, optional
+            Builds the initial active set from the candidate pool.
+            Defaults to :class:`MeanOnlyStarting` (mean mode only).
         verbose : bool, default False
             Print a one-line summary at each enrichment step.
 
@@ -848,6 +849,8 @@ class CoordinateSystem:
         -------
         CoordinateSystem
             New CS with ``ADAPTIVE_DEGREE`` basis type and the grown basis.
+            Mode IDs are renumbered 0, 1, 2, … in the same relative order
+            as in the reference (full total-degree) CS.
 
         Examples
         --------
@@ -856,37 +859,46 @@ class CoordinateSystem:
         >>> from pspace.adaptive import LevelByLevelStrategy, MaxIterationsStopping
         >>> cs_a = cs.make_adaptive_cs(
         ...     LevelByLevelStrategy(max_degree=3),
-        ...     stopping=MaxIterationsStopping(2),   # add levels 1 and 2
+        ...     stopping=MaxIterationsStopping(2),
         ...     verbose=True,
         ... )
 
-        Sensitivity-driven (enrich highest-variance parameter first):
+        Sensitivity-driven with warm-start from level 1:
 
-        >>> from pspace.adaptive import SensitivityDrivenStrategy
-        >>> variances = [cs.coordinates[cid].variance()
-        ...              for cid in cs.coordinates]
+        >>> from pspace.adaptive import (SensitivityDrivenStrategy,
+        ...                              LevelStarting)
+        >>> variances = [c.variance() for c in cs.coordinates.values()]
         >>> cs_a = cs.make_adaptive_cs(
         ...     SensitivityDrivenStrategy(max_degree=3, variances=variances),
+        ...     starting=LevelStarting(level=1),
         ... )
 
-        Downward-closed (sparse-grid / Smolyak admissibility):
+        Downward-closed with BSF seed:
 
-        >>> from pspace.adaptive import DownwardClosedStrategy
+        >>> from pspace.adaptive import (DownwardClosedStrategy,
+        ...                              SensitivityStarting)
         >>> cs_a = cs.make_adaptive_cs(
-        ...     DownwardClosedStrategy(max_degree=3, batch_size=1),
+        ...     DownwardClosedStrategy(max_degree=3),
+        ...     starting=SensitivityStarting(variances, top_k=1),
         ... )
         """
-        from .adaptive import CandidatePoolExhaustedStopping, RelativeGrowthStopping
+        from .adaptive import (CandidatePoolExhaustedStopping,
+                                MeanOnlyStarting,
+                                RelativeGrowthStopping)
 
         if stopping is None:
             stopping = CandidatePoolExhaustedStopping()
+        if starting is None:
+            starting = MeanOnlyStarting()
 
         # Full reference CS at the strategy's max_degree
         cs_ref = self.make_cs(strategy.max_degree)
 
-        # Active set starts with the mean mode (mode 0 in cs_ref)
-        active = {0: cs_ref.basis[0]}
-        pool   = {mid: degs for mid, degs in cs_ref.basis.items() if mid != 0}
+        # Build the candidate pool from the full basis
+        pool = dict(cs_ref.basis)
+
+        # Delegate initial active set to the starting criterion
+        active = starting.initialize(pool, cs_ref)
 
         iteration = 0
         while pool:

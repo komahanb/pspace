@@ -1,15 +1,15 @@
 #=====================================================================#
-# Adaptive basis selection strategies and stopping criteria for
-# CoordinateSystem.make_adaptive_cs().
+# Adaptive basis selection for CoordinateSystem.make_adaptive_cs().
 #
-# Separation of concerns
-# ----------------------
+# Separation of concerns — three orthogonal axes:
+# ─────────────────────────────────────────────────────────────────────
+#   StartingCriterion      — *where* to begin (initial active set)
 #   AdaptiveBasisStrategy  — *what* modes to add at each step
 #   StoppingCriterion      — *when* to stop adding modes
 #
 # The adaptive loop in make_adaptive_cs() orchestrates:
 #
-#   active  = {mean mode}
+#   active  = starting.initialize(pool, cs_ref)
 #   pool    = all candidate modes up to strategy.max_degree
 #   while pool and not stopping(active, pool, cs_ref, iter):
 #       selected = strategy.select(active, pool, cs_ref)
@@ -26,6 +26,155 @@ from typing     import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .core import CoordinateSystem   # only for type hints; no circular import
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# StartingCriterion ABC and concrete implementations
+# ──────────────────────────────────────────────────────────────────────────────
+
+class StartingCriterion(ABC):
+    """
+    Pluggable policy that determines the **initial active set** before the
+    enrichment loop begins.
+
+    Subclasses must implement :meth:`initialize`, which consumes entries
+    from *pool* and returns them as the starting active set.
+    """
+
+    @abstractmethod
+    def initialize(self, pool: dict, cs_ref) -> dict:
+        """
+        Build the initial active set from the candidate pool.
+
+        This method is called once by ``make_adaptive_cs`` before the
+        enrichment loop.  It must:
+
+        * Select a subset of *pool* entries for the initial active set.
+        * **Remove** those entries from *pool* in-place.
+        * Return the initial active set as a new ``dict[mode_id, Counter]``.
+
+        Parameters
+        ----------
+        pool : dict[mode_id, Counter]
+            All candidate modes (mutable; modify in-place).
+        cs_ref : CoordinateSystem
+            The full reference coordinate system at ``strategy.max_degree``.
+
+        Returns
+        -------
+        dict[int, Counter]
+            Initial active set.
+        """
+
+
+class MeanOnlyStarting(StartingCriterion):
+    """
+    Start with just the mean mode (total degree 0).
+
+    This is the default — the minimal possible starting point, equivalent
+    to "start from scratch."  It is the starting criterion implicitly used
+    by the ISQS hierarchy.
+    """
+
+    def initialize(self, pool, cs_ref) -> dict:
+        mean_id = next(mid for mid, degs in pool.items()
+                       if sum(degs.values()) == 0)
+        return {mean_id: pool.pop(mean_id)}
+
+
+class LevelStarting(StartingCriterion):
+    """
+    Start with all modes up to and including a given total degree.
+
+    Useful when a coarse solution (e.g. a deterministic run) is already
+    available and you want to enrich *beyond* a known baseline level.
+
+    Parameters
+    ----------
+    level : int
+        All modes with ``sum(alpha) <= level`` are placed in the initial
+        active set.  ``level=0`` is equivalent to :class:`MeanOnlyStarting`.
+    """
+
+    def __init__(self, level: int):
+        self._level = level
+
+    def initialize(self, pool, cs_ref) -> dict:
+        selected = {mid: degs for mid, degs in pool.items()
+                    if sum(degs.values()) <= self._level}
+        for mid in selected:
+            pool.pop(mid)
+        return selected
+
+
+class SensitivityStarting(StartingCriterion):
+    """
+    Start with the mean mode plus the pure-linear mode for each of the
+    top-*k* parameters ranked by variance.
+
+    This encodes the BSF prior: the directions of largest variance are the
+    most likely to matter, so seed the active set with their linear modes
+    before letting the strategy decide what comes next.
+
+    Parameters
+    ----------
+    variances : list[float]
+        Per-parameter variances in **local** index order (0-based).
+    top_k : int, optional
+        Number of parameters to seed.  Defaults to all parameters.
+    """
+
+    def __init__(self, variances: list, top_k: int | None = None):
+        self._variances = list(variances)
+        self._top_k     = top_k if top_k is not None else len(variances)
+
+    def initialize(self, pool, cs_ref) -> dict:
+        # Mean mode first
+        mean_id = next(mid for mid, degs in pool.items()
+                       if sum(degs.values()) == 0)
+        active = {mean_id: pool.pop(mean_id)}
+
+        # Rank params by descending variance and seed their pure-linear modes
+        ranked = sorted(range(len(self._variances)),
+                        key=lambda k: self._variances[k], reverse=True)
+        for k in ranked[:self._top_k]:
+            pure = cs_ref.find_modes({k: 1}, exact=True)
+            for mid in pure:
+                if mid in pool:
+                    active[mid] = pool.pop(mid)
+
+        return active
+
+
+class FixedModeSetStarting(StartingCriterion):
+    """
+    Start with a user-supplied set of mode IDs.
+
+    Gives full control over the initial active set — useful for warm-starts
+    from a previous adaptive run or for restart scenarios.
+
+    Parameters
+    ----------
+    mode_ids : iterable[int]
+        Mode IDs (from the reference CS at ``strategy.max_degree``) to
+        place in the initial active set.  The mean mode (ID 0) is always
+        included even if not listed.
+    """
+
+    def __init__(self, mode_ids):
+        self._mode_ids = set(mode_ids)
+
+    def initialize(self, pool, cs_ref) -> dict:
+        # Always include the mean mode
+        mean_ids = {mid for mid, degs in pool.items()
+                    if sum(degs.values()) == 0}
+        wanted = self._mode_ids | mean_ids
+
+        active = {}
+        for mid in list(pool):
+            if mid in wanted:
+                active[mid] = pool.pop(mid)
+        return active
 
 
 # ──────────────────────────────────────────────────────────────────────────────
