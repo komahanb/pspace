@@ -205,6 +205,33 @@ Result:     Adaptive basis  — a prefix of the ordered sequence
 | **Strategy** | Selects which candidate(s) to add each step | `LevelByLevelStrategy`, `SensitivityDrivenStrategy`, `DownwardClosedStrategy` |
 | **Stopping** | Decides when to halt | `CandidatePoolExhaustedStopping`, `MaxIterationsStopping(n)`, `RelativeGrowthStopping(tol)` |
 
+### Pool bounds: `min_degree` and `max_degree`
+
+Each strategy accepts two degree bounds that together define the candidate pool:
+
+| Parameter | Role | Default |
+|---|---|---|
+| `max_degree` | Upper bound — modes with `\|α\| > max_degree` are never candidates | required |
+| `min_degree` | Lower bound — modes with `\|α\| < min_degree` become the **baseline** (auto-active, never in pool) | `0` |
+
+The **baseline** is the set of modes pre-seeded into the active set before the
+enrichment loop begins — they are always present in the result regardless of
+stopping.  The baseline is always a complete level set, so the downward-closed
+constraint is well-defined for all new candidates.
+
+`min_degree` enables **warm-restarts**:
+
+```python
+# Phase 1: enrich levels 0..2
+cs_phase1 = cs.make_adaptive_cs(LevelByLevelStrategy(max_degree=2))
+
+# Phase 2: continue from level 3 onward, treating 0..2 as known baseline
+cs_phase2 = cs.make_adaptive_cs(
+    DownwardClosedStrategy(max_degree=5, min_degree=3, batch_size=1),
+    starting=FixedModeSetStarting(set(cs_phase1.basis.keys())),
+)
+```
+
 ### Completeness theorem
 
 Because each operator combination imposes a filtration
@@ -243,9 +270,9 @@ cs_a = cs.make_adaptive_cs(
     starting=LevelStarting(1),
 )
 
-# Downward-closed (Smolyak-style), exhaustive
+# Downward-closed (Smolyak-style), exhaustive, warm-restart from level 2
 cs_a = cs.make_adaptive_cs(
-    DownwardClosedStrategy(max_degree=3, batch_size=1),
+    DownwardClosedStrategy(max_degree=5, min_degree=2, batch_size=1),
 )
 ```
 

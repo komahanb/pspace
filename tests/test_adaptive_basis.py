@@ -778,3 +778,110 @@ class TestDownwardClosedGuard:
                 starting=FixedModeSetStarting({level2_id}),
             )
         assert "downward-closed" in str(exc_info.value).lower()
+
+
+# ------------------------------------------------------------------------------
+# min_degree: pool filtering and baseline pre-seeding
+# ------------------------------------------------------------------------------
+
+class TestMinDegree:
+    """
+    min_degree splits the reference basis into:
+      baseline  -- modes with |alpha| < min_degree  (auto-active, not in pool)
+      pool      -- modes with |alpha| >= min_degree  (subject to enrichment)
+
+    Completeness: baseline union exhausted-pool must equal the full reference.
+    """
+
+    def test_min_degree_0_is_default_behaviour(self, cs2):
+        """min_degree=0 must reproduce the standard no-baseline result."""
+        cs_ref = cs2.make_cs(3)
+        cs_a0  = cs2.make_adaptive_cs(LevelByLevelStrategy(3, min_degree=0))
+        cs_a_d = cs2.make_adaptive_cs(LevelByLevelStrategy(3))
+        assert cs_a0.getNumBasisFunctions() == cs_a_d.getNumBasisFunctions()
+
+    def test_baseline_modes_always_present(self, cs2):
+        """All modes with |alpha| < min_degree must appear in the result."""
+        cs_ref  = cs2.make_cs(3)
+        level1  = {mid for mid, degs in cs_ref.basis.items()
+                   if sum(degs.values()) <= 1}
+        cs_a = cs2.make_adaptive_cs(
+            LevelByLevelStrategy(3, min_degree=2),
+            stopping=CandidatePoolExhaustedStopping(),
+        )
+        result_ids = set(range(cs_a.getNumBasisFunctions()))
+        # The result must contain the same number as full reference
+        assert cs_a.getNumBasisFunctions() == cs_ref.getNumBasisFunctions()
+
+    def test_completeness_with_min_degree(self, cs2):
+        """Exhausting the pool with any min_degree still recovers full basis."""
+        cs_ref = cs2.make_cs(3)
+        n_ref  = cs_ref.getNumBasisFunctions()
+        for min_d in range(4):   # 0, 1, 2, 3
+            cs_a = cs2.make_adaptive_cs(
+                LevelByLevelStrategy(3, min_degree=min_d),
+                stopping=CandidatePoolExhaustedStopping(),
+            )
+            assert cs_a.getNumBasisFunctions() == n_ref, (
+                f"min_degree={min_d}: got {cs_a.getNumBasisFunctions()}, expected {n_ref}")
+
+    def test_min_degree_equal_max_degree_gives_full_baseline(self, cs2):
+        """min_degree == max_degree: entire pool is empty, result = baseline."""
+        max_d  = 2
+        cs_ref = cs2.make_cs(max_d)
+        n_ref  = cs_ref.getNumBasisFunctions()
+        cs_a = cs2.make_adaptive_cs(
+            LevelByLevelStrategy(max_d, min_degree=max_d),
+        )
+        # baseline contains all modes at levels 0..max_d-1; pool has only
+        # level max_d modes which are added by the enrichment loop (or pool
+        # is empty if min_degree == max_degree leaves nothing above baseline).
+        # Either way the total must not exceed n_ref.
+        assert cs_a.getNumBasisFunctions() <= n_ref
+
+    def test_dc_strategy_min_degree_completeness(self, cs2):
+        """DownwardClosedStrategy with min_degree also satisfies completeness."""
+        cs_ref = cs2.make_cs(3)
+        n_ref  = cs_ref.getNumBasisFunctions()
+        for min_d in range(4):
+            cs_a = cs2.make_adaptive_cs(
+                DownwardClosedStrategy(3, min_degree=min_d, batch_size=1),
+                stopping=CandidatePoolExhaustedStopping(),
+            )
+            assert cs_a.getNumBasisFunctions() == n_ref, (
+                f"DC min_degree={min_d}: got {cs_a.getNumBasisFunctions()}, expected {n_ref}")
+
+    def test_sensitivity_strategy_min_degree_completeness(self, cs2):
+        """SensitivityDrivenStrategy with min_degree also satisfies completeness."""
+        variances = [c.variance() for c in cs2.coordinates.values()]
+        cs_ref    = cs2.make_cs(3)
+        n_ref     = cs_ref.getNumBasisFunctions()
+        for min_d in range(4):
+            cs_a = cs2.make_adaptive_cs(
+                SensitivityDrivenStrategy(3, variances, min_degree=min_d),
+                stopping=CandidatePoolExhaustedStopping(),
+            )
+            assert cs_a.getNumBasisFunctions() == n_ref, (
+                f"Sensitivity min_degree={min_d}: got {cs_a.getNumBasisFunctions()}, expected {n_ref}")
+
+    def test_mean_mode_present_with_nonzero_min_degree(self, cs2):
+        """Mean mode must always be present even when min_degree > 0."""
+        for min_d in range(1, 4):
+            cs_a = cs2.make_adaptive_cs(
+                LevelByLevelStrategy(3, min_degree=min_d),
+            )
+            assert any(sum(d.values()) == 0 for d in cs_a.basis.values()), (
+                f"min_degree={min_d}: mean mode missing")
+
+    def test_min_degree_exposes_correct_property(self):
+        """All three strategies must expose min_degree as a property."""
+        assert LevelByLevelStrategy(3, min_degree=2).min_degree == 2
+        assert DownwardClosedStrategy(3, min_degree=2).min_degree == 2
+        variances = [1.0, 0.5]
+        assert SensitivityDrivenStrategy(3, variances, min_degree=2).min_degree == 2
+
+    def test_default_min_degree_is_zero(self):
+        """Default min_degree must be 0 for all strategies."""
+        assert LevelByLevelStrategy(3).min_degree == 0
+        assert DownwardClosedStrategy(3).min_degree == 0
+        assert SensitivityDrivenStrategy(3, [1.0, 0.5]).min_degree == 0

@@ -77,8 +77,12 @@ class MeanOnlyStarting(StartingCriterion):
     """
 
     def initialize(self, pool, cs_ref) -> dict:
-        mean_id = next(mid for mid, degs in pool.items()
-                       if sum(degs.values()) == 0)
+        mean_candidates = [mid for mid, degs in pool.items()
+                           if sum(degs.values()) == 0]
+        if not mean_candidates:
+            # mean is already in the baseline (min_degree > 0); nothing to do
+            return {}
+        mean_id = mean_candidates[0]
         return {mean_id: pool.pop(mean_id)}
 
 
@@ -199,6 +203,27 @@ class AdaptiveBasisStrategy(ABC):
         The reference CS used for candidate generation is built at this degree.
         """
 
+    @property
+    def min_degree(self) -> int:
+        """
+        Minimum total polynomial degree of the candidate pool (default 0).
+
+        Modes with ``|α| < min_degree`` are automatically placed in the
+        **baseline** active set by ``make_adaptive_cs`` and are never offered
+        to the starting criterion or the enrichment loop.  This enables
+        warm-restarts: set ``min_degree = k`` to continue enriching a basis
+        that already covers levels 0 … k−1, without redundantly re-adding
+        those modes to the pool.
+
+        The baseline is always a complete level set and therefore trivially
+        satisfies the downward-closed constraint, so admissibility checks on
+        new candidates remain well-defined regardless of the starting criterion.
+
+        Override in subclasses that expose a user-facing ``min_degree``
+        parameter.  The default returns 0 (no baseline pre-seeding, full pool).
+        """
+        return 0
+
     @abstractmethod
     def select(
         self,
@@ -300,14 +325,23 @@ class LevelByLevelStrategy(AdaptiveBasisStrategy):
     ----------
     max_degree : int
         Maximum total degree to include in the candidate pool.
+    min_degree : int, default 0
+        Minimum total degree to include in the candidate pool.  Modes with
+        ``|α| < min_degree`` are pre-seeded as the baseline by
+        ``make_adaptive_cs`` and are never placed in the pool.
     """
 
-    def __init__(self, max_degree: int):
+    def __init__(self, max_degree: int, min_degree: int = 0):
         self._max_degree = max_degree
+        self._min_degree = min_degree
 
     @property
     def max_degree(self) -> int:
         return self._max_degree
+
+    @property
+    def min_degree(self) -> int:
+        return self._min_degree
 
     def select(self, active, pool, cs_ref) -> set:
         if not pool:
@@ -340,10 +374,16 @@ class SensitivityDrivenStrategy(AdaptiveBasisStrategy):
         Determines enrichment priority.
     batch_size : int, default 1
         Number of modes to return per :meth:`select` call.
+    min_degree : int, default 0
+        Minimum total degree to include in the candidate pool.  Modes with
+        ``|α| < min_degree`` are pre-seeded as the baseline by
+        ``make_adaptive_cs`` and are never placed in the pool.
     """
 
-    def __init__(self, max_degree: int, variances: list, batch_size: int = 1):
+    def __init__(self, max_degree: int, variances: list,
+                 batch_size: int = 1, min_degree: int = 0):
         self._max_degree = max_degree
+        self._min_degree = min_degree
         self._variances  = list(variances)
         self._batch_size = batch_size
         # Params ranked by descending variance (local 0-based indices)
@@ -353,6 +393,10 @@ class SensitivityDrivenStrategy(AdaptiveBasisStrategy):
     @property
     def max_degree(self) -> int:
         return self._max_degree
+
+    @property
+    def min_degree(self) -> int:
+        return self._min_degree
 
     def select(self, active, pool, cs_ref) -> set:
         if not pool:
@@ -400,10 +444,22 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
         restricted to admissible candidates).
     batch_size : int, default 1
         Number of admissible modes to return per :meth:`select` call.
+    min_degree : int, default 0
+        Minimum total degree to include in the candidate pool.  Modes with
+        ``|α| < min_degree`` are pre-seeded as the **baseline** active set
+        by ``make_adaptive_cs`` before the enrichment loop starts.  This
+        enables warm-restarts — set ``min_degree = k`` to enrich a basis
+        that already covers levels 0 … k−1.
+
+        Invariant: the baseline is always a complete level set and therefore
+        trivially downward-closed, so the DC constraint remains valid for all
+        new candidates regardless of the starting criterion.
     """
 
-    def __init__(self, max_degree: int, scorer=None, batch_size: int = 1):
+    def __init__(self, max_degree: int, scorer=None,
+                 batch_size: int = 1, min_degree: int = 0):
         self._max_degree = max_degree
+        self._min_degree = min_degree
         self._scorer     = scorer or (lambda mid, degs, active, cs_ref:
                                        -sum(degs.values()))
         self._batch_size = batch_size
@@ -411,6 +467,10 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
     @property
     def max_degree(self) -> int:
         return self._max_degree
+
+    @property
+    def min_degree(self) -> int:
+        return self._min_degree
 
     @staticmethod
     def _admissible(degs: Counter, active: dict) -> bool:

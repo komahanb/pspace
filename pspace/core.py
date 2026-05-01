@@ -894,11 +894,19 @@ class CoordinateSystem:
         # Full reference CS at the strategy's max_degree
         cs_ref = self.make_cs(strategy.max_degree)
 
-        # Build the candidate pool from the full basis
-        pool = dict(cs_ref.basis)
+        # Split the full basis into:
+        #   baseline — modes with |α| < min_degree, always active (pre-seeded)
+        #   pool     — modes with |α| >= min_degree, subject to Starting/Strategy
+        min_deg  = strategy.min_degree
+        baseline = {mid: Counter(degs)
+                    for mid, degs in cs_ref.basis.items()
+                    if sum(degs.values()) < min_deg}
+        pool     = {mid: Counter(degs)
+                    for mid, degs in cs_ref.basis.items()
+                    if sum(degs.values()) >= min_deg}
 
-        # Delegate initial active set to the starting criterion
-        active = starting.initialize(pool, cs_ref)
+        # Delegate initial active set to the starting criterion (operates on pool)
+        active = {**baseline, **starting.initialize(pool, cs_ref)}
 
         # Give the strategy a chance to reject an incompatible initial set
         # (e.g. DownwardClosedStrategy requires a downward-closed seed)
