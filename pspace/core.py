@@ -668,6 +668,128 @@ class CoordinateSystem:
         return {cid: coord.mc_samples(n, rng)
                 for cid, coord in self.coordinates.items()}
 
+    def find_modes(self, param_degrees=None, total_degree=None, exact=True):
+        """
+        Query the basis for modes whose multi-index matches a degree specification.
+
+        Parameters
+        ----------
+        param_degrees : dict[int, int], optional
+            Required degree for each specified **local** parameter index
+            (0-based insertion order, as assigned by ``make_cs``).
+            Only modes whose multi-index has *exactly* these degrees for the
+            specified parameters are returned.  Unspecified parameters are
+            handled according to the ``exact`` flag.
+            If omitted, no per-parameter constraint is applied.
+
+        total_degree : int, optional
+            If given, only modes whose total polynomial degree
+            ``sum(alpha.values()) == total_degree`` are returned.
+
+        exact : bool, default True
+            Controls how **unspecified** parameters (those absent from
+            ``param_degrees``) are treated:
+
+            * ``True``  — unspecified parameters must have degree **0**.
+              Use this to select *pure* modes (e.g. purely linear in k₁).
+            * ``False`` — unspecified parameters may have any degree.
+              Use this to select modes that *involve* certain parameters
+              regardless of what the remaining parameters contribute.
+
+        Returns
+        -------
+        dict[int, Counter]
+            ``{mode_id: degree_counter}`` for every basis mode that
+            satisfies all supplied constraints.  Returns an empty dict
+            when no modes match.
+
+        Examples
+        --------
+        Assume a 2-parameter basis (k1=local 0, k2=local 1), degree 3:
+
+        >>> cs_3 = cs.make_cs(3)
+
+        # Purely linear in k1, constant in k2:
+        >>> cs_3.find_modes({0: 1}, exact=True)
+        {2: Counter({0: 1, 1: 0})}
+
+        # All modes that are linear in k1 (any degree in k2):
+        >>> cs_3.find_modes({0: 1}, exact=False)
+        {2: ..., 5: ..., 8: ...}   # (1,0), (1,1), (1,2)
+
+        # Specific cross-term (1,1):
+        >>> cs_3.find_modes({0: 1, 1: 1}, exact=True)
+        {5: Counter({0: 1, 1: 1})}
+
+        # All level-2 modes:
+        >>> cs_3.find_modes(total_degree=2)
+        {3: ..., 4: ..., 5: ...}   # (2,0), (0,2), (1,1)
+
+        # Level-2 modes that involve k1:
+        >>> cs_3.find_modes({0: 1}, total_degree=2, exact=False)
+        {5: Counter({0: 1, 1: 1})}   # only (1,1)
+
+        # Only the mean mode:
+        >>> cs_3.find_modes({}, exact=True)
+        {0: Counter({0: 0, 1: 0})}
+        """
+        if self.basis is None:
+            raise RuntimeError("CoordinateSystem not initialized; call initialize() first.")
+
+        # Distinguish "no constraint" (None) from "empty constraint" ({})
+        # so that find_modes(total_degree=2) returns all level-2 modes rather
+        # than enforcing exact=True against an empty param_degrees dict.
+        no_param_constraint = (param_degrees is None)
+        param_degrees = param_degrees if param_degrees is not None else {}
+        result = {}
+
+        for mode_id, degs in self.basis.items():
+            # 1. Check specified parameters match exactly
+            if any(degs.get(k, 0) != d for k, d in param_degrees.items()):
+                continue
+
+            # 2. Check unspecified parameters are zero (exact mode)
+            if exact and not no_param_constraint:
+                specified = set(param_degrees.keys())
+                if any(degs.get(k, 0) != 0
+                       for k in range(len(self.coordinates))
+                       if k not in specified):
+                    continue
+
+            # 3. Check total degree constraint
+            if total_degree is not None and sum(degs.values()) != total_degree:
+                continue
+
+            result[mode_id] = degs
+
+        return result
+
+    def param_to_mode_map(self):
+        """
+        Return the unique degree-1 mode for each parameter (all others degree 0).
+
+        This is the canonical mapping used to connect physical parameters to
+        their PC modes in a level-1 (linear) basis expansion.  It delegates
+        to ``find_modes`` with ``exact=True``.
+
+        Returns
+        -------
+        dict[int, int]
+            ``{local_param_index: mode_id}``.  Parameters with no matching
+            mode (e.g. basis built at degree 0) are omitted.
+
+        See Also
+        --------
+        find_modes : general mode query; this method is the specialisation
+            ``find_modes({k: 1}, exact=True)`` for every local param index k.
+        """
+        result = {}
+        for k in range(len(self.coordinates)):
+            matches = self.find_modes({k: 1}, exact=True)
+            if matches:
+                result[k] = next(iter(matches))   # exactly one match
+        return result
+
     def make_cs(self, degree, basis_type=None):
         """
         Return a new CoordinateSystem with the same distributions but

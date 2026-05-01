@@ -135,6 +135,52 @@ error = cs.check_orthonormality()   # should be < 1e-12
 ok, _, gram = cs.checkConsistency(verbose=True)
 ```
 
+### 6 — Query the multi-index basis set
+
+`find_modes` is a composable query over the basis multi-index set.
+All three constraints are optional and can be combined freely.
+
+```python
+cs3 = cs.make_cs(3)   # degree-3 sub-system
+
+# All modes with total degree exactly 2 (level-2 modes)
+cs3.find_modes(total_degree=2)
+# -> {2: {0:0,1:2}, 5: {0:1,1:1}, 7: {0:2,1:0}}
+
+# Pure mode linear in parameter 0 only (no other parameter involvement)
+cs3.find_modes({0: 1}, exact=True)
+# -> {4: {0:1, 1:0}}
+
+# All modes that involve parameter 0 with degree 1 (k1 linear, k2 anything)
+cs3.find_modes({0: 1}, exact=False)
+# -> {4: {0:1,1:0}, 5: {0:1,1:1}, 6: {0:1,1:2}}
+
+# The unique cross-term mode (linear in both parameters)
+cs3.find_modes({0: 1, 1: 1}, exact=True)
+# -> {5: {0:1, 1:1}}
+
+# Composed: level-2 modes that involve parameter 0
+cs3.find_modes({0: 1}, total_degree=2, exact=False)
+# -> {5: {0:1, 1:1}}
+
+# Mean mode only
+cs3.find_modes({}, exact=True)
+# -> {0: {0:0, 1:0}}
+
+# All modes (no constraints)
+cs3.find_modes()
+# -> all 10 modes in the degree-3 basis
+```
+
+`param_to_mode_map()` returns the unique "pure linear" mode ID for each
+parameter — useful for connecting BSF sensitivity fields to PC mode columns:
+
+```python
+cs.make_cs(1).param_to_mode_map()   # {0: 2, 1: 1}
+cs.make_cs(3).param_to_mode_map()   # {0: 4, 1: 1}
+cs.make_cs(0).param_to_mode_map()   # {}  (no linear modes at degree 0)
+```
+
 ---
 
 ## API reference
@@ -162,6 +208,9 @@ ok, _, gram = cs.checkConsistency(verbose=True)
 | `build_quadrature(degrees)` | Tensor-product Gauss rule for given degree map |
 | `check_orthonormality()` | Returns `‖G − I‖∞` for the Gram matrix |
 | `check_decomposition_numerical_symbolic(f)` | Cross-checks quadrature vs Sympy |
+| `make_cs(degree)` | Return a new `CoordinateSystem` restricted to the given total degree |
+| `find_modes(param_degrees, total_degree, exact)` | Query multi-index basis set; returns `{mode_id: Counter}` for all matching modes |
+| `param_to_mode_map()` | `{local_param_index: mode_id}` — the unique pure-linear mode for each parameter |
 
 ### `StateEquation`
 
@@ -198,6 +247,7 @@ tests/
   test_vector_decomposition.py  — randomized c_k = ⟨f, ψ_k⟩ tests
   test_matrix_decomposition.py  — randomized A_ij = ⟨ψ_i, f, ψ_j⟩ tests
   test_sparsity_logic.py        — sparsity mask correctness
+  test_basis_queries.py         — find_modes() and param_to_mode_map() tests
   test_utils.py                 — shared test helpers
 ```
 
@@ -209,7 +259,7 @@ tests/
 pytest tests/ -v
 ```
 
-All 42 tests should pass across Normal, Uniform, and Exponential distributions,
+All tests should pass across Normal, Uniform, and Exponential distributions,
 with both tensor-degree and total-degree bases, and both sparse and full assembly paths.
 
 ---
