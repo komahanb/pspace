@@ -527,6 +527,54 @@ class LevelByLevelStrategy(AdaptiveBasisStrategy):
                 if sum(degs.values()) == next_level}
 
 
+class _LevelByLevelDecayStrategy(AdaptiveBasisStrategy):
+    """
+    Max-degree-first decay for use by AdaptiveOperator.inverse.
+
+    Removes all modes at the **maximum** total degree present in the
+    active set, one level at a time.  This is the correct inverse of
+    LevelByLevelStrategy: grow adds levels min→max ascending, so decay
+    should remove them max→min descending, restoring the original active
+    set (Involution law holds).
+
+    This class is intentionally NOT returned by
+    ``LevelByLevelStrategy.reverse()`` (which keeps the public
+    ``_ReversedStrategy`` contract for backward compatibility); it is
+    used directly by ``AdaptiveOperator.inverse``.
+    """
+
+    def __init__(self, max_degree: int, min_degree: int = 0):
+        self._max_degree = max_degree
+        self._min_degree = min_degree
+
+    @property
+    def max_degree(self) -> int:
+        return self._max_degree
+
+    @property
+    def min_degree(self) -> int:
+        return self._min_degree
+
+    @property
+    def direction(self) -> str:
+        return 'decay'
+
+    def select(self, active: dict, pool: dict, cs_ref) -> set:
+        if not active:
+            return set()
+        max_deg = max(sum(d.values()) for d in active.values())
+        if max_deg <= self._min_degree:
+            return set()
+        return {mid for mid, degs in active.items()
+                if sum(degs.values()) == max_deg}
+
+    def validate_initial_set(self, active, cs_ref) -> None:
+        pass
+
+    def reverse(self) -> 'LevelByLevelStrategy':
+        return LevelByLevelStrategy(self._max_degree, self._min_degree)
+
+
 class SensitivityDrivenStrategy(AdaptiveBasisStrategy):
     """
     Add modes in decreasing order of parameter variance contribution.
@@ -901,9 +949,10 @@ class AdaptiveOperator:
         return cs.make_adaptive_cs(self._strategy, self._stopping, self._starting)
 
     def inverse(self, grown_cs: 'CoordinateSystem') -> 'CoordinateSystem':
-        """Decay: prune grown_cs back using the reversed strategy."""
+        """Decay: prune grown_cs back using max-degree-first removal."""
         return grown_cs.make_adaptive_cs(
-            self._strategy.reverse(),
+            _LevelByLevelDecayStrategy(self._strategy.max_degree,
+                                       self._strategy.min_degree),
             starting=LevelStarting(self._strategy.max_degree),
         )
 
