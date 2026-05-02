@@ -168,12 +168,12 @@ class MonteCarloSampler(PointSampler):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Projection — contract for round-trip operators
+# Operation — contract for round-trip operators
 # ──────────────────────────────────────────────────────────────────────────────
 
-class Projection(ABC):
+class Operation(ABC):
     """
-    Contract for any operator that implements a round-trip projection.
+    Contract for any operator that implements a round-trip Operation.
 
     The Fundamental Theorem (in any operand space):
 
@@ -734,7 +734,7 @@ class CoordinateFactory:
 # Coordinate System
 #=====================================================================#
 
-class CoordinateSystem(Projection):
+class CoordinateSystem(Operation):
     """
     1) holds coordinates (axes),
     2) manages basis (multi-indices),
@@ -1340,7 +1340,7 @@ class CoordinateSystem(Projection):
 
         when the basis is complete for f (i.e. every monomial of f is
         representable).  On a truncated / adaptive basis the residual is
-        the projection error onto the chosen subspace — the natural error
+        the Operation error onto the chosen subspace — the natural error
         metric for adaptive basis selection.
 
         The duality mirrors the adaptive grow/decay law:
@@ -1373,19 +1373,19 @@ class CoordinateSystem(Projection):
             terms = [(0.0, Counter())]
         return OrthoPolyFunction(terms, self.coordinates)
 
-    # ── Projection contract ──────────────────────────────────────────────────
-    # CoordinateSystem satisfies the Projection ABC:
+    # ── Operation contract ──────────────────────────────────────────────────
+    # CoordinateSystem satisfies the Operation ABC:
     #   forward  = decompose   (function → coefficients)
     #   inverse  = reconstruct (coefficients → function)
-    # The Fundamental Theorem is the Projection residual == 0 identity.
+    # The Fundamental Theorem is the Operation residual == 0 identity.
     # Index-space analogue: decay(grow(S)) == S  (Involution law).
 
     def forward(self, f: 'PolyFunction') -> dict:
-        """Projection.forward — alias for decompose(f)."""
+        """Operation.forward — alias for decompose(f)."""
         return self.decompose(f)
 
     def inverse(self, coeffs: dict) -> 'OrthoPolyFunction':
-        """Projection.inverse — alias for reconstruct(coeffs)."""
+        """Operation.inverse — alias for reconstruct(coeffs)."""
         return self.reconstruct(coeffs)
 
     def residual_norm(self, coeffs: dict, f: PolyFunction) -> float:
@@ -1396,7 +1396,7 @@ class CoordinateSystem(Projection):
 
         This is the natural error metric for adaptive basis selection:
         - Full basis:     residual_norm == 0   (Fundamental Theorem)
-        - Truncated basis: residual_norm > 0   (projection error)
+        - Truncated basis: residual_norm > 0   (Operation error)
         - Enriching the basis can only decrease residual_norm (monotonicity)
 
         The norm is computed via Gauss quadrature.  The quadrature degree is
