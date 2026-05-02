@@ -1337,7 +1337,54 @@ class CoordinateSystem:
             terms = [(0.0, Counter())]
         return OrthoPolyFunction(terms, self.coordinates)
 
-    def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
+    def residual_norm(self, coeffs: dict, f: PolyFunction) -> float:
+        r"""
+        L2 norm of the PCE reconstruction residual:
+
+            ||residual|| = sqrt( <r, r> )   where  r = reconstruct(coeffs) - f
+
+        This is the natural error metric for adaptive basis selection:
+        - Full basis:     residual_norm == 0   (Fundamental Theorem)
+        - Truncated basis: residual_norm > 0   (projection error)
+        - Enriching the basis can only decrease residual_norm (monotonicity)
+
+        The norm is computed via Gauss quadrature.  The quadrature degree is
+        set to 2 × (max basis degree + max f degree) per axis to integrate
+        r² exactly.
+
+        This is the function-space analogue of the adaptive Completeness law:
+            Completeness:   |pool \ active| == 0   (index space)
+            Fundamental:    residual_norm   == 0   (function space)
+
+        Parameters
+        ----------
+        coeffs : dict {basis_id: float}
+            PCE coefficients, as returned by :meth:`decompose`.
+        f : PolyFunction
+            The original function being approximated.
+
+        Returns
+        -------
+        float
+            ‖reconstruct(coeffs) − f‖ in the weighted L² norm.
+        """
+        import math
+        residual = self.reconstruct(coeffs) - f
+
+        # Quadrature degree: 2 * (max basis degree + max f degree) per axis
+        basis_max = Counter()
+        for degs in self.basis.values():
+            for cid, d in degs.items():
+                basis_max[cid] = max(basis_max.get(cid, 0), d)
+        f_max = f.max_degrees
+        need  = Counter({cid: 2 * (basis_max.get(cid, 0) + f_max.get(cid, 0))
+                         for cid in set(basis_max) | set(f_max)})
+
+        qmap = self.build_quadrature(need)
+        s = sum(residual(q['Y'])**2 * q['W'] for q in qmap.values())
+        return math.sqrt(max(s, 0.0))   # guard against tiny negative from quadrature noise
+
+
         """
         Axis-wise admissibility rule for a single monomial.
 

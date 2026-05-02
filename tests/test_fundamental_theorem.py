@@ -236,9 +236,96 @@ class TestAdaptiveResidual:
             (1.5, Counter({k2.id: 1})),
         ])
         pts = _sample_points(cs)
-        cs_full    = cs.make_cs(3)
+        cs_full     = cs.make_cs(3)
         cs_adaptive = cs.make_adaptive_cs(LevelByLevelStrategy(3))
 
         r_full     = _max_residual(cs_full.reconstruct(cs_full.decompose(f)) - f, pts)
         r_adaptive = _max_residual(cs_adaptive.reconstruct(cs_adaptive.decompose(f)) - f, pts)
         assert r_adaptive <= r_full + TOL
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# residual_norm: L² norm of the PCE residual
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestResidualNorm:
+    r"""
+    cs.residual_norm(coeffs, f) = sqrt(<r, r>)  where r = reconstruct(coeffs) - f
+
+    Function-space error metric dual to |pool \ active| in index space.
+    Three laws mirror TestCompleteness and TestAdaptiveResidual:
+
+      Full basis:    residual_norm == 0      (Fundamental Theorem in L2 norm)
+      Truncation:    residual_norm > 0       (projection error)
+      Monotonicity:  norm(degree k+1) <= norm(degree k)
+    """
+
+    def _make_cs2(self):
+        cf = CoordinateFactory()
+        k1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'k1',
+                                         dict(a=0.9, b=1.1), max_monomial_dof=3)
+        k2 = cf.createUniformCoordinate(cf.newCoordinateID(), 'k2',
+                                         dict(a=0.4, b=0.6), max_monomial_dof=3)
+        cs = CoordinateSystem(BasisFunctionType.TOTAL_DEGREE)
+        cs.addCoordinateAxis(k1)
+        cs.addCoordinateAxis(k2)
+        cs.initialize()
+        return cs, k1, k2
+
+    def test_full_basis_norm_is_zero(self):
+        """Full basis: residual_norm must be 0 (Fundamental Theorem in L²)."""
+        cs, k1, k2 = self._make_cs2()
+        f = PolyFunction([
+            (1.0, Counter()),
+            (2.0, Counter({k1.id: 1})),
+            (1.5, Counter({k2.id: 2})),
+            (0.5, Counter({k1.id: 1, k2.id: 1})),
+        ])
+        cs_full = cs.make_cs(3)
+        norm = cs_full.residual_norm(cs_full.decompose(f), f)
+        assert norm < 1e-8, f"Full basis residual_norm = {norm:.2e}, expected ~0"
+
+    def test_truncated_basis_norm_is_positive(self):
+        """Degree-1 basis cannot represent degree-2 terms: norm must be > 0."""
+        cs, k1, k2 = self._make_cs2()
+        f = PolyFunction([
+            (1.0, Counter()),
+            (3.0, Counter({k1.id: 2})),   # degree-2 term missing from basis
+        ])
+        cs_trunc = cs.make_cs(1)
+        norm = cs_trunc.residual_norm(cs_trunc.decompose(f), f)
+        assert norm > 1e-8, f"Truncated basis residual_norm = {norm:.2e}, expected > 0"
+
+    def test_norm_decreases_monotonically(self):
+        """residual_norm at degree k+1 must be <= norm at degree k."""
+        cs, k1, k2 = self._make_cs2()
+        f = PolyFunction([
+            (1.0, Counter()),
+            (2.0, Counter({k1.id: 1})),
+            (1.5, Counter({k2.id: 2})),
+            (0.5, Counter({k1.id: 1, k2.id: 1})),
+            (0.3, Counter({k1.id: 2, k2.id: 1})),
+        ])
+        prev = float('inf')
+        for deg in range(1, 4):
+            cs_d = cs.make_cs(deg)
+            norm = cs_d.residual_norm(cs_d.decompose(f), f)
+            assert norm <= prev + 1e-8, (
+                f"degree {deg}: norm {norm:.2e} > prev {prev:.2e} "
+                f"(monotonicity violated)")
+            prev = norm
+
+    def test_adaptive_norm_equals_full_for_representable_f(self):
+        """LevelByLevel to max_degree must give same (zero) norm as full basis."""
+        cs, k1, k2 = self._make_cs2()
+        f = PolyFunction([
+            (1.0, Counter()),
+            (2.0, Counter({k1.id: 1})),
+            (1.5, Counter({k2.id: 1})),
+        ])
+        cs_full     = cs.make_cs(3)
+        cs_adaptive = cs.make_adaptive_cs(LevelByLevelStrategy(3))
+        norm_full     = cs_full.residual_norm(cs_full.decompose(f), f)
+        norm_adaptive = cs_adaptive.residual_norm(cs_adaptive.decompose(f), f)
+        assert norm_adaptive <= norm_full + 1e-8
+
