@@ -524,6 +524,13 @@ class SensitivityDrivenStrategy(AdaptiveBasisStrategy):
             selected.add(best)
             remaining.pop(best)
 
+        # Fallback: if no sensitivity-based candidate was found but the pool
+        # still has modes (e.g. the all-zero mean mode in decay mode), pick the
+        # lowest-degree one.  This ensures the Zero law holds under reversal.
+        if not selected and remaining:
+            best = min(remaining, key=lambda m: (sum(remaining[m].values()), m))
+            selected.add(best)
+
         return selected
 
 

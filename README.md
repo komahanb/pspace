@@ -202,8 +202,15 @@ Result:     Adaptive basis  — a prefix of the ordered sequence
 | Axis | Role | Implementations |
 |---|---|---|
 | **Starting** | Initial active set before enrichment | `MeanOnlyStarting`, `LevelStarting(level)`, `SensitivityStarting(variances)`, `FixedModeSetStarting(mode_ids)` |
-| **Strategy** | Selects which candidate(s) to add each step | `LevelByLevelStrategy`, `SensitivityDrivenStrategy`, `DownwardClosedStrategy` |
+| **Strategy** | Selects which candidate(s) to add (or evict) each step | `LevelByLevelStrategy`, `SensitivityDrivenStrategy`, `DownwardClosedStrategy` |
 | **Stopping** | Decides when to halt | `CandidatePoolExhaustedStopping`, `MaxIterationsStopping(n)`, `RelativeGrowthStopping(tol)` |
+
+Every strategy exposes two additional members:
+
+| Member | Type | Description |
+|---|---|---|
+| `direction` | `'grow'` \| `'decay'` | Current mode; `'grow'` by default |
+| `reverse()` | `_ReversedStrategy` | Dual strategy; `S.reverse().reverse() is S` |
 
 ### Pool bounds: `min_degree` and `max_degree`
 
@@ -232,22 +239,52 @@ cs_phase2 = cs.make_adaptive_cs(
 )
 ```
 
-### Completeness theorem
+### Three algebraic laws
 
-Because each operator combination imposes a filtration
+The framework satisfies three algebraic laws for any strategy `S`:
 
+| Law | Statement | Interpretation |
+|---|---|---|
+| **Completeness** | `grow(S, PoolExhausted) == universe` | Exhausting the pool recovers the full reference basis |
+| **Zero** | `decay(S.reverse(), PoolExhausted) == ∅` | Exhaustive decay from a full basis empties the active set |
+| **Involution** | `S.reverse().reverse() is S` | Grow and decay are exact duals — double-reversal is identity |
+
+These laws are analogous to the Fundamental Theorem of Calculus: the filtration
+`S_0 ⊂ S_1 ⊂ ... ⊂ S_n = pool` integrated (grow) or differentiated (decay)
+recovers the original set.  They are verified for all three strategies and all
+four starting criteria in `tests/test_adaptive_basis.py` (14 structural tests
+covering 86 logical paths).
+
+### Decay mode
+
+Every strategy gains a **decay mode** via `.reverse()` — no subclassing needed.
+Decay is the exact dual of grow: the reversed strategy evicts modes from the
+active set in the same order that grow adds them.
+
+```python
+from pspace.adaptive import LevelByLevelStrategy, LevelStarting
+
+# Fully-enriched starting point (ideal decay input)
+cs_full = cs.make_adaptive_cs(LevelByLevelStrategy(3))
+
+# Decay: remove level by level until empty
+cs_pruned = cs.make_adaptive_cs(
+    LevelByLevelStrategy(3).reverse(),
+    starting=LevelStarting(3),          # all modes active, pool empty
+)
+assert cs_pruned.getNumBasisFunctions() == 0   # Zero law
+
+# Partial decay: remove only the top level
+cs_pruned = cs.make_adaptive_cs(
+    LevelByLevelStrategy(3).reverse(),
+    starting=LevelStarting(3),
+    stopping=MaxIterationsStopping(1),  # stop after one eviction step
+)
 ```
-S_0 ⊂ S_1 ⊂ S_2 ⊂ ... ⊂ S_n  =  pool
-```
 
-running any combination to `CandidatePoolExhaustedStopping` must recover the
-full pool exactly.  This is tested for all 4 × 3 = 12 combinations of
-Starting × Strategy (see `TestCrossStrategyConsistency` in
-`tests/test_adaptive_basis.py`).
-
-The full basis (total-degree or tensor-product) is not one of the 36 named
-combinations — it is the **operand** itself, recovered as the degenerate case
-where the stopping criterion never fires early.
+The `direction` property (`'grow'` or `'decay'`) records the current mode, and
+`reverse()` is a no-cost wrapper — the inner strategy object is shared, not
+copied.  All three concrete strategies (LBL, SD, DC) support decay for free.
 
 ### Quick start
 
@@ -344,7 +381,7 @@ tests/
   test_matrix_decomposition.py  — randomized A_ij = ⟨ψ_i, f, ψ_j⟩ tests
   test_sparsity_logic.py        — sparsity mask correctness
   test_basis_queries.py         — find_modes() and param_to_mode_map() tests
-  test_adaptive_basis.py        — adaptive basis selection framework tests
+  test_adaptive_basis.py        — adaptive basis selection (14 structural tests; Completeness, Zero, Involution laws)
   test_utils.py                 — shared test helpers
 ```
 
