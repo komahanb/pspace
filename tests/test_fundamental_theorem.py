@@ -239,8 +239,8 @@ class TestAdaptiveResidual:
         cs_full     = cs.make_cs(3)
         cs_adaptive = cs.make_adaptive_cs(LevelByLevelStrategy(3))
 
-        r_full     = _max_residual(cs_full.reconstruct(cs_full.decompose(f)) - f, pts)
-        r_adaptive = _max_residual(cs_adaptive.reconstruct(cs_adaptive.decompose(f)) - f, pts)
+        r_full     = _max_residual(cs_full.residual(f), pts)
+        r_adaptive = _max_residual(cs_adaptive.residual(f), pts)
         assert r_adaptive <= r_full + TOL
 
 
@@ -282,7 +282,7 @@ class TestResidualNorm:
             (0.5, Counter({k1.id: 1, k2.id: 1})),
         ])
         cs_full = cs.make_cs(3)
-        norm = cs_full.residual_norm(cs_full.decompose(f), f)
+        norm = cs_full.residual_norm(f)
         assert norm < 1e-8, f"Full basis residual_norm = {norm:.2e}, expected ~0"
 
     def test_truncated_basis_norm_is_positive(self):
@@ -293,7 +293,7 @@ class TestResidualNorm:
             (3.0, Counter({k1.id: 2})),   # degree-2 term missing from basis
         ])
         cs_trunc = cs.make_cs(1)
-        norm = cs_trunc.residual_norm(cs_trunc.decompose(f), f)
+        norm = cs_trunc.residual_norm(f)
         assert norm > 1e-8, f"Truncated basis residual_norm = {norm:.2e}, expected > 0"
 
     def test_norm_decreases_monotonically(self):
@@ -309,7 +309,7 @@ class TestResidualNorm:
         prev = float('inf')
         for deg in range(1, 4):
             cs_d = cs.make_cs(deg)
-            norm = cs_d.residual_norm(cs_d.decompose(f), f)
+            norm = cs_d.residual_norm(f)
             assert norm <= prev + 1e-8, (
                 f"degree {deg}: norm {norm:.2e} > prev {prev:.2e} "
                 f"(monotonicity violated)")
@@ -325,7 +325,5 @@ class TestResidualNorm:
         ])
         cs_full     = cs.make_cs(3)
         cs_adaptive = cs.make_adaptive_cs(LevelByLevelStrategy(3))
-        norm_full     = cs_full.residual_norm(cs_full.decompose(f), f)
-        norm_adaptive = cs_adaptive.residual_norm(cs_adaptive.decompose(f), f)
-        assert norm_adaptive <= norm_full + 1e-8
+        assert cs_adaptive.residual_norm(f) <= cs_full.residual_norm(f) + 1e-8
 

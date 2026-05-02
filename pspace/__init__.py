@@ -40,6 +40,7 @@ from .adaptive import (
     AdaptiveContext,
     Convergence,
     StoppingCriterion,
+    AdaptiveOperator,
     LevelByLevelStrategy,
     SensitivityDrivenStrategy,
     DownwardClosedStrategy,
@@ -58,6 +59,7 @@ __all__ = [
     "BasisFunctionType",
     "DistributionType",
     "CoordinateType",
+    "Operation",
     "PolyFunction",
     "OrthoPolyFunction",
     "StateEquation",
@@ -80,4 +82,5 @@ __all__ = [
     "CandidatePoolExhaustedStopping",
     "MaxIterationsStopping",
     "RelativeGrowthStopping",
+    "AdaptiveOperator",
 ]

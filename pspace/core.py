@@ -1388,41 +1388,32 @@ class CoordinateSystem(Operation):
         """Operation.inverse — alias for reconstruct(coeffs)."""
         return self.reconstruct(coeffs)
 
-    def residual_norm(self, coeffs: dict, f: PolyFunction) -> float:
+    def residual_norm(self, f: PolyFunction) -> float:
         r"""
-        L2 norm of the PCE reconstruction residual:
+        L2 norm of the Operation residual:
 
-            ||residual|| = sqrt( <r, r> )   where  r = reconstruct(coeffs) - f
+            ||residual|| = sqrt( <r, r> )   where  r = residual(f)
 
-        This is the natural error metric for adaptive basis selection:
-        - Full basis:     residual_norm == 0   (Fundamental Theorem)
-        - Truncated basis: residual_norm > 0   (Operation error)
-        - Enriching the basis can only decrease residual_norm (monotonicity)
+        Full basis: residual_norm == 0  (Fundamental Theorem in L2)
+        Truncated:  residual_norm  > 0  (projection error)
+        Monotone:   norm decreases as basis grows
 
-        The norm is computed via Gauss quadrature.  The quadrature degree is
-        set to 2 × (max basis degree + max f degree) per axis to integrate
-        r² exactly.
-
-        This is the function-space analogue of the adaptive Completeness law:
-            Completeness:   |pool \ active| == 0   (index space)
-            Fundamental:    residual_norm   == 0   (function space)
+        Function-space dual of the index-space Completeness law:
+            Completeness:  |pool \ active| == 0   (index space)
+            Fundamental:   residual_norm   == 0   (function space)
 
         Parameters
         ----------
-        coeffs : dict {basis_id: float}
-            PCE coefficients, as returned by :meth:`decompose`.
         f : PolyFunction
-            The original function being approximated.
+            The function being approximated.
 
         Returns
         -------
         float
-            ‖reconstruct(coeffs) − f‖ in the weighted L² norm.
         """
         import math
-        residual = self.reconstruct(coeffs) - f
+        r = self.residual(f)   # inverse(forward(f)) - f  via Operation default
 
-        # Quadrature degree: 2 * (max basis degree + max f degree) per axis
         basis_max = Counter()
         for degs in self.basis.values():
             for cid, d in degs.items():
@@ -1432,8 +1423,10 @@ class CoordinateSystem(Operation):
                          for cid in set(basis_max) | set(f_max)})
 
         qmap = self.build_quadrature(need)
-        s = sum(residual(q['Y'])**2 * q['W'] for q in qmap.values())
-        return math.sqrt(max(s, 0.0))   # guard against tiny negative from quadrature noise
+        s = sum(r(q['Y'])**2 * q['W'] for q in qmap.values())
+        return math.sqrt(max(s, 0.0))
+
+
 
 
         """

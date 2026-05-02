@@ -857,3 +857,66 @@ CandidatePoolExhaustedStopping = CandidatePoolExhaustedConvergence
 MaxIterationsStopping          = MaxIterationsConvergence
 RelativeGrowthStopping         = RelativeGrowthConvergence
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AdaptiveOperator — Operation contract for the index space
+# ──────────────────────────────────────────────────────────────────────────────
+
+if TYPE_CHECKING:
+    from .core import Operation  # only for type hints
+
+
+class AdaptiveOperator:
+    """
+    Index-space implementation of the Operation contract:
+
+        forward(cs)       = grow:  cs.make_adaptive_cs(strategy)
+        inverse(grown_cs) = decay: grown_cs.make_adaptive_cs(strategy.reverse())
+        residual(cs)      = symmetric difference of basis after round-trip
+
+    The Involution law (index-space Fundamental Theorem):
+
+        residual(cs) == frozenset()   iff   decay(grow(cs)).basis == cs.basis
+
+    This is the index-space analogue of CoordinateSystem.residual_norm == 0.
+    CRAI: same Operation, different operand (index set vs function domain).
+
+    Parameters
+    ----------
+    strategy : AdaptiveBasisStrategy
+        The growth strategy.  Decay uses strategy.reverse() automatically.
+    stopping : Convergence, optional
+        Convergence criterion.  Defaults to CandidatePoolExhaustedConvergence.
+    starting : StartingCriterion, optional
+        Initial active set policy.
+    """
+
+    def __init__(self, strategy, stopping=None, starting=None):
+        self._strategy = strategy
+        self._stopping = stopping
+        self._starting = starting
+
+    def forward(self, cs: 'CoordinateSystem') -> 'CoordinateSystem':
+        """Grow: enrich cs using the strategy."""
+        return cs.make_adaptive_cs(self._strategy, self._stopping, self._starting)
+
+    def inverse(self, grown_cs: 'CoordinateSystem') -> 'CoordinateSystem':
+        """Decay: prune grown_cs back using the reversed strategy."""
+        return grown_cs.make_adaptive_cs(
+            self._strategy.reverse(),
+            starting=LevelStarting(self._strategy.max_degree),
+        )
+
+    def residual(self, cs: 'CoordinateSystem') -> frozenset:
+        """
+        Symmetric difference of the basis after a grow/decay round-trip.
+
+        Returns frozenset() (empty) iff the Involution law holds:
+            decay(grow(cs)).basis == cs.basis
+        """
+        recovered  = self.inverse(self.forward(cs))
+        orig_modes = frozenset(frozenset(d.items()) for d in cs.basis.values())
+        recv_modes = frozenset(frozenset(d.items()) for d in recovered.basis.values())
+        return orig_modes ^ recv_modes   # symmetric difference
+
+
