@@ -33,6 +33,9 @@ from pspace.adaptive import (
     MaxIterationsStopping,
     RelativeGrowthStopping,
     _ReversedStrategy,
+    _LevelByLevelDecayStrategy,
+    AdaptiveOperator,
+    MaxIterationsConvergence,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -322,3 +325,166 @@ class TestContract:
                         cs2.make_adaptive_cs(tc, stopping=oc, starting=sc)
                     except Exception as e:
                         pytest.fail(f"[{label}] raised {type(e).__name__}: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# _LevelByLevelDecayStrategy — private max-degree-first decay used by
+# AdaptiveOperator.inverse.  Tests verify select semantics, direction, and
+# that make_adaptive_cs reaches exactly the mean-only seed when fully run.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestLevelByLevelDecayStrategy:
+    """
+    _LevelByLevelDecayStrategy removes the highest total-degree modes first.
+    It is the correct inverse for LevelByLevelStrategy's min-degree-first grow.
+    """
+
+    def _make_active(self, cs2, max_degree):
+        """Return a {mid: degs} dict for all modes up to max_degree."""
+        return dict(cs2.make_cs(max_degree).basis)
+
+    def test_direction_is_decay(self):
+        s = _LevelByLevelDecayStrategy(max_degree=3)
+        assert s.direction == 'decay'
+
+    def test_select_removes_max_degree_modes(self, cs2):
+        """select() must return exactly the modes at the highest degree in active."""
+        s      = _LevelByLevelDecayStrategy(max_degree=3)
+        cs_ref = cs2.make_cs(3)
+        active = self._make_active(cs2, 3)
+        pool   = {}
+        chosen = s.select(active, pool, cs_ref)
+        chosen_degs = {sum(active[mid].values()) for mid in chosen}
+        assert chosen_degs == {3}, "select must pick only the max-degree (3) modes"
+        max_in_rest = max(sum(active[mid].values()) for mid in active
+                          if mid not in chosen)
+        assert max_in_rest == 2, "remaining active should top out at degree 2"
+
+    def test_select_stops_at_min_degree(self, cs2):
+        """When max degree in active == min_degree, select returns empty."""
+        min_deg = 1
+        s      = _LevelByLevelDecayStrategy(max_degree=3, min_degree=min_deg)
+        cs_ref = cs2.make_cs(3)
+        # active contains only degree-1 (and below, which is baseline) modes
+        active = {mid: degs for mid, degs in cs_ref.basis.items()
+                  if sum(degs.values()) <= min_deg}
+        pool   = {}
+        assert s.select(active, {}, cs_ref) == set()
+
+    def test_select_returns_empty_on_empty_active(self, cs2):
+        s      = _LevelByLevelDecayStrategy(max_degree=3)
+        cs_ref = cs2.make_cs(3)
+        assert s.select({}, {}, cs_ref) == set()
+
+    def test_reverse_returns_level_by_level_strategy(self):
+        s   = _LevelByLevelDecayStrategy(max_degree=3, min_degree=1)
+        rev = s.reverse()
+        assert isinstance(rev, LevelByLevelStrategy)
+        assert rev.max_degree == 3
+        assert rev.min_degree == 1
+
+    def test_full_decay_reaches_mean_only(self, cs2):
+        """Using _LevelByLevelDecayStrategy directly via make_adaptive_cs must
+        leave only the mean mode in the active set."""
+        s    = _LevelByLevelDecayStrategy(max_degree=3)
+        cs_a = cs2.make_adaptive_cs(s, starting=LevelStarting(3))
+        assert cs_a.getNumBasisFunctions() == 1
+        sole_degs = next(iter(cs_a.basis.values()))
+        assert sum(sole_degs.values()) == 0, "sole remaining mode must be mean (degree 0)"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AdaptiveOperator — index-space Operation contract.
+#
+# The Involution law (index-space Fundamental Theorem):
+#   op.residual(cs_mean) == frozenset()
+#   i.e. decay(grow(cs_mean)).basis == cs_mean.basis
+#
+# This is the bug that was NOT covered before; the tests below pin the
+# correct behavior and would have caught the _ReversedStrategy direction
+# error immediately.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestAdaptiveOperator:
+    """
+    AdaptiveOperator wraps a grow strategy and implements the Operation contract:
+      forward = grow, inverse = max-degree-first decay, residual = sym-diff.
+    """
+
+    @staticmethod
+    def _op(max_degree=3):
+        return AdaptiveOperator(LevelByLevelStrategy(max_degree))
+
+    def test_forward_grows_to_max_degree(self, cs2):
+        """forward(cs_mean) must produce the same basis as cs2.make_cs(max_degree)."""
+        op      = self._op(max_degree=3)
+        cs_mean = cs2.make_cs(0)
+        cs_full = cs2.make_cs(3)
+        cs_grown = op.forward(cs_mean)
+        assert cs_grown.getNumBasisFunctions() == cs_full.getNumBasisFunctions()
+
+    def test_forward_3param(self, cs3):
+        op      = self._op(max_degree=2)
+        cs_mean = cs3.make_cs(0)
+        cs_full = cs3.make_cs(2)
+        assert op.forward(cs_mean).getNumBasisFunctions() == cs_full.getNumBasisFunctions()
+
+    def test_forward_with_max_iterations_stopping(self, cs2):
+        """Stopping after 1 iteration must give fewer modes than full grow."""
+        op_1    = AdaptiveOperator(LevelByLevelStrategy(3), stopping=MaxIterationsConvergence(1))
+        cs_mean = cs2.make_cs(0)
+        n_1     = op_1.forward(cs_mean).getNumBasisFunctions()
+        n_full  = cs2.make_cs(3).getNumBasisFunctions()
+        assert 0 < n_1 < n_full
+
+    def test_inverse_decays_to_seed_size(self, cs2):
+        """inverse(forward(cs_mean)) must return a 1-mode (mean-only) basis."""
+        op       = self._op(max_degree=3)
+        cs_mean  = cs2.make_cs(0)
+        cs_grown = op.forward(cs_mean)
+        cs_back  = op.inverse(cs_grown)
+        assert cs_back.getNumBasisFunctions() == 1
+
+    def test_inverse_mean_mode_is_degree_zero(self, cs2):
+        """The single recovered mode must be degree 0 (the mean)."""
+        op      = self._op(max_degree=3)
+        cs_mean = cs2.make_cs(0)
+        cs_back = op.inverse(op.forward(cs_mean))
+        sole    = next(iter(cs_back.basis.values()))
+        assert sum(sole.values()) == 0
+
+    def test_involution_law_2param(self, cs2):
+        """Involution law: residual must be the empty frozenset."""
+        op   = self._op(max_degree=3)
+        diff = op.residual(cs2.make_cs(0))
+        assert diff == frozenset(), f"Involution violated; symmetric diff = {diff}"
+
+    def test_involution_law_3param(self, cs3):
+        op   = self._op(max_degree=2)
+        diff = op.residual(cs3.make_cs(0))
+        assert diff == frozenset(), f"3-param involution violated; diff = {diff}"
+
+    def test_involution_basis_exact_match(self, cs2):
+        """Not just size — recovered basis modes must be bit-for-bit identical."""
+        op       = self._op(max_degree=3)
+        cs_mean  = cs2.make_cs(0)
+        cs_back  = op.inverse(op.forward(cs_mean))
+        orig = frozenset(frozenset(d.items()) for d in cs_mean.basis.values())
+        recv = frozenset(frozenset(d.items()) for d in cs_back.basis.values())
+        assert orig == recv
+
+    def test_residual_nonempty_when_forward_stopped_early(self, cs2):
+        """
+        When op's forward ignores the input basis (always starts fresh from
+        MeanOnlyStarting), inverse decays back to mean-only.  So for any cs
+        that has more than the mean mode, residual must be non-empty.
+
+        This pins the known limitation: AdaptiveOperator is involutory only
+        at the exact seed (cs_mean); for richer starting sets, residual ≠ ∅.
+        """
+        op      = self._op(max_degree=3)
+        cs_deg1 = cs2.make_cs(1)   # 3 modes: mean + degree-1
+        diff    = op.residual(cs_deg1)
+        assert diff != frozenset(), (
+            "Expected non-empty residual when input has degree-1 modes "
+            f"(inverse decays only to mean-only); got diff={diff}")

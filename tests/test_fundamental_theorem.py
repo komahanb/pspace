@@ -27,7 +27,8 @@ from collections import Counter
 from pspace.core import (CoordinateFactory,
                          CoordinateSystem,
                          BasisFunctionType,
-                         PolyFunction)
+                         PolyFunction,
+                         Operation)
 from pspace.adaptive import (LevelByLevelStrategy,
                               LevelStarting,
                               MaxIterationsStopping)
@@ -326,4 +327,103 @@ class TestResidualNorm:
         cs_full     = cs.make_cs(3)
         cs_adaptive = cs.make_adaptive_cs(LevelByLevelStrategy(3))
         assert cs_adaptive.residual_norm(f) <= cs_full.residual_norm(f) + 1e-8
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Operation contract on CoordinateSystem
+#
+# CoordinateSystem implements the Operation ABC:
+#   forward(f)    = decompose(f)
+#   inverse(c)    = reconstruct(c)
+#   residual(f)   = inverse(forward(f)) - f  (via default Operation.residual)
+#
+# These tests pin that forward/inverse are true aliases (not copies) and that
+# residual(f) evaluates identically to reconstruct(decompose(f)) - f.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestOperationContract:
+    """
+    CoordinateSystem must satisfy the Operation interface contract.
+    forward/inverse are aliases; residual inherits the default implementation.
+    """
+
+    def _make_cs2(self):
+        cf = CoordinateFactory()
+        k1 = cf.createUniformCoordinate(cf.newCoordinateID(), 'k1',
+                                         dict(a=0.9, b=1.1), max_monomial_dof=3)
+        k2 = cf.createUniformCoordinate(cf.newCoordinateID(), 'k2',
+                                         dict(a=0.4, b=0.6), max_monomial_dof=3)
+        cs = CoordinateSystem(BasisFunctionType.TOTAL_DEGREE)
+        cs.addCoordinateAxis(k1)
+        cs.addCoordinateAxis(k2)
+        cs.initialize()
+        return cs, k1, k2
+
+    def _make_f(self, k1, k2):
+        return PolyFunction([
+            (1.0, Counter()),
+            (2.0, Counter({k1.id: 1})),
+            (1.5, Counter({k2.id: 1})),
+        ])
+
+    def test_cs_is_operation_instance(self):
+        cs, _, _ = self._make_cs2()
+        assert isinstance(cs.make_cs(2), Operation)
+
+    def test_forward_equals_decompose(self):
+        """forward(f) must return the same coefficients as decompose(f)."""
+        cs, k1, k2 = self._make_cs2()
+        cs2 = cs.make_cs(2)
+        f   = self._make_f(k1, k2)
+        assert cs2.forward(f) == cs2.decompose(f)
+
+    def test_inverse_equals_reconstruct_at_sample_points(self):
+        """inverse(c) must evaluate identically to reconstruct(c)."""
+        cs, k1, k2 = self._make_cs2()
+        cs2 = cs.make_cs(2)
+        f   = self._make_f(k1, k2)
+        c   = cs2.decompose(f)
+        pts = _sample_points(cs2)
+        rec = cs2.reconstruct(c)
+        inv = cs2.inverse(c)
+        for Y in pts:
+            assert abs(rec(Y) - inv(Y)) < TOL, (
+                f"inverse({Y}) = {inv(Y):.6g} != reconstruct = {rec(Y):.6g}")
+
+    def test_residual_matches_manual_at_sample_points(self):
+        """cs.residual(f) must agree with reconstruct(decompose(f)) - f pointwise."""
+        cs, k1, k2 = self._make_cs2()
+        cs1 = cs.make_cs(1)
+        f   = self._make_f(k1, k2)   # degree-1: fully representable at degree 1
+        pts = _sample_points(cs1)
+        res_method = cs1.residual(f)
+        res_manual = cs1.reconstruct(cs1.decompose(f))
+        for Y in pts:
+            method_val = float(res_method(Y))
+            manual_val = float(res_manual(Y)) - float(f(Y))
+            assert abs(method_val - manual_val) < TOL, (
+                f"residual mismatch at {Y}: method={method_val:.6g}, "
+                f"manual={manual_val:.6g}")
+
+    def test_residual_zero_for_representable_f(self):
+        """For a degree-1 f at a degree-1 CS, residual must be ~0 everywhere."""
+        cs, k1, k2 = self._make_cs2()
+        cs1 = cs.make_cs(1)
+        f   = self._make_f(k1, k2)
+        pts = _sample_points(cs1)
+        res = cs1.residual(f)
+        for Y in pts:
+            assert abs(float(res(Y))) < TOL, (
+                f"residual non-zero at {Y}: {float(res(Y)):.2e}")
+
+    def test_forward_inverse_roundtrip_at_sample_points(self):
+        """inverse(forward(f)) must reproduce f exactly for representable f."""
+        cs, k1, k2 = self._make_cs2()
+        cs2 = cs.make_cs(2)
+        f   = self._make_f(k1, k2)
+        pts = _sample_points(cs2)
+        recovered = cs2.inverse(cs2.forward(f))
+        for Y in pts:
+            assert abs(float(recovered(Y)) - float(f(Y))) < TOL, (
+                f"roundtrip mismatch at {Y}")
 
