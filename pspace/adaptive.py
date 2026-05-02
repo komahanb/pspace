@@ -293,7 +293,8 @@ class AdaptiveBasisStrategy(ABC):
         self,
         active: dict,
         pool:   dict,
-        cs_ref,   # CoordinateSystem
+        cs_ref,          # CoordinateSystem
+        coeffs: Optional[dict] = None,
     ) -> set:
         """
         Choose a subset of *pool* to add to *active*.
@@ -307,6 +308,11 @@ class AdaptiveBasisStrategy(ABC):
         cs_ref : CoordinateSystem
             The full reference coordinate system (built at ``max_degree``).
             Use ``cs_ref.find_modes(...)`` to query structural information.
+        coeffs : dict[mode_id, float] or None
+            PCE coefficients for the current active set, keyed by the same
+            mode IDs as *active*.  Non-None when the caller supplied *f* to
+            ``make_adaptive_cs``.  Coefficient-aware strategies (e.g.
+            :class:`CoefficientDecayScorer`) use this to score candidates.
 
         Returns
         -------
@@ -375,9 +381,9 @@ class _ReversedStrategy(AdaptiveBasisStrategy):
         """Double reversal returns the original strategy (identity)."""
         return self._inner
 
-    def select(self, active: dict, pool: dict, cs_ref) -> set:
+    def select(self, active: dict, pool: dict, cs_ref, coeffs=None) -> set:
         # Swap: inner sees (pool → active), returns modes to evict from active
-        return self._inner.select(pool, active, cs_ref)
+        return self._inner.select(pool, active, cs_ref, coeffs=coeffs)
 
     def validate_initial_set(self, active: dict, cs_ref) -> None:
         # In decay mode the initial active set is the full pool, which is
@@ -519,7 +525,7 @@ class LevelByLevelStrategy(AdaptiveBasisStrategy):
     def min_degree(self) -> int:
         return self._min_degree
 
-    def select(self, active, pool, cs_ref) -> set:
+    def select(self, active, pool, cs_ref, coeffs=None) -> set:
         if not pool:
             return set()
         next_level = min(sum(degs.values()) for degs in pool.values())
@@ -559,7 +565,7 @@ class _LevelByLevelDecayStrategy(AdaptiveBasisStrategy):
     def direction(self) -> str:
         return 'decay'
 
-    def select(self, active: dict, pool: dict, cs_ref) -> set:
+    def select(self, active: dict, pool: dict, cs_ref, coeffs=None) -> set:
         if not active:
             return set()
         max_deg = max(sum(d.values()) for d in active.values())
@@ -622,7 +628,7 @@ class SensitivityDrivenStrategy(AdaptiveBasisStrategy):
     def min_degree(self) -> int:
         return self._min_degree
 
-    def select(self, active, pool, cs_ref) -> set:
+    def select(self, active, pool, cs_ref, coeffs=None) -> set:
         if not pool:
             return set()
 
@@ -691,8 +697,8 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
                  batch_size: int = 1, min_degree: int = 0):
         self._max_degree = max_degree
         self._min_degree = min_degree
-        self._scorer     = scorer or (lambda mid, degs, active, cs_ref:
-                                       -sum(degs.values()))
+        self._scorer     = scorer or (lambda mid, degs, active, cs_ref,
+                                       coeffs=None: -sum(degs.values()))
         self._batch_size = batch_size
 
     @property
@@ -722,7 +728,7 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
                     return False
         return True
 
-    def select(self, active, pool, cs_ref) -> set:
+    def select(self, active: dict, pool: dict, cs_ref, coeffs=None) -> set:
         if not pool:
             return set()
 
@@ -734,7 +740,7 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
         # Sort by score (descending), break ties by mode ID
         ranked = sorted(admissible,
                          key=lambda m: (-self._scorer(m, admissible[m],
-                                                       active, cs_ref), m))
+                                                       active, cs_ref, coeffs), m))
         return set(ranked[:self._batch_size])
 
     def validate_initial_set(self, active: dict, cs_ref) -> None:
@@ -775,6 +781,66 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
                             f"Use LevelStarting or MeanOnlyStarting, or supply a "
                             f"downward-closed FixedModeSetStarting seed."
                         )
+
+
+class CoefficientDecayScorer:
+    """
+    Natural error indicator for :class:`DownwardClosedStrategy`.
+
+    Scores a candidate mode ``α`` by the **maximum absolute PCE coefficient
+    among its immediate predecessors** in the current active set:
+
+        score(α) = max{ |c_{α − eᵢ}| : αᵢ > 0, α − eᵢ ∈ active }
+
+    The intuition (BSF / ISQS framework): if a boundary coefficient is large,
+    the polynomial energy is still flowing in that direction — adding the next
+    mode is likely to contribute significant energy.  Conversely, if all
+    predecessors have decayed to near zero, the candidate can be deferred.
+
+    When ``coeffs`` is ``None`` (i.e. ``f`` was not passed to
+    ``make_adaptive_cs``), falls back to ``−total_degree`` (level-by-level
+    order) so the scorer is always safe to use.
+
+    Usage
+    -----
+    ::
+
+        scorer = CoefficientDecayScorer()
+        cs_a   = cs.make_adaptive_cs(
+            DownwardClosedStrategy(max_degree=4, scorer=scorer, batch_size=1),
+            f=f,    # <-- enables coefficient supply to ctx and scorer
+        )
+    """
+
+    @staticmethod
+    def _key(degs):
+        """Normalised degree key: frozenset of (axis, degree) pairs, zeros dropped."""
+        return frozenset((k, v) for k, v in degs.items() if v > 0)
+
+    def __call__(self, mode_id, degs, active, cs_ref, coeffs=None):
+        if not coeffs:
+            return -sum(degs.values())          # fallback: level-by-level order
+
+        # Build reverse map: normalised degree key → coefficient
+        key_to_coeff = {self._key(d): coeffs[mid]
+                        for mid, d in active.items()
+                        if mid in coeffs}
+
+        max_pred = 0.0
+        for axis, d in degs.items():
+            if d > 0:
+                pred = Counter({k: v for k, v in degs.items() if v > 0})
+                pred[axis] -= 1
+                if pred[axis] == 0:
+                    del pred[axis]
+                c = key_to_coeff.get(self._key(pred))
+                if c is not None:
+                    max_pred = max(max_pred, abs(c))
+
+        # Return negative so that DownwardClosedStrategy's sort (ascending)
+        # picks the candidate with the LARGEST predecessor coefficient first.
+        # Tie-break handled externally by mode_id.
+        return max_pred
 
 
 # ──────────────────────────────────────────────────────────────────────────────

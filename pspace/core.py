@@ -958,7 +958,8 @@ class CoordinateSystem(Operation):
         cs_new.initialize()
         return cs_new
 
-    def make_adaptive_cs(self, strategy, stopping=None, starting=None, verbose=False):
+    def make_adaptive_cs(self, strategy, stopping=None, starting=None,
+                         f=None, verbose=False):
         """
         Build a CoordinateSystem whose basis is grown adaptively.
 
@@ -979,6 +980,18 @@ class CoordinateSystem(Operation):
         starting : StartingCriterion, optional
             Builds the initial active set from the candidate pool.
             Defaults to :class:`MeanOnlyStarting` (mean mode only).
+        f : PolyFunction, optional
+            The function being approximated.  When provided:
+
+            * ``ctx.coeffs`` is populated each iteration with the current
+              active-set PCE coefficients — enabling
+              :class:`~pspace.adaptive.ResidualNormConvergence` and
+              coefficient-aware scorers such as
+              :class:`~pspace.adaptive.CoefficientDecayScorer`.
+            * Because the basis is orthonormal, the full-basis coefficients
+              ``cs_ref.decompose(f)`` are computed **once** before the loop;
+              active-set coefficients are obtained by slicing that dict —
+              so providing ``f`` adds only one quadrature evaluation overhead.
         verbose : bool, default False
             Print a one-line summary at each enrichment step.
 
@@ -1051,17 +1064,29 @@ class CoordinateSystem(Operation):
 
         iteration  = 0
         n_selected = 0
+
+        # For coefficient-aware stopping/scoring: decompose f on the full
+        # reference basis once (orthonormality means each c_i = <f,φ_i> is
+        # independent of which other modes are active).  Active-set coefficients
+        # are obtained by slicing this dict — O(1) per iteration.
+        coeffs_full = cs_ref.decompose(f) if f is not None else None
+
         # In grow mode the pool is consumed into active; loop while pool non-empty.
         # In decay mode active is consumed back into pool; loop while active non-empty.
         _source = lambda: pool if strategy.direction == 'grow' else active
         while _source():
+            coeffs_active = ({mid: coeffs_full[mid] for mid in active
+                              if mid in coeffs_full}
+                             if coeffs_full is not None else None)
             ctx = AdaptiveContext(active, pool, cs_ref, iteration,
-                                  strategy.direction, n_selected)
+                                  strategy.direction, n_selected,
+                                  coeffs=coeffs_active)
             stopping.update(ctx)
             if stopping.is_met():
                 break
 
-            selected = strategy.select(active, pool, cs_ref)
+            selected = strategy.select(active, pool, cs_ref,
+                                       coeffs=coeffs_active)
             if not selected:
                 break
 

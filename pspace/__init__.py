@@ -44,6 +44,7 @@ from .adaptive import (
     LevelByLevelStrategy,
     SensitivityDrivenStrategy,
     DownwardClosedStrategy,
+    CoefficientDecayScorer,
     CandidatePoolExhaustedConvergence,
     MaxIterationsConvergence,
     RelativeGrowthConvergence,
@@ -77,10 +78,15 @@ __all__ = [
     "LevelByLevelStrategy",
     "SensitivityDrivenStrategy",
     "DownwardClosedStrategy",
-    # adaptive — stopping
+    "CoefficientDecayScorer",
+    # adaptive — stopping / convergence
     "StoppingCriterion",
     "CandidatePoolExhaustedStopping",
     "MaxIterationsStopping",
     "RelativeGrowthStopping",
+    "CandidatePoolExhaustedConvergence",
+    "MaxIterationsConvergence",
+    "RelativeGrowthConvergence",
+    "ResidualNormConvergence",
     "AdaptiveOperator",
 ]
