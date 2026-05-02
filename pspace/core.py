@@ -1429,6 +1429,7 @@ class CoordinateSystem(Operation):
 
 
 
+    def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
         """
         Axis-wise admissibility rule for a single monomial.
 
@@ -1453,13 +1454,6 @@ class CoordinateSystem(Operation):
         For every axis d:
             |deg_i(d) - deg_j(d)| <= f_deg(d) <= deg_i(d) + deg_j(d)
         """
-
-        """
-        Axis-wise admissibility rule for a single monomial.
-
-        If f_deg is empty (constant monomial), then all (i,j) pairs are admissible.
-        """
-
         # Constant monomial -> don't filter anything
         if not f_deg:
             return deg_i == deg_j
