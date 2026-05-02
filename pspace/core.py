@@ -240,6 +240,30 @@ class PolyFunction:
     def __repr__(self):
         return f"PolyFunction({self._terms})"
 
+    def __neg__(self):
+        return PolyFunction([(-c, Counter(d)) for c, d in self._terms])
+
+    def __add__(self, other):
+        if isinstance(other, PolyFunction):
+            return PolyFunction(
+                [(c, Counter(d)) for c, d in self._terms] +
+                [(c, Counter(d)) for c, d in other._terms]
+            )
+        # scalar
+        return PolyFunction(self._terms + [(float(other), Counter())])
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        return self.__add__(-other)
+
+    def __mul__(self, scalar):
+        return PolyFunction([(float(scalar) * c, Counter(d)) for c, d in self._terms])
+
+    def __rmul__(self, scalar):
+        return self.__mul__(scalar)
+
 class OrthoPolyFunction:
     """
     Polynomial function expressed in orthonormal basis (Legendre, Hermite, etc.)
@@ -320,8 +344,82 @@ class OrthoPolyFunction:
         """Return coefficients directly."""
         return {tuple(sorted(d.items())): c for c, d in self._terms}
 
+    # ── Arithmetic ────────────────────────────────────────────────────
+    # All operations return a new callable that evaluates the combined
+    # function pointwise.  The result is a lightweight wrapper rather
+    # than a fully expanded OrthoPolyFunction because the two operands
+    # may live in different frames (ortho vs monomial).
+
+    def __neg__(self):
+        return OrthoPolyFunction([(-c, Counter(d)) for c, d in self._terms],
+                                 self._coords)
+
+    def __add__(self, other):
+        """OrthoPolyFunction + OrthoPolyFunction  →  OrthoPolyFunction
+           OrthoPolyFunction + PolyFunction        →  _SumFunction (pointwise)
+        """
+        if isinstance(other, OrthoPolyFunction) and other._coords is self._coords:
+            return OrthoPolyFunction(
+                [(c, Counter(d)) for c, d in self._terms] +
+                [(c, Counter(d)) for c, d in other._terms],
+                self._coords,
+            )
+        # Mixed frames: wrap as a pointwise sum
+        return _SumFunction(self, other)
+
+    def __radd__(self, other):
+        return _SumFunction(other, self)
+
+    def __sub__(self, other):
+        return self.__add__(-other)
+
+    def __rsub__(self, other):
+        return _SumFunction(other, -self)
+
+    def __mul__(self, scalar):
+        return OrthoPolyFunction([(float(scalar) * c, Counter(d))
+                                  for c, d in self._terms], self._coords)
+
+    def __rmul__(self, scalar):
+        return self.__mul__(scalar)
+
     def __repr__(self):
         return f"OrthoPolyFunction({len(self._terms)} terms, basis=orthonormal)"
+
+class _SumFunction:
+    """
+    Pointwise sum of two callables f + g.
+
+    Used when operands live in different frames (e.g. OrthoPolyFunction and
+    PolyFunction) so that no change-of-basis expansion is needed.  Supports
+    the same arithmetic interface so chains like ``(f_approx - f)(Y)`` work
+    naturally.
+    """
+    def __init__(self, f, g):
+        self._f = f
+        self._g = g
+
+    def __call__(self, Y):
+        return self._f(Y) + self._g(Y)
+
+    def __neg__(self):
+        return _SumFunction(lambda Y: -self._f(Y), lambda Y: -self._g(Y))
+
+    def __add__(self, other):
+        return _SumFunction(self, other)
+
+    def __radd__(self, other):
+        return _SumFunction(other, self)
+
+    def __sub__(self, other):
+        return _SumFunction(self, -other)
+
+    def __rsub__(self, other):
+        return _SumFunction(other, -self)
+
+    def __repr__(self):
+        return f"_SumFunction({self._f!r}, {self._g!r})"
+
 
 #=====================================================================#
 # Coordinate Base Class
@@ -1194,6 +1292,50 @@ class CoordinateSystem:
                     coeffs[k] = 0
 
         return coeffs
+
+    def reconstruct(self, coeffs: dict) -> callable:
+        """
+        Synthesise f̃(Y) = Σ_k  c_k · ψ_k(Y) from PCE coefficients.
+
+        This is the dual of :meth:`decompose`.  Together they satisfy the
+        **Fundamental Theorem of PCE**:
+
+            residual(Y) := reconstruct(decompose(f))(Y) − f(Y)  ≡  0
+
+        when the basis is complete for f (i.e. every monomial of f is
+        representable).  On a truncated / adaptive basis the residual is
+        the projection error onto the chosen subspace — the natural error
+        metric for adaptive basis selection.
+
+        The duality mirrors the adaptive grow/decay law:
+            Completeness:  grow(S, exhausted) == universe
+            Fundamental:   reconstruct(decompose(f)) == f  (full basis)
+
+        Parameters
+        ----------
+        coeffs : dict {basis_id: float}
+            PCE coefficients, as returned by :meth:`decompose`.
+
+        Returns
+        -------
+        f_approx : OrthoPolyFunction
+            ``f_approx(Y)`` evaluates the reconstruction at the point
+            ``Y = {coord_id: value}``.  As an ``OrthoPolyFunction`` it
+            supports arithmetic: ``f_approx - f`` yields the residual
+            as another callable, computable at any sample point.
+
+        Examples
+        --------
+        >>> coeffs   = cs.decompose(f)
+        >>> f_approx = cs.reconstruct(coeffs)
+        >>> residual = f_approx - f          # OrthoPolyFunction − PolyFunction
+        >>> residual(Y)                      # evaluate at a sample point
+        """
+        terms = [(c, Counter(self.basis[k]))
+                 for k, c in coeffs.items() if c != 0.0]
+        if not terms:
+            terms = [(0.0, Counter())]
+        return OrthoPolyFunction(terms, self.coordinates)
 
     def admissible_pair(self, deg_i: Counter, deg_j: Counter, f_deg: Counter) -> bool:
         """
