@@ -21,6 +21,7 @@ from .core import (
     BasisFunctionType,
     DistributionType,
     CoordinateType,
+    Projection,
     PolyFunction,
     OrthoPolyFunction,
     StateEquation,

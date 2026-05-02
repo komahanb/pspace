@@ -166,6 +166,45 @@ class MonteCarloSampler(PointSampler):
         return self._samples
 
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Projection — contract for round-trip operators
+# ──────────────────────────────────────────────────────────────────────────────
+
+class Projection(ABC):
+    """
+    Contract for any operator that implements a round-trip projection.
+
+    The Fundamental Theorem (in any operand space):
+
+        inverse( forward(x) ) ≈ x
+
+    Residual — measure of round-trip error:
+
+        residual(x) = inverse( forward(x) ) - x
+
+    The same contract is satisfied in two operand contexts (CRAI):
+
+        Function space:  forward = decompose,   inverse = reconstruct
+        Index space:     forward = grow(S),      inverse = decay(S_grown)
+
+    Implementors must ensure that their operand type supports ``-`` so that
+    the default ``residual()`` composes correctly.
+    """
+
+    @abstractmethod
+    def forward(self, x):
+        """Project x into the encoded / transformed representation."""
+
+    @abstractmethod
+    def inverse(self, y):
+        """Recover x from the encoded representation."""
+
+    def residual(self, x):
+        """Round-trip error: inverse(forward(x)) - x."""
+        return self.inverse(self.forward(x)) - x
+
+
 class PolyFunction:
     def __init__(self, terms):
         """
@@ -695,7 +734,7 @@ class CoordinateFactory:
 # Coordinate System
 #=====================================================================#
 
-class CoordinateSystem:
+class CoordinateSystem(Projection):
     """
     1) holds coordinates (axes),
     2) manages basis (multi-indices),
@@ -1333,6 +1372,21 @@ class CoordinateSystem:
         if not terms:
             terms = [(0.0, Counter())]
         return OrthoPolyFunction(terms, self.coordinates)
+
+    # ── Projection contract ──────────────────────────────────────────────────
+    # CoordinateSystem satisfies the Projection ABC:
+    #   forward  = decompose   (function → coefficients)
+    #   inverse  = reconstruct (coefficients → function)
+    # The Fundamental Theorem is the Projection residual == 0 identity.
+    # Index-space analogue: decay(grow(S)) == S  (Involution law).
+
+    def forward(self, f: 'PolyFunction') -> dict:
+        """Projection.forward — alias for decompose(f)."""
+        return self.decompose(f)
+
+    def inverse(self, coeffs: dict) -> 'OrthoPolyFunction':
+        """Projection.inverse — alias for reconstruct(coeffs)."""
+        return self.reconstruct(coeffs)
 
     def residual_norm(self, coeffs: dict, f: PolyFunction) -> float:
         r"""
