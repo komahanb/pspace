@@ -980,18 +980,14 @@ class CoordinateSystem:
         ...     starting=SensitivityStarting(variances, top_k=1),
         ... )
         """
-        from .adaptive import (CandidatePoolExhaustedStopping,
+        from .adaptive import (CandidatePoolExhaustedConvergence,
                                 MeanOnlyStarting,
-                                RelativeGrowthStopping)
+                                AdaptiveContext)
 
         if stopping is None:
-            stopping = CandidatePoolExhaustedStopping()
+            stopping = CandidatePoolExhaustedConvergence()
         if starting is None:
             starting = MeanOnlyStarting()
-
-        # Let direction-aware stopping criteria know which mode we're in
-        if hasattr(stopping, '_set_direction'):
-            stopping._set_direction(strategy.direction)
 
         # Full reference CS at the strategy's max_degree
         cs_ref = self.make_cs(strategy.max_degree)
@@ -1014,12 +1010,16 @@ class CoordinateSystem:
         # (e.g. DownwardClosedStrategy requires a downward-closed seed)
         strategy.validate_initial_set(active, cs_ref)
 
-        iteration = 0
+        iteration  = 0
+        n_selected = 0
         # In grow mode the pool is consumed into active; loop while pool non-empty.
         # In decay mode active is consumed back into pool; loop while active non-empty.
         _source = lambda: pool if strategy.direction == 'grow' else active
         while _source():
-            if stopping.should_stop(active, pool, cs_ref, iteration):
+            ctx = AdaptiveContext(active, pool, cs_ref, iteration,
+                                  strategy.direction, n_selected)
+            stopping.update(ctx)
+            if stopping.is_met():
                 break
 
             selected = strategy.select(active, pool, cs_ref)
@@ -1033,16 +1033,13 @@ class CoordinateSystem:
                 for mid in selected:
                     pool[mid] = active.pop(mid)
 
-            # Notify RelativeGrowthStopping of this step's ratio
-            if isinstance(stopping, RelativeGrowthStopping):
-                stopping.record(len(selected), len(active))
+            n_selected = len(selected)
 
             if verbose:
-                n_new   = len(selected)
                 n_act   = len(active)
                 max_lev = max(sum(d.values()) for d in active.values())
                 print(f"[adaptive] iter {iteration:3d}: "
-                      f"+{n_new} modes -> active={n_act}, max_level={max_lev}")
+                      f"+{n_selected} modes -> active={n_act}, max_level={max_lev}")
 
             iteration += 1
 

@@ -5,13 +5,21 @@
 # ─────────────────────────────────────────────────────────────────────
 #   StartingCriterion      — *where* to begin (initial active set)
 #   AdaptiveBasisStrategy  — *what* modes to add at each step
-#   StoppingCriterion      — *when* to stop adding modes
+#   Convergence            — *when* to stop; same operation over two operand spaces:
+#
+#       Operand: index set     error() = pool size, iteration budget, growth ratio
+#       Operand: domain        error() = L2 residual norm  (ResidualNormConvergence)
+#
+# Contextual Reflection of Abstract Interfaces (CRAI):
+#   AdaptiveContext carries all loop state uniformly.  Each Convergence
+#   implementation extracts the fields it needs; the loop is indifferent
+#   to which operand space is in use.
 #
 # The adaptive loop in make_adaptive_cs() orchestrates:
 #
 #   active  = starting.initialize(pool, cs_ref)
 #   pool    = all candidate modes up to strategy.max_degree
-#   while pool and not stopping(active, pool, cs_ref, iter):
+#   while pool and not convergence.is_met():
 #       selected = strategy.select(active, pool, cs_ref)
 #       active  += selected;  pool -= selected
 #
@@ -22,7 +30,7 @@ from __future__ import annotations
 
 from abc        import ABC, abstractmethod
 from collections import Counter
-from typing     import TYPE_CHECKING
+from typing     import TYPE_CHECKING, NamedTuple, Optional
 
 if TYPE_CHECKING:
     from .core import CoordinateSystem   # only for type hints; no circular import
@@ -378,38 +386,101 @@ class _ReversedStrategy(AdaptiveBasisStrategy):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# StoppingCriterion ABC
+# AdaptiveContext — uniform context carrier for the adaptive enrichment loop
 # ──────────────────────────────────────────────────────────────────────────────
 
-class StoppingCriterion(ABC):
+class AdaptiveContext(NamedTuple):
     """
-    Pluggable policy that decides when the adaptive enrichment loop should
-    terminate.
+    All loop state in one object.
+
+    Both index-space and function-space Convergence implementations receive
+    the same context; each extracts the fields relevant to its operand type.
+
+    Fields
+    ------
+    active, pool : dict
+        Current active basis and candidate pool (index-space operands).
+    cs_ref : CoordinateSystem
+        Full reference coordinate system.
+    iteration : int
+        Zero-based enrichment step count.
+    direction : str
+        'grow' or 'decay' — the strategy's current direction.
+    n_selected : int
+        Number of modes moved in the *previous* iteration (for growth-ratio
+        computation).  Zero on the first iteration.
+    coeffs : dict or None
+        PCE coefficients from decompose(f) on the current active basis.
+        Non-None only when the caller provides a function for residual-norm
+        convergence.
+    """
+    active:     dict
+    pool:       dict
+    cs_ref:     'CoordinateSystem'
+    iteration:  int
+    direction:  str            = 'grow'
+    n_selected: int            = 0
+    coeffs:     Optional[dict] = None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Convergence ABC  (CRAI — same operation over index-space or domain operand)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class Convergence(ABC):
+    """
+    Abstract operation: measure convergence over an operand.
+
+    The same protocol serves two operand spaces:
+
+      Index space (discrete)   — operand is (active, pool, iteration, …)
+      Function space (continuous) — operand is (cs_ref, coeffs, f)
+
+    Implementing a new criterion means:
+      1. Override ``update(ctx)``  — ingest the current AdaptiveContext.
+      2. Override ``error()``      — return a non-negative float; 0 = converged.
+      3. Override ``is_met()``     — if a custom tolerance is needed.
+
+    The adaptive loop calls ``update(ctx)`` then ``is_met()`` each iteration,
+    indifferent to which operand space the criterion lives in.
     """
 
     @abstractmethod
-    def should_stop(
-        self,
-        active:    dict,
-        pool:      dict,
-        cs_ref,         # CoordinateSystem
-        iteration: int,
-    ) -> bool:
-        """
-        Return ``True`` to terminate the adaptive loop *before* the next
-        ``strategy.select`` call.
+    def update(self, ctx: AdaptiveContext) -> None:
+        """Ingest the current loop context before querying error()."""
 
-        Parameters
-        ----------
-        active : dict[mode_id, Counter]
-            Modes currently in the active basis.
-        pool : dict[mode_id, Counter]
-            Remaining candidates.
-        cs_ref : CoordinateSystem
-            Full reference coordinate system.
-        iteration : int
-            Zero-based enrichment step count (0 before any modes added).
-        """
+    @abstractmethod
+    def error(self) -> float:
+        """Current convergence error. Returns 0.0 when fully converged."""
+
+    def is_met(self) -> bool:
+        """True when convergence is achieved (error <= 0)."""
+        return self.error() <= 0.0
+
+
+# Backward-compat bridge: old code that subclasses StoppingCriterion and
+# implements should_stop() continues to work via the Convergence protocol.
+class StoppingCriterion(Convergence):
+    """
+    Backward-compatible base for pre-CRAI stopping criteria.
+    New code should extend Convergence and implement update()/error() directly.
+    """
+
+    def __init__(self):
+        self._ctx = AdaptiveContext({}, {}, None, 0)
+
+    def update(self, ctx: AdaptiveContext) -> None:
+        self._ctx = ctx
+
+    def error(self) -> float:
+        ctx = self._ctx
+        return 0.0 if self.should_stop(
+            ctx.active, ctx.pool, ctx.cs_ref, ctx.iteration
+        ) else 1.0
+
+    @abstractmethod
+    def should_stop(self, active, pool, cs_ref, iteration) -> bool:
+        """Return True to terminate the adaptive loop."""
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -659,59 +730,62 @@ class DownwardClosedStrategy(AdaptiveBasisStrategy):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Concrete stopping criteria
+# Concrete Convergence implementations
 # ──────────────────────────────────────────────────────────────────────────────
 
-class CandidatePoolExhaustedStopping(StoppingCriterion):
+class CandidatePoolExhaustedConvergence(Convergence):
     """
-    Stop when the **source** of the enrichment loop is exhausted.
+    Index-space convergence: stop when the *source* of the enrichment loop
+    is exhausted.
 
-    * **grow** mode — stops when the candidate pool is empty (nothing left
-      to add to the active set).
-    * **decay** mode — stops when the active set is empty (nothing left to
-      evict back to the pool).
+    * **grow** mode — error = |pool|;  converged when pool is empty.
+    * **decay** mode — error = |active|; converged when active is empty.
 
-    ``make_adaptive_cs`` injects the direction via :meth:`_set_direction`
-    before the loop starts; the default (grow) is always safe.
+    Direction flows via ``AdaptiveContext.direction``; no external injection
+    needed.
     """
 
     def __init__(self):
-        self._direction = 'grow'
+        self._size = 1   # non-zero until first update
 
-    def _set_direction(self, direction: str) -> None:
-        self._direction = direction
+    def update(self, ctx: AdaptiveContext) -> None:
+        source = ctx.pool if ctx.direction == 'grow' else ctx.active
+        self._size = len(source)
 
-    def should_stop(self, active, pool, cs_ref, iteration) -> bool:
-        source = pool if self._direction == 'grow' else active
-        return not source
+    def error(self) -> float:
+        return float(self._size)
 
 
-class MaxIterationsStopping(StoppingCriterion):
+class MaxIterationsConvergence(Convergence):
     """
-    Stop after a fixed number of enrichment iterations.
+    Index-space convergence: stop after a fixed number of enrichment steps.
+
+    error() = remaining iterations budget (0 when budget is exhausted).
 
     Parameters
     ----------
     max_iterations : int
-        Maximum number of times :meth:`~AdaptiveBasisStrategy.select` may
-        be called.  At ``iteration == max_iterations`` the loop terminates.
+        Maximum number of :meth:`~AdaptiveBasisStrategy.select` calls.
     """
 
     def __init__(self, max_iterations: int):
-        self._max = max_iterations
+        self._max       = max_iterations
+        self._remaining = float(max_iterations)
 
-    def should_stop(self, active, pool, cs_ref, iteration) -> bool:
-        return iteration >= self._max
+    def update(self, ctx: AdaptiveContext) -> None:
+        self._remaining = float(max(0, self._max - ctx.iteration))
+
+    def error(self) -> float:
+        return self._remaining
 
 
-class RelativeGrowthStopping(StoppingCriterion):
+class RelativeGrowthConvergence(Convergence):
     """
-    Stop when the relative size of the last enrichment batch falls below a
-    threshold.
+    Index-space convergence: stop when the relative enrichment batch size
+    falls below a threshold.
 
-    Specifically, tracks ``|selected| / |active|`` at each step and stops
-    when this ratio is below *tol*.  Useful for anisotropic problems where
-    enrichment naturally stalls along inactive directions.
+    error() = |selected_{k-1}| / |active_k|  (growth ratio from the previous
+    step).  Initialised to 1.0 so the first iteration always runs.
 
     Parameters
     ----------
@@ -721,11 +795,65 @@ class RelativeGrowthStopping(StoppingCriterion):
 
     def __init__(self, tol: float):
         self._tol   = tol
-        self._ratio = 1.0   # initialised large so first iteration always runs
+        self._ratio = 1.0   # large initial value prevents premature stopping
 
-    def record(self, n_selected: int, n_active: int) -> None:
-        """Called by make_adaptive_cs after each select() call."""
-        self._ratio = n_selected / max(n_active, 1)
+    def update(self, ctx: AdaptiveContext) -> None:
+        if ctx.iteration > 0:
+            self._ratio = ctx.n_selected / max(len(ctx.active), 1)
 
-    def should_stop(self, active, pool, cs_ref, iteration) -> bool:
-        return iteration > 0 and self._ratio < self._tol
+    def error(self) -> float:
+        return self._ratio
+
+    def is_met(self) -> bool:
+        return self._ratio < self._tol
+
+
+class ResidualNormConvergence(Convergence):
+    """
+    Function-space convergence: stop when the L2 PCE residual norm is below
+    a tolerance.
+
+        error() = ||reconstruct(coeffs) - f||_2
+
+    This is the continuous (domain) operand dual of the discrete
+    (index-space) CandidatePoolExhaustedConvergence:
+
+        Index space:    error() = |pool|        -> 0 when basis is complete
+        Function space: error() = residual_norm -> 0 when f is represented exactly
+
+    CRAI — same abstract operation (convergence measurement), different operand.
+
+    Parameters
+    ----------
+    f : PolyFunction
+        The function being approximated.
+    tol : float
+        L2 residual tolerance.  Convergence when error() <= tol.
+
+    Notes
+    -----
+    ``ctx.coeffs`` must be non-None for ``update()`` to compute the norm.
+    Pass ``f`` to ``make_adaptive_cs()`` to have the loop supply coefficients.
+    """
+
+    def __init__(self, f, tol: float):
+        self._f    = f
+        self._tol  = tol
+        self._norm = float('inf')
+
+    def update(self, ctx: AdaptiveContext) -> None:
+        if ctx.coeffs is not None:
+            self._norm = ctx.cs_ref.residual_norm(ctx.coeffs, self._f)
+
+    def error(self) -> float:
+        return self._norm
+
+    def is_met(self) -> bool:
+        return self._norm <= self._tol
+
+
+# Backward-compat aliases (old names still importable)
+CandidatePoolExhaustedStopping = CandidatePoolExhaustedConvergence
+MaxIterationsStopping          = MaxIterationsConvergence
+RelativeGrowthStopping         = RelativeGrowthConvergence
+
